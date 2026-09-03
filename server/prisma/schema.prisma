@@ -1,0 +1,207 @@
+// SpendGuard AI Spend Governance Platform - Prisma Schema (PRD Section 7)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ProviderType {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+}
+
+enum ThresholdType {
+  PERCENT_80
+  HARD_BLOCK
+  ANOMALY_DETECTED
+}
+
+enum AlertChannel {
+  EMAIL
+  SLACK
+  IN_APP
+}
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  users     User[]
+  projects  Project[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  orgId        String       @map("org_id")
+  email        String       @unique
+  passwordHash String       @map("password_hash")
+  name         String
+  role         Role         @default(MEMBER)
+  avatarUrl    String?      @map("avatar_url")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  requests     Request[]
+
+  @@index([orgId])
+  @@map("users")
+}
+
+model Project {
+  id                     String            @id @default(uuid())
+  orgId                  String            @map("org_id")
+  name                   String
+  slug                   String
+  description            String?
+  budgetMonthly          Decimal           @default(1000.0) @map("budget_monthly") @db.Decimal(12, 4)
+  budgetWeekly           Decimal           @default(250.0) @map("budget_weekly") @db.Decimal(12, 4)
+  budgetHardBlockEnabled Boolean           @default(true) @map("budget_hard_block_enabled")
+  isBlocked              Boolean           @default(false) @map("is_blocked")
+  blockReason            String?           @map("block_reason")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  organization           Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  providerKeys           ProviderApiKey[]
+  gatewayKeys            GatewayApiKey[]
+  requests               Request[]
+  budgetAlerts           BudgetAlert[]
+  alertConfig            AlertConfig?
+
+  @@unique([orgId, slug])
+  @@index([orgId])
+  @@map("projects")
+}
+
+model AlertConfig {
+  id                  String   @id @default(uuid())
+  projectId           String   @unique @map("project_id")
+  slackWebhookUrl     String?  @map("slack_webhook_url")
+  emailRecipients     String?  @map("email_recipients") // JSON array string
+  warningThresholdPct Decimal  @default(80.0) @map("warning_threshold_pct") @db.Decimal(5, 2)
+  hardBlockPct        Decimal  @default(100.0) @map("hard_block_pct") @db.Decimal(5, 2)
+  notifyOnAnomaly     Boolean  @default(true) @map("notify_on_anomaly")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("alert_configs")
+}
+
+model ProviderApiKey {
+  id           String       @id @default(uuid())
+  projectId    String       @map("project_id")
+  provider     ProviderType
+  keyName      String       @map("key_name")
+  keyPrefix    String       @map("key_prefix")
+  encryptedKey String       @map("encrypted_key")
+  isActive     Boolean      @default(true) @map("is_active")
+  lastUsedAt   DateTime?    @map("last_used_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, provider])
+  @@map("provider_api_keys")
+}
+
+model GatewayApiKey {
+  id            String    @id @default(uuid())
+  projectId     String    @map("project_id")
+  keyName       String    @map("key_name")
+  keyPrefix     String    @map("key_prefix")
+  hashedSecret  String    @unique @map("hashed_secret")
+  rateLimitRpm  Int       @default(1200) @map("rate_limit_rpm")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastUsedAt    DateTime? @map("last_used_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([hashedSecret])
+  @@map("gateway_api_keys")
+}
+
+model Request {
+  id              String       @id
+  projectId       String       @map("project_id")
+  userId          String?      @map("user_id")
+  provider        ProviderType
+  model           String
+  tokensIn        Int          @map("tokens_in")
+  tokensOut       Int          @map("tokens_out")
+  totalTokens     Int          @map("total_tokens")
+  costEstimate    Decimal      @map("cost_estimate") @db.Decimal(10, 6)
+  latencyMs       Int          @map("latency_ms")
+  statusCode      Int          @default(200) @map("status_code")
+  isAnomaly       Boolean      @default(false) @map("is_anomaly")
+  anomalyReason   String?      @map("anomaly_reason")
+  isBlocked       Boolean      @default(false) @map("is_blocked")
+  promptPreview   String?      @map("prompt_preview")
+  responsePreview String?      @map("response_preview")
+  metadataJson    String?      @map("metadata_json")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  auditLogs       AuditLog[]
+
+  @@index([projectId, createdAt])
+  @@index([userId])
+  @@index([model])
+  @@index([createdAt])
+  @@map("requests")
+}
+
+model BudgetAlert {
+  id             String        @id @default(uuid())
+  projectId      String        @map("project_id")
+  thresholdType  ThresholdType @map("threshold_type")
+  thresholdValue Decimal       @map("threshold_value") @db.Decimal(12, 4)
+  channel        AlertChannel  @default(IN_APP)
+  title          String
+  message        String
+  isRead         Boolean       @default(false) @map("is_read")
+  status         String        @default("SENT")
+  triggeredAt    DateTime      @default(now()) @map("triggered_at")
+
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, isRead])
+  @@index([triggeredAt])
+  @@map("budget_alerts")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  requestId String?  @map("request_id")
+  actor     String
+  action    String
+  metadata  String?  @map("metadata") // JSON details
+  createdAt DateTime @default(now()) @map("created_at")
+
+  request   Request? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

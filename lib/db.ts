@@ -599,6 +599,8 @@ class SpendGuardStore {
 
         return {
           ...r,
+          id: r.id,
+          request_id: r.id,
           tokensIn,
           tokensOut,
           totalTokens,
@@ -613,12 +615,19 @@ class SpendGuardStore {
           status_code: statusCode,
           isAnomaly: Boolean(r.is_anomaly),
           isBlocked: Boolean(r.is_blocked),
+          is_anomaly: r.is_anomaly ? 1 : 0,
+          is_blocked: r.is_blocked ? 1 : 0,
+          anomaly_reason: r.anomaly_reason || '',
           promptPreview: r.prompt_preview || '',
           responsePreview: r.response_preview || '',
           timestamp: r.created_at || new Date().toISOString(),
+          created_at: r.created_at || new Date().toISOString(),
           projectName: proj?.name || r.project_id,
+          project_name: proj?.name || r.project_id,
           userName: usr?.name || 'API Client',
-          userEmail: usr?.email || 'api@spendguard.ai'
+          user_name: usr?.name || 'API Client',
+          userEmail: usr?.email || 'api@spendguard.ai',
+          user_email: usr?.email || 'api@spendguard.ai'
         };
       });
     }

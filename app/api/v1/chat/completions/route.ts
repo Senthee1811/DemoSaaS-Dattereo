@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { model, messages, project_id, temperature, max_tokens, stream, user_id } = body;
+    const { model, messages, project_id, projectId, temperature, max_tokens, maxTokens, stream, user_id, userId } = body;
 
     if (!model || !messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let resolvedProjectId = project_id;
+    let resolvedProjectId = project_id || projectId || req.headers.get('x-spendguard-project-id') || req.headers.get('x-project-id');
+    const resolvedUserId = user_id || userId || req.headers.get('x-spendguard-user-id') || 'usr_sarah_chen';
 
     // If Bearer token provided, check if it maps to a gateway key
     if (bearerToken) {
@@ -52,11 +53,11 @@ export async function POST(req: NextRequest) {
 
     const result = await executeGatewayChat({
       projectId: resolvedProjectId,
-      userId: user_id || 'usr_sarah_chen',
+      userId: resolvedUserId,
       model,
       messages,
       temperature,
-      maxTokens: max_tokens,
+      maxTokens: max_tokens || maxTokens,
       stream: !!stream,
       clientIp,
       clientSdk

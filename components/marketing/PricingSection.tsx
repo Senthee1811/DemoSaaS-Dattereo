@@ -2,9 +2,24 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check, ArrowRight, Sparkles, Shield, Zap } from 'lucide-react';
+import { Check, ArrowRight, Sparkles, Shield, Zap, X, Mail, Building, Send, CheckCircle2 } from 'lucide-react';
 
-const PLANS = [
+interface PlanFeature {
+  text: string;
+  badge?: string;
+}
+
+const PLANS: Array<{
+  name: string;
+  badge: string;
+  description: string;
+  monthlyPrice: number;
+  annualPrice: number;
+  features: PlanFeature[];
+  ctaText: string;
+  popular: boolean;
+  isEnterpriseModal?: boolean;
+}> = [
   {
     name: 'Starter',
     badge: 'Seed & Early Teams',
@@ -12,12 +27,12 @@ const PLANS = [
     monthlyPrice: 49,
     annualPrice: 39,
     features: [
-      'Up to $10,000 monthly AI spend managed',
-      '3 Projects & 5 Team Members',
-      'Unified Gateway for OpenAI & Gemini & Claude',
-      'Soft-warning budget threshold alerts',
-      '30-day immutable audit log history',
-      'Email & Slack notification webhooks',
+      { text: 'Up to $10,000 monthly AI spend managed' },
+      { text: '3 Projects & 5 Team Members' },
+      { text: 'Unified Gateway for OpenAI, Gemini & Claude' },
+      { text: 'Soft-warning budget threshold alerts' },
+      { text: '30-day immutable audit log history' },
+      { text: 'Email & Slack notification webhooks' },
     ],
     ctaText: 'Start 14-Day Free Trial',
     popular: false,
@@ -29,13 +44,13 @@ const PLANS = [
     monthlyPrice: 199,
     annualPrice: 159,
     features: [
-      'Up to $100,000 monthly AI spend managed',
-      'Unlimited Projects & 25 Team Members',
-      'Fail-closed automated hard budget blocking',
-      'Statistical token spike anomaly detection',
-      'Encrypted per-project API key vault & rotation',
-      '1-year exportable compliance audit ledger',
-      'Priority routing & dedicated Slack support',
+      { text: 'Up to $100,000 monthly AI spend managed' },
+      { text: 'Unlimited Projects & 25 Team Members' },
+      { text: 'Fail-closed automated hard budget blocking' },
+      { text: 'Statistical token spike anomaly engine', badge: 'MVP' },
+      { text: 'Encrypted per-project API key vault & rotation' },
+      { text: '1-year exportable compliance audit ledger' },
+      { text: 'Priority routing & dedicated Slack support' },
     ],
     ctaText: 'Start Free 14-Day Trial',
     popular: true,
@@ -43,25 +58,42 @@ const PLANS = [
   {
     name: 'Enterprise',
     badge: 'FinOps & Compliance',
-    description: 'For large organizations needing custom spend limits, SOC2 compliance, SSO, and self-hosted gateway options.',
+    description: 'For large organizations needing custom spend limits, SOC2 compliance, custom SLA, and VPC deployment.',
     monthlyPrice: 699,
     annualPrice: 559,
     features: [
-      'Unlimited monthly AI spend managed',
-      'Unlimited Projects & Organization RBAC',
-      'Custom fail-closed policy engine',
-      'SAML 2.0 / Okta SSO & SCIM directory sync',
-      'Self-hosted VPC proxy deployment option',
-      'Custom ERP & FinOps billing integrations',
-      'Dedicated Customer Success Architect & SLA',
+      { text: 'Unlimited monthly AI spend managed' },
+      { text: 'Unlimited Projects & Organization RBAC' },
+      { text: 'Custom fail-closed policy engine & SLA' },
+      { text: 'SAML 2.0 / Okta SSO & SCIM sync', badge: 'Phase 4 Roadmap' },
+      { text: 'Self-hosted VPC proxy deployment', badge: 'Roadmap' },
+      { text: 'Custom ERP & FinOps billing integrations' },
+      { text: 'Dedicated Customer Success Architect' },
     ],
     ctaText: 'Contact Enterprise Sales',
     popular: false,
+    isEnterpriseModal: true,
   },
 ];
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(true);
+  const [showSalesModal, setShowSalesModal] = useState(false);
+  const [salesName, setSalesName] = useState('');
+  const [salesEmail, setSalesEmail] = useState('');
+  const [salesCompany, setSalesCompany] = useState('');
+  const [salesSpend, setSalesSpend] = useState('$50,000+/mo');
+  const [salesMessage, setSalesMessage] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSalesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!salesName || !salesEmail) return;
+    setIsSubmitted(true);
+    setTimeout(() => {
+      // Auto close after 3s if desired
+    }, 3000);
+  };
 
   return (
     <section id="pricing" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
@@ -165,30 +197,191 @@ export function PricingSection() {
                       }`}>
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
-                      <span className={plan.popular ? 'text-white/90' : 'text-[#333333]'}>
-                        {feat}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={plan.popular ? 'text-white/90' : 'text-[#333333]'}>
+                          {feat.text}
+                        </span>
+                        {feat.badge && (
+                          <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold uppercase tracking-wider ${
+                            feat.badge.includes('Roadmap')
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          }`}>
+                            {feat.badge}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Action Button */}
-              <Link
-                href="/dashboard"
-                className={`w-full py-3.5 px-6 rounded-2xl text-center font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                  plan.popular
-                    ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:scale-[1.02]'
-                    : 'bg-[#F6F6F6] text-[#111111] hover:bg-[#EAEAEA]'
-                }`}
-              >
-                <span>{plan.ctaText}</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              {plan.isEnterpriseModal ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSalesModal(true)}
+                  className="w-full py-3.5 px-6 rounded-2xl text-center font-bold text-sm transition-all flex items-center justify-center gap-2 bg-[#F6F6F6] text-[#111111] hover:bg-[#EAEAEA]"
+                >
+                  <span>{plan.ctaText}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className={`w-full py-3.5 px-6 rounded-2xl text-center font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    plan.popular
+                      ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:scale-[1.02]'
+                      : 'bg-[#F6F6F6] text-[#111111] hover:bg-[#EAEAEA]'
+                  }`}
+                >
+                  <span>{plan.ctaText}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Contact Enterprise Sales Modal */}
+      {showSalesModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-[#E8E8E8] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
+              <div>
+                <h3 className="text-xl font-extrabold text-[#111111]">
+                  Contact Enterprise Sales
+                </h3>
+                <p className="text-xs text-[#777777] mt-0.5">
+                  Tailored governance architecture, custom SLA, and dedicated onboarding.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSalesModal(false);
+                  setIsSubmitted(false);
+                }}
+                className="p-1.5 text-[#888888] hover:text-[#111111] rounded-xl hover:bg-[#F5F5F5]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {isSubmitted ? (
+              <div className="py-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-[#111111]">Thank You, {salesName}!</h4>
+                <p className="text-xs text-[#666666] max-w-sm mx-auto">
+                  Our FinOps solutions architect will reach out to <strong>{salesEmail}</strong> within 1 business day with a customized governance plan.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSalesModal(false);
+                    setIsSubmitted(false);
+                  }}
+                  className="mt-4 px-6 py-2.5 rounded-xl bg-[#111111] text-white text-xs font-bold"
+                >
+                  Close Window
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSalesSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Sarah Chen"
+                      value={salesName}
+                      onChange={(e) => setSalesName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
+                      Work Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="sarah@company.com"
+                      value={salesEmail}
+                      onChange={(e) => setSalesEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Apex Corp"
+                      value={salesCompany}
+                      onChange={(e) => setSalesCompany(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
+                      Estimated Monthly AI Spend
+                    </label>
+                    <select
+                      value={salesSpend}
+                      onChange={(e) => setSalesSpend(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35] bg-white"
+                    >
+                      <option value="$10,000 - $50,000">$10,000 - $50,000 / mo</option>
+                      <option value="$50,000 - $150,000">$50,000 - $150,000 / mo</option>
+                      <option value="$150,000+">$150,000+ / mo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
+                    Requirements & Use Cases
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Tell us about your multi-model governance, fail-closed policy, or compliance needs..."
+                    value={salesMessage}
+                    onChange={(e) => setSalesMessage(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-[#E8E8E8] flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSalesModal(false)}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#666666] hover:bg-[#F5F5F5]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-md shadow-[#FF6B35]/25 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    Submit Enterprise Request
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

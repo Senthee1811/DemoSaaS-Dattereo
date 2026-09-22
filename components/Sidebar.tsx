@@ -53,10 +53,9 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-[#E8E8E8] flex flex-col justify-between shrink-0 select-none min-h-screen">
-      <div>
-        {/* Brand Header */}
-        <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+    <aside className="w-64 bg-white border-r border-[#E8E8E8] flex flex-col h-screen shrink-0 select-none overflow-hidden">
+      {/* Brand Header */}
+      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between shrink-0">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8A4C] flex items-center justify-center text-white shadow-md shadow-[#FF6B35]/25 transition-transform group-hover:scale-105">
               <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.4} />
@@ -74,7 +73,7 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
         </div>
 
         {/* Organization Badge */}
-        <div className="px-4 py-3 border-b border-[#E8E8E8] bg-[#FFF8F5]">
+        <div className="px-4 py-3 border-b border-[#E8E8E8] bg-[#FFF8F5] shrink-0">
           <div className="flex items-center justify-between text-xs">
             <span className="text-[#444444] font-semibold truncate">Apex Innovations Inc.</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700 border border-emerald-200">
@@ -84,7 +83,7 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-3 space-y-1.5">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -121,10 +120,9 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
             );
           })}
         </nav>
-      </div>
 
       {/* Governance Status Footer (clean portal without overlap) */}
-      <div className="p-4 space-y-3 border-t border-[#E8E8E8] bg-[#FFF8F5]/60">
+      <div className="p-4 space-y-3 border-t border-[#E8E8E8] bg-[#FFF8F5]/60 shrink-0">
         <Link
           href="/"
           className="w-full flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-white hover:bg-[#FFF1EA] text-xs font-bold text-[#FF6B35] border border-[#E8E8E8] hover:border-[#FFD9C7] shadow-sm transition-all"

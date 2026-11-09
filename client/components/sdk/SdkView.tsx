@@ -6,11 +6,9 @@ import {
   Copy, 
   Check, 
   Terminal, 
-  Layers, 
   ExternalLink, 
   ShieldCheck, 
-  Lock,
-  Sparkles
+  Cpu
 } from 'lucide-react';
 
 interface SdkViewProps {
@@ -26,30 +24,30 @@ export function SdkView({ projects }: SdkViewProps) {
     return {
       node: `import OpenAI from 'openai';
 
-// Initialize the OpenAI client pointing to the SpendGuard Gateway
+// Point the standard OpenAI client directly to SpendGuard Gateway
 const openai = new OpenAI({
   baseURL: 'https://gateway.spendguard.ai/v1',
-  apiKey: process.env.SPENDGUARD_API_KEY, // Scoped gateway key
+  apiKey: process.env.SPENDGUARD_API_KEY, // Scoped gateway key: sg_live_...
   defaultHeaders: {
-    'X-SpendGuard-Project-Id': '${selectedProjectId}' // Bind to project budget
+    'X-SpendGuard-Project-Id': '${selectedProjectId}' // Pre-flight atomic budget scoping
   }
 });
 
-async function run() {
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o', // Or 'claude-3-5-sonnet', 'gemini-1.5-pro'
-    messages: [{ role: 'user', content: 'Generate quarterly FinOps review metrics.' }]
+async function main() {
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o', // Or 'claude-3-5-sonnet-20241022', 'gemini-1.5-pro'
+    messages: [{ role: 'user', content: 'Generate quarterly FinOps spend review.' }]
   });
 
-  console.log(response.choices[0].message.content);
+  console.log(completion.choices[0].message.content);
 }
 
-run();`,
+main();`,
 
       python: `import os
 from openai import OpenAI
 
-# Initialize SpendGuard AI Proxy client
+# SpendGuard unified proxy client
 client = OpenAI(
     base_url="https://gateway.spendguard.ai/v1",
     api_key=os.environ.get("SPENDGUARD_API_KEY"),
@@ -96,8 +94,8 @@ const model = new ChatOpenAI({
   }
 });
 
-const res = await model.invoke("Analyze quarterly multi-model inference ledger.");
-console.log(res.content);`
+const response = await model.invoke("Analyze quarterly multi-model inference ledger.");
+console.log(response.content);`
     };
   };
 
@@ -111,125 +109,101 @@ console.log(res.content);`
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-5 pb-10">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-extrabold text-[#111111] tracking-tight">
-          Integration & SDK Guides
+        <h2 className="text-xl font-bold text-[#18191B] tracking-tight">
+          SDK & Gateway Integration
         </h2>
-        <p className="text-xs sm:text-sm text-[#666666] mt-0.5">
-          1-line drop-in configuration for OpenAI SDK, LangChain, LlamaIndex, Python, and cURL.
+        <p className="text-xs text-[#5F6368]">
+          SpendGuard AI exposes a 100% OpenAI-compatible endpoint. Swap your `baseURL` and enforce budget guardrails with zero code rewrites.
         </p>
       </div>
 
-      {/* Code Config Box */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#E8E8E8] shadow-sm space-y-6">
-        {/* Top Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F0ECE7]">
-          {/* Project Picker */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#666666]">Bind Scope:</span>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              aria-label="Bind Scope Project"
-              className="px-3 py-1.5 rounded-xl border border-[#E8E8E8] text-xs font-semibold text-[#111111] bg-[#FFF8F5] focus:outline-none focus:border-[#FF6B35]"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.id})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Language Switcher Tabs */}
-          <div className="inline-flex items-center p-1 bg-[#F5F2ED] rounded-xl border border-[#E8E8E8]">
-            {[
-              { id: 'node', label: 'Node.js (OpenAI SDK)' },
-              { id: 'python', label: 'Python' },
-              { id: 'curl', label: 'cURL' },
-              { id: 'langchain', label: 'LangChain' },
-            ].map((tab) => (
+      {/* Integration Workspace */}
+      <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-4 border-b border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 bg-[#FBFBFA]">
+          {/* Language Tabs */}
+          <div className="flex items-center gap-1">
+            {(['node', 'python', 'curl', 'langchain'] as const).map((lang) => (
               <button
-                key={tab.id}
+                key={lang}
                 type="button"
-                onClick={() => setActiveLang(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  activeLang === tab.id
-                    ? 'bg-white text-[#111111] shadow-sm'
-                    : 'text-[#666666] hover:text-[#111111]'
+                onClick={() => setActiveLang(lang)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                  activeLang === lang
+                    ? 'bg-[#18191B] text-white'
+                    : 'text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0]'
                 }`}
               >
-                {tab.label}
+                {lang === 'node' ? 'Node.js' : lang === 'python' ? 'Python' : lang === 'curl' ? 'cURL' : 'LangChain'}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Terminal Window */}
-        <div className="relative rounded-2xl bg-[#111111] text-white p-5 font-mono text-xs overflow-hidden shadow-inner">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-            <div className="flex items-center gap-2 text-white/50 text-[11px]">
-              <Terminal className="w-3.5 h-3.5 text-[#FF6B35]" />
-              <span>SpendGuard Drop-In Gateway Client</span>
-            </div>
+          {/* Project Scoping & Copy */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#5F6368]">Bind Project:</span>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="bg-white border border-[#E4E4E0] rounded px-2.5 py-1 text-xs text-[#18191B] font-medium"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
 
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] rounded text-xs font-semibold shadow-xs transition-colors"
             >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 text-[#FFA06E]" />
-                  <span>Copy Code</span>
-                </>
-              )}
+              {copied ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5 text-[#5F6368]" />}
+              <span>{copied ? 'Copied' : 'Copy Snippet'}</span>
             </button>
           </div>
-
-          <pre className="overflow-x-auto text-[#FFA06E] leading-relaxed select-all">
-            <code>{currentSnippet}</code>
-          </pre>
         </div>
 
-        {/* Integration Features */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#FFE2D6]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#111111] mb-1">
-              <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
-              <span>Fail-Closed Enforced</span>
-            </div>
-            <p className="text-[11px] text-[#666666]">
-              Requests automatically reject with HTTP 429 when monthly cap is crossed.
-            </p>
-          </div>
+        {/* Code Box */}
+        <pre className="p-4 bg-[#18191B] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed">
+          <code>{currentSnippet}</code>
+        </pre>
+      </div>
 
-          <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#FFE2D6]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#111111] mb-1">
-              <Lock className="w-4 h-4 text-[#FF6B35]" />
-              <span>Zero-Code Provider Switching</span>
-            </div>
-            <p className="text-[11px] text-[#666666]">
-              Target any OpenAI, Claude, or Gemini model using the standard model parameter.
-            </p>
+      {/* Integration Architectural Guardrails */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+            <Cpu className="w-4 h-4 text-[#FF6B35]" />
+            <span>Zero SDK Vendor Lock-in</span>
           </div>
+          <p className="text-xs text-[#5F6368] leading-relaxed">
+            Works directly with official `openai` Python and Node libraries, LangChain, LlamaIndex, and AutoGen.
+          </p>
+        </div>
 
-          <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#FFE2D6]">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#111111] mb-1">
-              <Sparkles className="w-4 h-4 text-[#FF6B35]" />
-              <span>Custom Telemetry Headers</span>
-            </div>
-            <p className="text-[11px] text-[#666666]">
-              Receive <code className="font-mono text-[#FF6B35]">X-SpendGuard-Cost</code> and latency directly in response headers.
-            </p>
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+            <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
+            <span>Sub-5ms Atomic Check</span>
           </div>
+          <p className="text-xs text-[#5F6368] leading-relaxed">
+            Redis executes atomic pre-flight Lua capacity reservations before forwarding traffic upstream.
+          </p>
+        </div>
+
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+            <Code2 className="w-4 h-4 text-[#5F6368]" />
+            <span>Multi-Provider Fallbacks</span>
+          </div>
+          <p className="text-xs text-[#5F6368] leading-relaxed">
+            Switch between OpenAI, Claude, and Gemini by changing the model parameter without changing SDK code.
+          </p>
         </div>
       </div>
     </div>

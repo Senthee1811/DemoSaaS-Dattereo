@@ -16,13 +16,13 @@ import {
 
 export default function MarketingLandingPage() {
   return (
-    <div className="min-h-screen bg-[#FFF9F6] text-[#111111] overflow-x-hidden flex flex-col justify-between selection:bg-[#FF6B35] selection:text-white">
+    <div className="min-h-screen bg-[#FBFBFA] text-[#18191B] overflow-x-hidden flex flex-col justify-between selection:bg-[#FF6B35] selection:text-white">
       {/* Top Navigation */}
       <Navbar />
 
       {/* Main Content Sections */}
       <main className="flex-1 w-full space-y-4 sm:space-y-6">
-        {/* Primary Hero Section with Large Rounded Container & Floating AI Governance Composition */}
+        {/* Primary Hero Section */}
         <Hero />
 
         {/* Live Interactive Gateway Sandbox Demo */}
@@ -43,7 +43,7 @@ export default function MarketingLandingPage() {
         {/* FAQ Accordion */}
         <FaqSection />
 
-        {/* High-Converting Final Call to Action */}
+        {/* Architecture Guarantees Final CTA */}
         <CtaBanner />
       </main>
 

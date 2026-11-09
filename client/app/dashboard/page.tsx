@@ -96,7 +96,7 @@ export default function AppDashboard() {
   }, [selectedProjectId, refreshAll, fetchAnalytics, fetchUnreadAlerts]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#FAFAFA] text-[#111111]">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#FBFBFA] text-[#18191B]">
       {/* Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -119,7 +119,7 @@ export default function AppDashboard() {
         />
 
         {/* Dynamic Viewport Container */}
-        <main className="flex-1 overflow-y-auto px-6 py-6 bg-[#FAFAFA] scroll-smooth">
+        <main className="flex-1 overflow-y-auto px-6 py-6 bg-[#FBFBFA] scroll-smooth">
           <div className="max-w-7xl mx-auto">
             {currentTab === 'overview' && (
               <OverviewView

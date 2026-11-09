@@ -5,17 +5,14 @@ import {
   DollarSign, 
   TrendingUp, 
   Activity, 
-  AlertTriangle, 
   ShieldAlert, 
   Zap, 
   Clock, 
   CheckCircle2, 
-  AlertCircle,
-  ExternalLink,
-  ArrowRight,
-  PieChart as PieIcon,
-  BarChart3,
-  Layers
+  ArrowRight, 
+  PieChart as PieIcon, 
+  BarChart3, 
+  Layers 
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -29,7 +26,7 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { TOKENS, MODEL_CHART_COLORS } from '@/lib/tokens';
+import { MODEL_CHART_COLORS } from '@/lib/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton, ChartSkeleton } from '@/components/ui/LoadingSkeleton';
 
@@ -48,14 +45,14 @@ export function OverviewView({
 }: OverviewViewProps) {
   if (!analyticsData || !analyticsData.summary) {
     return (
-      <div className="space-y-6 pb-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="space-y-5 pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <div className="lg:col-span-8"><ChartSkeleton /></div>
           <div className="lg:col-span-4"><ChartSkeleton /></div>
         </div>
@@ -63,14 +60,18 @@ export function OverviewView({
     );
   }
 
-  const { summary, dailySpend = [], modelBreakdown = [], projectBreakdown = [], recentRequests = [] } = analyticsData;
+  const { summary, dailySpend = [], modelBreakdown = [], recentRequests = [] } = analyticsData;
 
   const totalSpend = Number(summary.totalSpend || 0);
   const totalBudget = Number(summary.totalBudget || 5000);
   const utilizationPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpend / totalBudget) * 100)) : 0;
   
-  // Calculate projected month-end burn
-  const projectedSpend = Math.round(totalSpend * 1.15 * 100) / 100;
+  // Calculate burn rate based on days elapsed in current month
+  const now = new Date();
+  const dayOfMonth = Math.max(1, now.getDate());
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const projectedSpend = (totalSpend / dayOfMonth) * daysInMonth;
+
   const isOverBudget = utilizationPct >= 100;
   const isWarning = utilizationPct >= 80 && !isOverBudget;
 
@@ -83,184 +84,170 @@ export function OverviewView({
     }));
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-5 pb-10">
       {/* Top Banner if hard blocks exist */}
       {summary.blockedCount > 0 && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-red-100 text-red-600">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
+        <div className="p-3.5 rounded-lg bg-[#FEF2F2] border border-[#FECACA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-[#DC2626] shrink-0" />
             <div>
-              <p className="text-sm font-bold text-[#111111]">Active Budget Hard-Block Enforced</p>
-              <p className="text-xs text-red-700">
-                1 or more projects have exhausted their monthly allocation. AI proxy requests are failing closed.
+              <p className="text-xs font-bold text-[#991B1B]">Active Budget Hard-Block Enforced</p>
+              <p className="text-xs text-[#B91C1C]">
+                One or more projects exceeded their monthly limit. AI proxy requests are failing closed (HTTP 429).
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onNavigateToProjects}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-xs shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="px-3 py-1.5 rounded-md bg-[#DC2626] text-white font-semibold text-xs hover:bg-[#B91C1C] transition-colors"
           >
-            Manage Guardrails
+            Review Limits
           </button>
         </div>
       )}
 
-      {/* Primary KPI Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Metric 1: Total MTD Spend */}
-        <div className="p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm hover:border-[#FFD9C7] transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-              Month-to-Date Spend
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#FFF1EA] text-[#FF6B35] flex items-center justify-center">
-              <DollarSign className="w-4.5 h-4.5" />
+      {/* Primary FinOps KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Month-to-Date Spend */}
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#5F6368]">
+              <span className="font-semibold uppercase tracking-wider text-[11px]">MTD AI Spend</span>
+              <DollarSign className="w-4 h-4 text-[#FF6B35]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+                ${totalSpend.toFixed(2)}
+              </span>
+              <span className="text-xs text-[#80868B] font-mono tabular-nums">
+                / ${totalBudget.toLocaleString()}
+              </span>
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[#111111] tracking-tight">
-              ${totalSpend.toFixed(2)}
-            </span>
-            <span className="text-xs font-semibold text-[#777777]">
-              / ${totalBudget.toLocaleString()} cap
-            </span>
-          </div>
           <div className="mt-3">
-            <div className="w-full h-2 bg-[#FFF1EA] rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full overflow-hidden">
               <div
                 style={{ width: `${utilizationPct}%` }}
-                className={`h-full rounded-full transition-all duration-500 ${
-                  isOverBudget ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-[#FF6B35]'
+                className={`h-full transition-all duration-300 ${
+                  isOverBudget ? 'bg-[#DC2626]' : isWarning ? 'bg-[#D97706]' : 'bg-[#FF6B35]'
                 }`}
               />
             </div>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] font-semibold text-[#666666]">
+            <div className="flex items-center justify-between mt-1 text-[11px] text-[#5F6368] font-mono tabular-nums">
               <span>{utilizationPct}% utilized</span>
-              <span>${Math.max(0, totalBudget - totalSpend).toFixed(2)} left</span>
+              <span>${Math.max(0, totalBudget - totalSpend).toFixed(2)} remaining</span>
             </div>
           </div>
         </div>
 
         {/* Metric 2: Projected Month-End Burn */}
-        <div className="p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm hover:border-[#FFD9C7] transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-              Projected Month-End
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#FFF1EA] text-[#FF6B35] flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5" />
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#5F6368]">
+              <span className="font-semibold uppercase tracking-wider text-[11px]">Projected Burn</span>
+              <TrendingUp className="w-4 h-4 text-[#5F6368]" />
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+                ${projectedSpend.toFixed(2)}
+              </span>
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-[#111111] tracking-tight">
-              ${projectedSpend.toFixed(2)}
-            </span>
+          <div className="mt-3 text-[11px] text-[#5F6368] flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${projectedSpend > totalBudget ? 'bg-[#DC2626]' : 'bg-[#0D9488]'}`} />
+            <span>{projectedSpend > totalBudget ? 'Projected to exceed budget' : 'Pacing within monthly limit'}</span>
           </div>
-          <p className="mt-3 text-xs text-[#666666] flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Trajectory within healthy limits
-          </p>
         </div>
 
         {/* Metric 3: Total Requests & Tokens */}
-        <div className="p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm hover:border-[#FFD9C7] transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-              Tokens Processed
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#FFF1EA] text-[#FF6B35] flex items-center justify-center">
-              <Zap className="w-4.5 h-4.5" />
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#5F6368]">
+              <span className="font-semibold uppercase tracking-wider text-[11px]">Tokens Processed</span>
+              <Zap className="w-4 h-4 text-[#5F6368]" />
+            </div>
+            <div className="mt-2">
+              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+                {(summary.totalTokens || 0).toLocaleString()}
+              </span>
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-extrabold text-[#111111] tracking-tight font-mono">
-              {(summary.totalTokens || 0).toLocaleString()}
-            </span>
+          <div className="mt-3 text-[11px] text-[#5F6368]">
+            Across <span className="font-mono tabular-nums font-semibold text-[#18191B]">{(summary.totalRequests || 0).toLocaleString()}</span> requests
           </div>
-          <p className="mt-3 text-xs text-[#666666]">
-            Across {(summary.totalRequests || 0).toLocaleString()} routed requests
-          </p>
         </div>
 
         {/* Metric 4: Governance Guardrails */}
-        <div className="p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm hover:border-[#FFD9C7] transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#777777]">
-              Governance Flags
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#FFF1EA] text-[#FF6B35] flex items-center justify-center">
-              <Activity className="w-4.5 h-4.5" />
+        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-[#5F6368]">
+              <span className="font-semibold uppercase tracking-wider text-[11px]">Guardrails & Alerts</span>
+              <Activity className="w-4 h-4 text-[#5F6368]" />
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+                {summary.anomalyCount || 0}
+              </span>
+              <span className="text-[11px] font-semibold text-[#D97706] bg-[#FFFBEB] px-1.5 py-0.5 rounded border border-[#FDE68A]">
+                Spikes Flagged
+              </span>
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-3">
-            <span className="text-3xl font-extrabold text-[#111111] tracking-tight">
-              {summary.anomalyCount || 0}
-            </span>
-            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-              {summary.anomalyCount || 0} Spikes
-            </span>
+          <div className="mt-3 text-[11px] text-[#5F6368]">
+            <span className="font-mono tabular-nums font-semibold text-[#18191B]">{summary.blockedCount || 0}</span> requests hard-blocked
           </div>
-          <p className="mt-3 text-xs text-[#666666]">
-            {summary.blockedCount || 0} requests hard-blocked
-          </p>
         </div>
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Chart 1: AI Spend Velocity (8 cols) */}
-        <div className="lg:col-span-8 bg-white p-6 sm:p-7 rounded-3xl border border-[#E8E8E8] shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Spend Velocity Chart (8 cols) */}
+        <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-base font-bold text-[#111111]">
-                  AI Spend Velocity (Past 7 Days)
+                <h3 className="text-sm font-semibold text-[#18191B]">
+                  Spend Velocity (Past 7 Days)
                 </h3>
-                <p className="text-xs text-[#777777] mt-0.5">
-                  Daily dollar cost aggregated across all model providers
+                <p className="text-xs text-[#5F6368]">
+                  Aggregated USD cost across OpenAI, Anthropic, and Gemini
                 </p>
               </div>
-
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF8F5] border border-[#FFE2D6] text-xs font-semibold text-[#FF6B35]">
-                <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-pulse" />
-                <span>Live Feed</span>
-              </div>
+              <span className="px-2 py-0.5 text-[10px] font-semibold text-[#0D9488] bg-[#F0FDF4] border border-[#BBF7D0] rounded">
+                Live Telemetry
+              </span>
             </div>
 
-            {/* Empty State or Area Chart */}
             {dailySpend.length < 1 ? (
               <EmptyState
                 icon={BarChart3}
-                title="Not enough data yet"
-                description="Send requests via the gateway test bench or API to begin visualizing daily cost velocity."
+                title="No spend recorded yet"
+                description="Inference requests via the gateway will display daily cost velocity here."
                 actionText="Open Test Bench"
                 onAction={onNavigateToPlayground}
                 compact
               />
             ) : (
-              <div className="h-64 w-full">
+              <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dailySpend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.4} />
+                        <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.25} />
                         <stop offset="95%" stopColor="#FF6B35" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0ECE7" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ECECE8" vertical={false} />
                     <XAxis
                       dataKey="date"
-                      stroke="#888888"
+                      stroke="#80868B"
                       fontSize={11}
                       tickLine={false}
-                      axisLine={{ stroke: '#E8E8E8' }}
+                      axisLine={{ stroke: '#E4E4E0' }}
                     />
                     <YAxis
-                      stroke="#888888"
+                      stroke="#80868B"
                       fontSize={11}
                       tickLine={false}
                       axisLine={false}
@@ -269,19 +256,19 @@ export function OverviewView({
                     <Tooltip
                       contentStyle={{
                         backgroundColor: '#FFFFFF',
-                        borderColor: '#E8E8E8',
-                        borderRadius: '16px',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                        fontSize: '12px',
-                        color: '#111111'
+                        borderColor: '#E4E4E0',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                        fontSize: '11px',
+                        color: '#18191B'
                       }}
-                      formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Spend']}
+                      formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
                     />
                     <Area
                       type="monotone"
                       dataKey="spend"
                       stroke="#FF6B35"
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#spendGradient)"
                     />
@@ -292,17 +279,13 @@ export function OverviewView({
           </div>
         </div>
 
-        {/* Chart 2: Spend by Model (4 cols) - Bug 1 Fixed (Guarded NaN) */}
-        <div className="lg:col-span-4 bg-white p-6 sm:p-7 rounded-3xl border border-[#E8E8E8] shadow-sm flex flex-col justify-between">
+        {/* Spend by Model (4 cols) */}
+        <div className="lg:col-span-4 bg-white p-5 rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-base font-bold text-[#111111]">
-                  Spend by Model
-                </h3>
-                <p className="text-xs text-[#777777] mt-0.5">
-                  Cost allocation per LLM
-                </p>
+                <h3 className="text-sm font-semibold text-[#18191B]">Cost by Model</h3>
+                <p className="text-xs text-[#5F6368]">Relative expenditure</p>
               </div>
             </div>
 
@@ -310,21 +293,21 @@ export function OverviewView({
               <EmptyState
                 icon={PieIcon}
                 title="No spend recorded yet"
-                description="Run inference through the gateway to populate multi-model cost distribution."
+                description="Model distribution updates automatically with gateway usage."
                 compact
               />
             ) : (
-              <div className="space-y-4">
-                <div className="h-44 w-full">
+              <div className="space-y-3">
+                <div className="h-40 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={3}
+                        innerRadius={46}
+                        outerRadius={68}
+                        paddingAngle={2}
                         dataKey="value"
                       >
                         {pieData.map((entry: any, index: number) => (
@@ -334,36 +317,36 @@ export function OverviewView({
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#FFFFFF',
-                          borderColor: '#E8E8E8',
-                          borderRadius: '12px',
-                          boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                          borderColor: '#E4E4E0',
+                          borderRadius: '8px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
                           fontSize: '11px',
                         }}
-                        formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Spend']}
+                        formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Model Legend breakdown (No NaN!) */}
-                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                {/* Model Legend */}
+                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                   {modelBreakdown.map((m: any, idx: number) => {
                     const modelSpend = Number(m.spend || 0);
                     const pct = totalSpend > 0 ? Math.round((modelSpend / totalSpend) * 100) : 0;
                     return (
-                      <div key={idx} className="flex items-center justify-between text-xs">
+                      <div key={idx} className="flex items-center justify-between text-xs py-0.5">
                         <div className="flex items-center gap-2">
                           <span
-                            className="w-2.5 h-2.5 rounded-full"
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: MODEL_CHART_COLORS[m.model] || MODEL_CHART_COLORS.default }}
                           />
-                          <span className="font-semibold text-[#111111] truncate max-w-[120px]">
+                          <span className="font-mono text-xs text-[#18191B] truncate max-w-[130px]">
                             {m.model}
                           </span>
                         </div>
-                        <div className="font-mono text-[#666666]">
+                        <span className="font-mono tabular-nums text-xs text-[#5F6368]">
                           ${modelSpend.toFixed(3)} ({pct}%)
-                        </div>
+                        </span>
                       </div>
                     );
                   })}
@@ -372,81 +355,78 @@ export function OverviewView({
             )}
           </div>
         </div>
-
       </div>
 
-      {/* Bottom Section: Recent Request Stream & Projects */}
-      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-[#E8E8E8] shadow-sm">
-        <div className="flex items-center justify-between mb-5">
+      {/* Live Request Telemetry Table */}
+      <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-[#E4E4E0] flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-[#111111]">
-              Live Request Telemetry
-            </h3>
-            <p className="text-xs text-[#777777] mt-0.5">
-              Real-time audit log of proxied AI requests
-            </p>
+            <h3 className="text-sm font-semibold text-[#18191B]">Live Inference Telemetry</h3>
+            <p className="text-xs text-[#5F6368]">Recent gateway transactions with exact cost attribution</p>
           </div>
           <button
             type="button"
             onClick={onNavigateToAudit}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF6B35] hover:text-[#E0531F] transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#FF6B35] hover:text-[#E85520] transition-colors"
           >
-            <span>View Full Ledger</span>
+            <span>Audit Ledger</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {recentRequests.length === 0 ? (
-          <EmptyState
-            icon={Layers}
-            title="No recent requests"
-            description="Proxy requests will appear here in real-time as your applications execute."
-            compact
-          />
+          <div className="p-6">
+            <EmptyState
+              icon={Layers}
+              title="No recent requests"
+              description="Requests sent through the proxy endpoint appear here in real time."
+              compact
+            />
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#F0ECE7] text-[#777777] uppercase text-[10.5px]">
-                  <th className="pb-3 font-bold">Timestamp</th>
-                  <th className="pb-3 font-bold">Project</th>
-                  <th className="pb-3 font-bold">Model</th>
-                  <th className="pb-3 font-bold">Tokens</th>
-                  <th className="pb-3 font-bold">Cost</th>
-                  <th className="pb-3 font-bold">Latency</th>
-                  <th className="pb-3 font-bold">Status</th>
+              <thead className="bg-[#F3F3F0] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+                <tr>
+                  <th className="py-2.5 px-3.5">Timestamp</th>
+                  <th className="py-2.5 px-3.5">Project</th>
+                  <th className="py-2.5 px-3.5">Model</th>
+                  <th className="py-2.5 px-3.5 text-right">Tokens</th>
+                  <th className="py-2.5 px-3.5 text-right">Cost (USD)</th>
+                  <th className="py-2.5 px-3.5 text-right">Latency</th>
+                  <th className="py-2.5 px-3.5 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F5F2ED]">
-                {recentRequests.slice(0, 5).map((req: any, i: number) => (
-                  <tr key={i} className="hover:bg-[#FFF8F5]/60 transition-colors">
-                    <td className="py-3 font-mono text-[#666666]">
+              <tbody className="divide-y divide-[#E4E4E0] text-[#18191B]">
+                {recentRequests.slice(0, 6).map((req: any, i: number) => (
+                  <tr key={i} className="hover:bg-[#FBFBFA] transition-colors">
+                    <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#5F6368]">
                       {new Date(req.created_at || req.timestamp).toLocaleTimeString()}
                     </td>
-                    <td className="py-3 font-semibold text-[#111111]">
+                    <td className="py-2.5 px-3.5 font-medium">
                       {req.project_name || req.projectName || req.project_id}
                     </td>
-                    <td className="py-3">
-                      <span className="font-mono px-2 py-0.5 rounded-md bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7] text-[11px] font-semibold">
+                    <td className="py-2.5 px-3.5">
+                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0]">
                         {req.model}
                       </span>
                     </td>
-                    <td className="py-3 font-mono text-[#666666]">
+                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right text-[#5F6368]">
                       {(req.total_tokens || req.totalTokens || 0).toLocaleString()}
                     </td>
-                    <td className="py-3 font-mono font-bold text-emerald-600">
+                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right font-semibold text-[#0D9488]">
                       ${Number(req.cost_estimate || req.costEstimate || 0).toFixed(5)}
                     </td>
-                    <td className="py-3 font-mono text-[#666666]">
+                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right text-[#5F6368]">
                       {req.latency_ms || req.latencyMs || 0}ms
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5 px-3.5 text-center">
                       {req.is_blocked || req.isBlocked ? (
-                        <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                           Blocked (429)
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                           200 OK
                         </span>
                       )}

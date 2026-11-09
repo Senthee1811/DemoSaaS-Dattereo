@@ -224,28 +224,28 @@ const response = await openai.chat.completions.create({
 console.log(response.choices[0].message.content);`;
 
   return (
-    <div className="min-h-screen bg-[#FFF9F6] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-[#FBFBFA] py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-2xl mx-auto">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8A4C] flex items-center justify-center shadow-lg shadow-[#FF6B35]/25">
-              <ShieldCheck className="w-5 h-5 text-white stroke-[2.5]" />
+          <Link href="/" className="inline-flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-[#FF6B35] flex items-center justify-center text-white">
+              <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
-            <span className="text-2xl font-black tracking-tight text-[#111111]">
-              Spend<span className="text-[#FF6B35]">Guard</span> AI
+            <span className="text-xl font-bold tracking-tight text-[#18191B]">
+              SpendGuard <span className="text-[#FF6B35]">AI</span>
             </span>
           </Link>
-          <h1 className="mt-4 text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-            Quickstart Onboarding
+          <h1 className="mt-4 text-2xl font-bold text-[#18191B] tracking-tight">
+            FinOps Gateway Onboarding
           </h1>
-          <p className="text-sm text-[#666666] mt-1">
-            Connect your upstream provider and configure fail-closed guardrails in 2 minutes.
+          <p className="text-xs text-[#5F6368] mt-1">
+            Connect upstream provider credentials and establish fail-closed guardrails in 2 minutes.
           </p>
         </div>
 
         {/* Stepper Progress Bar */}
-        <div className="mb-8 bg-white p-4 rounded-2xl border border-[#E8E8E8] shadow-sm flex items-center justify-between">
+        <div className="mb-6 bg-white p-3.5 rounded-lg border border-[#E4E4E0] flex items-center justify-between">
           {[
             { num: 1, label: 'Workspace' },
             { num: 2, label: 'Provider Vault' },
@@ -254,18 +254,18 @@ console.log(response.choices[0].message.content);`;
           ].map((s) => (
             <div key={s.num} className="flex items-center gap-2">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                className={`w-6 h-6 rounded flex items-center justify-center text-xs font-mono font-bold transition-colors ${
                   currentStep === s.num
-                    ? 'bg-[#FF6B35] text-white shadow-md shadow-[#FF6B35]/30'
+                    ? 'bg-[#FF6B35] text-white'
                     : currentStep > s.num
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-[#F0ECE7] text-[#888888]'
+                    ? 'bg-[#18191B] text-white'
+                    : 'bg-[#F3F3F0] text-[#737373]'
                 }`}
               >
-                {currentStep > s.num ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.num}
+                {currentStep > s.num ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.num}
               </div>
-              <span className={`text-xs font-bold hidden sm:inline ${
-                currentStep === s.num ? 'text-[#111111]' : 'text-[#888888]'
+              <span className={`text-xs font-medium hidden sm:inline ${
+                currentStep === s.num ? 'text-[#18191B] font-semibold' : 'text-[#737373]'
               }`}>
                 {s.label}
               </span>
@@ -274,39 +274,39 @@ console.log(response.choices[0].message.content);`;
         </div>
 
         {/* Step Card Container */}
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E8E8E8] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E4E4E0] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           {/* STEP 1: Workspace */}
           {currentStep === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <h3 className="text-lg font-bold text-[#111111]">Confirm Your Organization Workspace</h3>
-                <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  All projects, API keys, and audit ledgers will be multi-tenant isolated under this workspace.
+                <h3 className="text-base font-bold text-[#18191B]">Confirm Organization Workspace</h3>
+                <p className="text-xs text-[#5F6368] mt-1">
+                  All projects, keys, and audit ledgers will be multi-tenant isolated under this organization.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
                   Organization Name
                 </label>
-                <div className="relative rounded-2xl">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                     <Building className="h-4 w-4" />
                   </div>
                   <input
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3 rounded-2xl border border-[#E8E8E8] text-sm text-[#111111] focus:ring-2 focus:ring-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-9 pr-3 py-2 rounded-md border border-[#E4E4E0] text-xs sm:text-sm text-[#18191B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-3 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-md shadow-[#FF6B35]/25 hover:scale-[1.01] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm transition-colors"
                 >
                   <span>Next: Connect Provider</span>
                   <ArrowRight className="w-4 h-4" />
@@ -317,20 +317,20 @@ console.log(response.choices[0].message.content);`;
 
           {/* STEP 2: Provider Key Vault */}
           {currentStep === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <h3 className="text-lg font-bold text-[#111111]">Connect Upstream AI Provider</h3>
-                <p className="text-xs sm:text-sm text-[#666666] mt-1">
+                <h3 className="text-base font-bold text-[#18191B]">Connect Upstream AI Provider</h3>
+                <p className="text-xs text-[#5F6368] mt-1">
                   SpendGuard securely stores your provider API key with AES-256-GCM envelope encryption. Plaintext keys are never exposed.
                 </p>
               </div>
 
               {/* Provider Selector */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
                 {[
-                  { id: 'OPENAI', name: 'OpenAI', badge: 'GPT-4o' },
+                  { id: 'OPENAI', name: 'OpenAI', badge: 'GPT-4o / o1' },
                   { id: 'ANTHROPIC', name: 'Anthropic', badge: 'Claude 3.5' },
-                  { id: 'GEMINI', name: 'Google', badge: 'Gemini 1.5' },
+                  { id: 'GEMINI', name: 'Google', badge: 'Gemini 1.5 Pro' },
                 ].map((p) => (
                   <button
                     key={p.id}
@@ -339,25 +339,25 @@ console.log(response.choices[0].message.content);`;
                       setProvider(p.id as any);
                       setTestResult(null);
                     }}
-                    className={`p-3.5 rounded-2xl border text-center transition-all ${
+                    className={`p-3 rounded-lg border text-left transition-colors ${
                       provider === p.id
-                        ? 'border-[#FF6B35] bg-[#FFF8F5] ring-2 ring-[#FF6B35]/20 shadow-sm'
-                        : 'border-[#E8E8E8] hover:border-[#CCCCCC]'
+                        ? 'border-[#FF6B35] bg-[#FFF5F0]'
+                        : 'border-[#E4E4E0] bg-white hover:border-[#CCCCCC]'
                     }`}
                   >
-                    <div className="text-sm font-bold text-[#111111]">{p.name}</div>
-                    <div className="text-[11px] font-semibold text-[#FF6B35] mt-0.5">{p.badge}</div>
+                    <div className="text-xs font-bold text-[#18191B]">{p.name}</div>
+                    <div className="text-[10px] font-mono text-[#5F6368] mt-0.5">{p.badge}</div>
                   </button>
                 ))}
               </div>
 
               {/* Key Input */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
-                  {provider} API Key
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
+                  {provider} Secret API Key
                 </label>
-                <div className="relative rounded-2xl">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                     <Key className="h-4 w-4" />
                   </div>
                   <input
@@ -374,15 +374,15 @@ console.log(response.choices[0].message.content);`;
                         ? 'sk-ant-...'
                         : 'AIzaSy...'
                     }
-                    className="block w-full pl-10 pr-24 py-3 rounded-2xl border border-[#E8E8E8] text-sm text-[#111111] focus:ring-2 focus:ring-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-9 pr-28 py-2 rounded-md border border-[#E4E4E0] text-xs sm:text-sm text-[#18191B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={handleTestConnection}
                     disabled={isTestingKey || !providerKey}
-                    className="absolute right-2 top-2 px-3 py-1.5 rounded-xl bg-[#F4F1ED] hover:bg-[#EBE7E1] text-xs font-bold text-[#111111] transition-all disabled:opacity-50"
+                    className="absolute right-1.5 top-1.5 px-2.5 py-1 rounded bg-[#F3F3F0] hover:bg-[#E4E4E0] text-[11px] font-mono font-semibold text-[#18191B] transition-colors disabled:opacity-50"
                   >
-                    {isTestingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Test Connection'}
+                    {isTestingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '⚡ Ping Test'}
                   </button>
                 </div>
               </div>
@@ -390,28 +390,28 @@ console.log(response.choices[0].message.content);`;
               {/* Test Connection Result Feedback */}
               {testResult && (
                 <div
-                  className={`p-4 rounded-2xl border flex items-start gap-3 ${
+                  className={`p-3 rounded-lg border flex items-start gap-2.5 ${
                     testResult.valid
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       : 'bg-red-50 border-red-200 text-red-800'
                   }`}
                 >
                   {testResult.valid ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                   )}
-                  <p className="text-xs sm:text-sm font-medium leading-relaxed">
+                  <p className="text-xs font-medium leading-relaxed">
                     {testResult.message}
                   </p>
                 </div>
               )}
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-3 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#666666] hover:text-[#111111]"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5F6368] hover:text-[#18191B]"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -419,7 +419,7 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-md shadow-[#FF6B35]/25 hover:scale-[1.01] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm transition-colors"
                 >
                   <span>Next: Configure Budget</span>
                   <ArrowRight className="w-4 h-4" />
@@ -430,20 +430,20 @@ console.log(response.choices[0].message.content);`;
 
           {/* STEP 3: Project & Budget Guardrail */}
           {currentStep === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <h3 className="text-lg font-bold text-[#111111]">Configure Initial Project & Budget</h3>
-                <p className="text-xs sm:text-sm text-[#666666] mt-1">
+                <h3 className="text-base font-bold text-[#18191B]">Configure Project & Budget Limits</h3>
+                <p className="text-xs text-[#5F6368] mt-1">
                   SpendGuard will enforce synchronous Redis checks and fail-closed blocking when the budget cap is met.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
                   Project Name
                 </label>
-                <div className="relative rounded-2xl">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                     <Layers className="h-4 w-4" />
                   </div>
                   <input
@@ -451,52 +451,52 @@ console.log(response.choices[0].message.content);`;
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
                     placeholder="Production AI Assistant"
-                    className="block w-full pl-10 pr-4 py-3 rounded-2xl border border-[#E8E8E8] text-sm text-[#111111] focus:ring-2 focus:ring-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-9 pr-3 py-2 rounded-md border border-[#E4E4E0] text-xs sm:text-sm text-[#18191B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
-                  Monthly Spend Limit (USD)
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
+                  Monthly Budget Cap (USD)
                 </label>
-                <div className="grid grid-cols-4 gap-2 mb-3">
+                <div className="grid grid-cols-4 gap-2 mb-2">
                   {[250, 500, 1000, 2500].map((amt) => (
                     <button
                       key={amt}
                       type="button"
                       onClick={() => setBudgetMonthly(amt)}
-                      className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                      className={`py-1.5 rounded border text-xs font-mono font-semibold transition-colors ${
                         budgetMonthly === amt
-                          ? 'border-[#FF6B35] bg-[#FFF8F5] text-[#FF6B35]'
-                          : 'border-[#E8E8E8] text-[#555555]'
+                          ? 'border-[#FF6B35] bg-[#FFF5F0] text-[#FF6B35]'
+                          : 'border-[#E4E4E0] bg-white text-[#5F6368] hover:border-[#CCCCCC]'
                       }`}
                     >
                       ${amt}
                     </button>
                   ))}
                 </div>
-                <div className="relative rounded-2xl">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                     <DollarSign className="h-4 w-4" />
                   </div>
                   <input
                     type="number"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(Number(e.target.value))}
-                    className="block w-full pl-10 pr-4 py-3 rounded-2xl border border-[#E8E8E8] text-sm text-[#111111] focus:ring-2 focus:ring-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-9 pr-3 py-2 rounded-md border border-[#E4E4E0] font-mono text-xs sm:text-sm text-[#18191B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none tabular-nums"
                   />
                 </div>
               </div>
 
               {/* Hard Block Toggle */}
-              <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#FFD9C7] flex items-start justify-between gap-4">
+              <div className="p-3.5 rounded-lg bg-[#F7F7F6] border border-[#E4E4E0] flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-xs font-bold text-[#111111] flex items-center gap-1.5">
+                  <div className="text-xs font-semibold text-[#18191B] flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
                     <span>Fail-Closed Hard Block Policy</span>
                   </div>
-                  <p className="text-xs text-[#666666] mt-1 leading-relaxed">
+                  <p className="text-[11px] text-[#5F6368] mt-0.5 leading-relaxed">
                     Automatically reject requests with HTTP 429 once monthly spend exceeds ${budgetMonthly}. If Redis is offline, fail closed with 503.
                   </p>
                 </div>
@@ -504,15 +504,15 @@ console.log(response.choices[0].message.content);`;
                   type="checkbox"
                   checked={hardBlockEnabled}
                   onChange={(e) => setHardBlockEnabled(e.target.checked)}
-                  className="w-5 h-5 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35] mt-1 cursor-pointer"
+                  className="w-4 h-4 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35] mt-0.5 cursor-pointer"
                 />
               </div>
 
-              <div className="pt-4 flex items-center justify-between">
+              <div className="pt-3 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#666666] hover:text-[#111111]"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5F6368] hover:text-[#18191B]"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -521,7 +521,7 @@ console.log(response.choices[0].message.content);`;
                   type="button"
                   onClick={handleFinishOnboarding}
                   disabled={isGenerating}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-md shadow-[#FF6B35]/25 hover:scale-[1.01] transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm transition-colors disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
@@ -530,7 +530,7 @@ console.log(response.choices[0].message.content);`;
                     </>
                   ) : (
                     <>
-                      <span>Generate Gateway Key</span>
+                      <span>Generate Gateway Token</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -541,57 +541,57 @@ console.log(response.choices[0].message.content);`;
 
           {/* STEP 4: Reveal SpendGuard Gateway Key & Quickstart */}
           {currentStep === 4 && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div className="text-center pb-2">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                  <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+                <div className="w-10 h-10 rounded-md bg-[#18191B] text-white flex items-center justify-center mx-auto mb-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 stroke-[2.5]" />
                 </div>
-                <h3 className="text-xl font-black text-[#111111] tracking-tight">
-                  Your AI Gateway Is Active!
+                <h3 className="text-lg font-bold text-[#18191B] tracking-tight">
+                  Gateway Initialized
                 </h3>
-                <p className="text-xs sm:text-sm text-[#666666] mt-1">
-                  Here is your SpendGuard Virtual Gateway Token. Replace your provider base URL with SpendGuard.
+                <p className="text-xs text-[#5F6368] mt-0.5">
+                  Your scoped virtual gateway token is generated. Route your requests through SpendGuard.
                 </p>
               </div>
 
               {/* Gateway Key Reveal Box */}
               <div>
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
-                  SpendGuard Virtual Key (Live)
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
+                  SpendGuard Scoped Live Token
                 </label>
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#111111] text-white font-mono text-xs border border-[#333333]">
+                <div className="flex items-center gap-2 p-2.5 rounded-md bg-[#18191B] text-white font-mono text-xs border border-[#2E3033]">
                   <span className="flex-1 truncate select-all">{gatewayKey}</span>
                   <button
                     type="button"
                     onClick={() => copyToClipboard(gatewayKey, 'key')}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all shrink-0 flex items-center gap-1 text-[11px] font-sans font-bold"
+                    className="p-1 px-2 rounded bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0 flex items-center gap-1 text-[11px] font-mono"
                   >
                     {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedKey ? 'Copied' : 'Copy Key'}</span>
+                    <span>{copiedKey ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-[#FF6B35] font-semibold mt-1.5 flex items-center gap-1">
+                <p className="text-[11px] text-[#FF6B35] font-mono mt-1 flex items-center gap-1">
                   <Lock className="w-3 h-3" />
-                  <span>Save this key now. For security, SpendGuard hashes it and will not show it again.</span>
+                  <span>Hash persisted on server. Store securely; cannot be retrieved again.</span>
                 </p>
               </div>
 
               {/* Code Snippet Tabs */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[#111111] uppercase tracking-wider">
-                    1-Line Drop-in Integration
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider">
+                    Client Integration
                   </span>
-                  <div className="flex items-center gap-1 p-0.5 rounded-xl bg-[#F0ECE7]">
+                  <div className="flex items-center gap-1 p-0.5 rounded bg-[#F3F3F0] border border-[#E4E4E0]">
                     {(['curl', 'python', 'node'] as const).map((tab) => (
                       <button
                         key={tab}
                         type="button"
                         onClick={() => setActiveCodeTab(tab)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
                           activeCodeTab === tab
-                            ? 'bg-white text-[#111111] shadow-sm'
-                            : 'text-[#666666] hover:text-[#111111]'
+                            ? 'bg-white text-[#18191B] font-bold shadow-xs'
+                            : 'text-[#737373] hover:text-[#18191B]'
                         }`}
                       >
                         {tab.toUpperCase()}
@@ -600,7 +600,7 @@ console.log(response.choices[0].message.content);`;
                   </div>
                 </div>
 
-                <div className="relative rounded-2xl bg-[#18181B] text-[#E4E4E7] p-4 font-mono text-xs overflow-x-auto shadow-inner">
+                <div className="relative rounded-md bg-[#18191B] text-[#E4E4E7] p-3.5 font-mono text-xs overflow-x-auto border border-[#2E3033]">
                   <button
                     type="button"
                     onClick={() =>
@@ -613,10 +613,10 @@ console.log(response.choices[0].message.content);`;
                         'snippet',
                       )
                     }
-                    className="absolute right-3 top-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all flex items-center gap-1 text-[11px] font-sans font-bold"
+                    className="absolute right-2.5 top-2.5 p-1 px-2 rounded bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1 text-[11px] font-mono"
                   >
-                    {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedSnippet ? 'Copied' : 'Copy Code'}</span>
+                    {copiedSnippet ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedSnippet ? 'Copied' : 'Copy'}</span>
                   </button>
                   <pre className="pr-16 leading-relaxed">
                     {activeCodeTab === 'curl' && cUrlSnippet}
@@ -631,9 +631,9 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={() => router.push('/dashboard')}
-                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-md shadow-[#FF6B35]/25 hover:scale-[1.01] transition-all"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm transition-colors"
                 >
-                  <span>Go to Spend Governance Dashboard</span>
+                  <span>Launch FinOps Console</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

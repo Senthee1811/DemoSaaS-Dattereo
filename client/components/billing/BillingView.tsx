@@ -8,13 +8,10 @@ import {
   ShieldCheck, 
   ArrowRight, 
   Receipt, 
-  Calendar, 
   Building2,
   Check,
-  AlertCircle,
   ExternalLink,
-  Zap,
-  HelpCircle
+  X
 } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 
@@ -109,7 +106,7 @@ export function BillingView() {
       id: 'starter' as const,
       name: 'Starter',
       price: annual ? 31 : 39,
-      description: 'Ideal for early-stage products and indie teams deploying their first AI features.',
+      description: 'Essential governance for engineering teams deploying their first production AI features.',
       features: [
         'Up to 3 production projects',
         '50,000 requests / month included',
@@ -125,7 +122,7 @@ export function BillingView() {
       id: 'growth' as const,
       name: 'Growth',
       price: annual ? 159 : 199,
-      description: 'Designed for scaling SaaS and high-volume multi-agent production infrastructure.',
+      description: 'Comprehensive FinOps infrastructure for high-volume multi-agent production systems.',
       features: [
         'Unlimited production projects',
         '500,000 requests / month included',
@@ -142,11 +139,11 @@ export function BillingView() {
       id: 'enterprise' as const,
       name: 'Enterprise',
       price: annual ? 639 : 799,
-      description: 'Full custom governance, VPC deployment, and enterprise security compliance.',
+      description: 'Dedicated customer VPC proxy gateway, custom SLA, and SOC2/HIPAA compliance.',
       features: [
         'Dedicated customer VPC proxy gateway',
         'Multi-million requests with 99.99% SLA',
-        'SAML SSO & SCIM Directory sync (Phase 4)',
+        'SAML 2.0 SSO & SCIM Directory sync',
         'Zero-trust hardware security module key storage',
         'Custom cost allocation & billing centers',
         'Dedicated FinOps Solutions Architect',
@@ -160,37 +157,37 @@ export function BillingView() {
   const currentTier = subData?.tier || 'starter';
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 pb-10">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-gradient-to-r from-white via-[#FFF8F5] to-white rounded-3xl border border-[#E8E8E8] shadow-sm">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white rounded-xl border border-[#E4E4E0] shadow-xs">
+        <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7]">
-              Billing & Subscriptions
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF5F0] border border-[#FFD2C0] px-1.5 py-0.5 rounded">
+              Subscription
             </span>
-            <span className="text-xs text-[#777777] font-medium flex items-center gap-1">
+            <span className="text-xs text-[#5F6368] font-medium flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5" />
               {orgName}
             </span>
           </div>
-          <h2 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+          <h2 className="text-lg font-bold text-[#18191B] tracking-tight mt-1">
             Plans & Governance Tiers
           </h2>
-          <p className="text-sm text-[#666666] max-w-xl">
-            Scale your AI governance seamlessly. Switch plans anytime with pro-rated billing handled securely via Stripe.
+          <p className="text-xs text-[#5F6368]">
+            Pro-rated billing handled through Stripe. Switch plans or manage seats at any time.
           </p>
         </div>
 
         {/* Current Active Plan Badge */}
-        <div className="flex items-center gap-3.5 p-4 bg-white rounded-2xl border border-[#E8E8E8] shadow-xs">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8A4C] text-white flex items-center justify-center font-bold">
-            <CreditCard className="w-5 h-5" />
+        <div className="flex items-center gap-3 p-3 bg-[#FBFBFA] rounded-lg border border-[#E4E4E0] self-start sm:self-auto">
+          <div className="w-8 h-8 rounded bg-[#18191B] text-white flex items-center justify-center font-bold">
+            <CreditCard className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-[#777777] uppercase tracking-wider">Current Plan</div>
-            <div className="text-sm font-extrabold text-[#111111] capitalize flex items-center gap-1.5">
+            <div className="text-[10px] font-semibold text-[#5F6368] uppercase tracking-wider">Current Tier</div>
+            <div className="text-xs font-bold text-[#18191B] capitalize flex items-center gap-1.5">
               <span>{currentTier} Plan</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700 border border-emerald-200">
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                 {subData?.status || 'Active'}
               </span>
             </div>
@@ -199,28 +196,28 @@ export function BillingView() {
       </div>
 
       {/* Annual / Monthly Toggle */}
-      <div className="flex items-center justify-center gap-3 pt-2">
-        <span className={`text-sm font-semibold ${!annual ? 'text-[#111111]' : 'text-[#777777]'}`}>
+      <div className="flex items-center justify-center gap-3 pt-1">
+        <span className={`text-xs font-semibold ${!annual ? 'text-[#18191B]' : 'text-[#5F6368]'}`}>
           Monthly Billing
         </span>
         <button
           type="button"
           onClick={() => setAnnual(!annual)}
-          className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            annual ? 'bg-[#FF6B35]' : 'bg-[#E8E8E8]'
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            annual ? 'bg-[#FF6B35]' : 'bg-[#E4E4E0]'
           }`}
         >
           <span
-            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              annual ? 'translate-x-6' : 'translate-x-0'
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+              annual ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
         <div className="flex items-center gap-1.5">
-          <span className={`text-sm font-semibold ${annual ? 'text-[#111111]' : 'text-[#777777]'}`}>
+          <span className={`text-xs font-semibold ${annual ? 'text-[#18191B]' : 'text-[#5F6368]'}`}>
             Annual Billing
           </span>
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-[#ECFDF5] text-emerald-700 border border-emerald-200">
+          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
             Save 20%
           </span>
         </div>
@@ -228,76 +225,73 @@ export function BillingView() {
 
       {/* Plan Cards Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {plans.map((plan) => {
             const isCurrent = currentTier === plan.id;
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl bg-white transition-all duration-200 ${
+                className={`flex flex-col justify-between p-5 rounded-xl bg-white transition-all ${
                   plan.popular
-                    ? 'border-2 border-[#FF6B35] shadow-lg shadow-[#FF6B35]/10'
-                    : 'border border-[#E8E8E8] shadow-sm hover:border-[#FFD9C7]'
+                    ? 'border-2 border-[#FF6B35] shadow-xs'
+                    : 'border border-[#E4E4E0] shadow-xs'
                 }`}
               >
-                {plan.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-sm flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Recommended for Scale</span>
-                  </div>
-                )}
-
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-[#111111]">{plan.name}</h3>
-                    {isCurrent && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7]">
+                    <h3 className="text-base font-bold text-[#18191B]">{plan.name}</h3>
+                    {isCurrent ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FFF5F0] text-[#FF6B35] border border-[#FFD2C0]">
                         Active Tier
                       </span>
-                    )}
+                    ) : plan.popular ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#18191B] text-white">
+                        Recommended
+                      </span>
+                    ) : null}
                   </div>
 
-                  <p className="text-xs text-[#666666] leading-relaxed min-h-[36px]">
+                  <p className="text-xs text-[#5F6368] leading-relaxed min-h-[32px]">
                     {plan.description}
                   </p>
 
                   <div className="pt-2 flex items-baseline gap-1">
-                    <span className="text-3xl sm:text-4xl font-extrabold text-[#111111]">
+                    <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums">
                       ${plan.price}
                     </span>
-                    <span className="text-xs font-semibold text-[#777777]">/ month</span>
+                    <span className="text-xs text-[#80868B]">/ month</span>
                     {annual && (
-                      <span className="text-[11px] text-[#999999] ml-1">billed annually</span>
+                      <span className="text-[10px] text-[#80868B] ml-1">billed annually</span>
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-[#F0ECE7] space-y-2.5">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#888888]">
+                  <div className="pt-3 border-t border-[#E4E4E0] space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#80868B]">
                       Included Features
                     </div>
                     {plan.features.map((feat, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-xs text-[#444444]">
-                        <Check className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5 stroke-[2.5]" />
+                      <div key={i} className="flex items-start gap-2 text-xs text-[#18191B]">
+                        <Check className="w-3.5 h-3.5 text-[#0D9488] shrink-0 mt-0.5" strokeWidth={2.5} />
                         <span>{feat}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-6 mt-6 border-t border-[#F0ECE7]">
+                <div className="pt-5 mt-5 border-t border-[#E4E4E0]">
                   {isCurrent ? (
                     <button
                       type="button"
                       disabled
-                      className="w-full py-3 px-4 rounded-xl text-center font-bold text-xs bg-[#F6F6F6] text-[#888888] cursor-default flex items-center justify-center gap-1.5"
+                      className="w-full py-2 px-3 rounded-md text-center font-semibold text-xs bg-[#F3F3F0] text-[#80868B] cursor-default flex items-center justify-center gap-1.5"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#0D9488]" />
                       <span>Current Active Plan</span>
                     </button>
                   ) : (
@@ -305,10 +299,10 @@ export function BillingView() {
                       type="button"
                       onClick={() => handleCheckout(plan.id)}
                       disabled={checkoutLoading === plan.id}
-                      className={`w-full py-3 px-4 rounded-xl text-center font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                      className={`w-full py-2 px-3 rounded-md text-center font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 ${
                         plan.popular
-                          ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35 hover:scale-[1.01]'
-                          : 'bg-[#111111] hover:bg-[#222222] text-white'
+                          ? 'bg-[#FF6B35] hover:bg-[#E85520] text-white'
+                          : 'bg-[#18191B] hover:bg-[#333333] text-white'
                       }`}
                     >
                       <span>
@@ -325,69 +319,69 @@ export function BillingView() {
       )}
 
       {/* Payment Method & Invoices Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
         {/* Payment Method */}
-        <div className="p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm space-y-4">
+        <div className="p-5 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-[#111111] flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-[#FF6B35]" />
+            <h4 className="text-xs font-semibold text-[#18191B] uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4 text-[#5F6368]" />
               <span>Payment Method</span>
             </h4>
-            <span className="text-[11px] font-semibold text-[#888888]">Stripe Managed</span>
+            <span className="text-[10px] text-[#80868B]">PCI-DSS Level 1</span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#FFD9C7] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-7 bg-white rounded-md border border-[#E8E8E8] flex items-center justify-center font-bold text-[10px] text-blue-800">
-                VISA
+          <div className="p-3 rounded-lg bg-[#FBFBFA] border border-[#E4E4E0] flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-6 bg-white rounded border border-[#E4E4E0] flex items-center justify-center font-bold text-[9px] text-[#18191B]">
+                CARD
               </div>
               <div>
-                <div className="text-xs font-bold text-[#111111]">•••• •••• •••• 4242</div>
-                <div className="text-[11px] text-[#777777]">Expires 12/28</div>
+                <div className="text-xs font-mono font-semibold text-[#18191B]">•••• •••• •••• 4242</div>
+                <div className="text-[10px] text-[#80868B]">Expires 12/28</div>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700">
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
               Default
             </span>
           </div>
 
-          <p className="text-[11px] text-[#777777]">
-            Payments are securely routed via Stripe's encrypted PCI-DSS Level 1 compliance infrastructure.
+          <p className="text-[11px] text-[#5F6368]">
+            Card information is vaulted and processed by Stripe without touching SpendGuard servers.
           </p>
         </div>
 
         {/* Recent Invoices Ledger */}
-        <div className="md:col-span-2 p-6 bg-white rounded-3xl border border-[#E8E8E8] shadow-sm space-y-4">
+        <div className="md:col-span-2 p-5 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-[#111111] flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-[#FF6B35]" />
-              <span>Recent Invoices</span>
+            <h4 className="text-xs font-semibold text-[#18191B] uppercase tracking-wider flex items-center gap-1.5">
+              <Receipt className="w-4 h-4 text-[#5F6368]" />
+              <span>Billing Invoices</span>
             </h4>
-            <span className="text-xs text-[#777777] font-medium">Auto-generated monthly</span>
+            <span className="text-[11px] text-[#80868B]">Monthly automatic renewal</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-[#F0ECE7] text-[#888888] font-bold">
+                <tr className="border-b border-[#E4E4E0] text-[#5F6368] font-semibold text-[11px]">
                   <th className="pb-2">Invoice #</th>
                   <th className="pb-2">Date</th>
-                  <th className="pb-2">Amount</th>
-                  <th className="pb-2">Status</th>
+                  <th className="pb-2 text-right">Amount</th>
+                  <th className="pb-2 text-center">Status</th>
                   <th className="pb-2 text-right">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0ECE7] text-[#444444]">
+              <tbody className="divide-y divide-[#E4E4E0] text-[#18191B]">
                 <tr>
-                  <td className="py-3 font-semibold text-[#111111]">INV-2026-003</td>
-                  <td className="py-3">Nov 01, 2026</td>
-                  <td className="py-3 font-semibold">$39.00 USD</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700">
+                  <td className="py-2.5 font-mono text-[11px] font-medium">INV-2026-003</td>
+                  <td className="py-2.5 text-[#5F6368]">Nov 01, 2026</td>
+                  <td className="py-2.5 font-mono tabular-nums text-right font-semibold">$39.00 USD</td>
+                  <td className="py-2.5 text-center">
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
                       Paid
                     </span>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-2.5 text-right">
                     <button 
                       type="button" 
                       onClick={() => alert('Receipt PDF downloaded for INV-2026-003')}
@@ -399,15 +393,15 @@ export function BillingView() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-semibold text-[#111111]">INV-2026-002</td>
-                  <td className="py-3">Oct 01, 2026</td>
-                  <td className="py-3 font-semibold">$39.00 USD</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700">
+                  <td className="py-2.5 font-mono text-[11px] font-medium">INV-2026-002</td>
+                  <td className="py-2.5 text-[#5F6368]">Oct 01, 2026</td>
+                  <td className="py-2.5 font-mono tabular-nums text-right font-semibold">$39.00 USD</td>
+                  <td className="py-2.5 text-center">
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
                       Paid
                     </span>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-2.5 text-right">
                     <button 
                       type="button" 
                       onClick={() => alert('Receipt PDF downloaded for INV-2026-002')}
@@ -426,35 +420,33 @@ export function BillingView() {
 
       {/* Enterprise Qualification Modal */}
       {showEnterpriseModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-7 border border-[#E8E8E8] shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#FFF1EA] border border-[#FFD9C7] text-[#FF6B35] flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold text-[#111111]">Enterprise Qualification</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 border border-[#E4E4E0] shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#E4E4E0]">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
+                <h3 className="text-sm font-bold text-[#18191B]">Enterprise Qualification</h3>
               </div>
               <button
                 type="button"
                 onClick={() => { setShowEnterpriseModal(false); setEnterpriseSubmitted(false); }}
-                className="text-xs font-bold text-[#888888] hover:text-[#111111] p-1"
+                className="p-1 text-[#80868B] hover:text-[#18191B] rounded"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {enterpriseSubmitted ? (
-              <div className="p-6 text-center space-y-3 bg-[#ECFDF5] rounded-2xl border border-emerald-200">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-                <h4 className="text-sm font-bold text-emerald-900">Enterprise Inquiry Received</h4>
-                <p className="text-xs text-emerald-700 leading-relaxed">
-                  A SpendGuard FinOps Solutions Architect will reach out to schedule your custom architecture review and VPC proxy deployment sizing within 2 hours.
+              <div className="p-5 text-center space-y-2.5 bg-[#F0FDF4] rounded-lg border border-[#BBF7D0]">
+                <CheckCircle2 className="w-6 h-6 text-[#0D9488] mx-auto" />
+                <h4 className="text-xs font-bold text-[#0D9488]">Enterprise Inquiry Submitted</h4>
+                <p className="text-xs text-[#134E4A] leading-relaxed">
+                  A FinOps Solutions Architect will reach out to schedule your VPC architecture review within 2 business hours.
                 </p>
                 <button
                   type="button"
                   onClick={() => { setShowEnterpriseModal(false); setEnterpriseSubmitted(false); }}
-                  className="px-4 py-2 bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-emerald-800"
+                  className="px-3 py-1.5 bg-[#0D9488] text-white font-semibold text-xs rounded shadow-xs"
                 >
                   Close
                 </button>
@@ -465,63 +457,63 @@ export function BillingView() {
                   e.preventDefault();
                   setEnterpriseSubmitted(true);
                 }}
-                className="space-y-4 text-xs"
+                className="space-y-3 text-xs"
               >
-                <p className="text-[#666666] leading-relaxed">
-                  Enterprise plans include custom VPC proxy deployments, SAML SSO/SCIM, tailored SLA guarantees, and multi-tenant security reviews.
+                <p className="text-[#5F6368] leading-relaxed">
+                  Enterprise tiers include self-hosted VPC proxies (zero model prompt egress), Okta/Azure AD SAML 2.0 SSO, and custom SLA agreements.
                 </p>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-[#333333]">Company & Domain</label>
+                <div>
+                  <label className="font-semibold text-[#18191B] block mb-1">Company & Domain</label>
                   <input
                     type="text"
                     required
                     defaultValue={orgName}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] focus:border-[#FF6B35] focus:outline-none"
+                    className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
                     placeholder="e.g. Acme Corp (acme.com)"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-[#333333]">Estimated Monthly AI Spend</label>
-                  <select className="w-full px-3.5 py-2.5 rounded-xl border border-[#E8E8E8] focus:border-[#FF6B35] focus:outline-none">
+                <div>
+                  <label className="font-semibold text-[#18191B] block mb-1">Estimated Monthly AI Spend</label>
+                  <select className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] bg-white focus:outline-none focus:border-[#FF6B35]">
                     <option>$10,000 – $50,000 / month</option>
                     <option>$50,000 – $250,000 / month</option>
                     <option>$250,000+ / month</option>
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-[#333333]">Primary Architecture Requirements</label>
-                  <div className="space-y-2 pt-1 text-[#555555]">
+                <div>
+                  <label className="font-semibold text-[#18191B] block mb-1">Architecture Requirements</label>
+                  <div className="space-y-1.5 pt-0.5 text-[#5F6368]">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" defaultChecked className="rounded text-[#FF6B35]" />
-                      <span>Dedicated self-hosted VPC proxy gateway (zero data egress)</span>
+                      <span>Dedicated customer VPC proxy gateway (zero data egress)</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" defaultChecked className="rounded text-[#FF6B35]" />
-                      <span>Okta / Azure AD SAML 2.0 SSO & SCIM provisioning</span>
+                      <span>SAML 2.0 SSO & SCIM Directory Provisioning</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" className="rounded text-[#FF6B35]" />
-                      <span>Custom SOC2 / HIPAA Business Associate Agreement</span>
+                      <span>Custom SOC2 / HIPAA Business Associate Agreement (BAA)</span>
                     </label>
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end gap-2.5">
+                <div className="pt-2 border-t border-[#E4E4E0] flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setShowEnterpriseModal(false)}
-                    className="px-4 py-2.5 rounded-xl font-bold text-[#666666] hover:bg-[#F6F6F6]"
+                    className="px-3 py-1.5 rounded-md font-semibold text-[#5F6368] hover:bg-[#F3F3F0]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35"
+                    className="px-3.5 py-1.5 rounded-md font-semibold text-white bg-[#FF6B35] hover:bg-[#E85520] shadow-xs transition-colors"
                   >
-                    Submit Enterprise Inquiry
+                    Submit Enterprise Request
                   </button>
                 </div>
               </form>
@@ -532,4 +524,3 @@ export function BillingView() {
     </div>
   );
 }
-

@@ -51,44 +51,44 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF9F6] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-[#FBFBFA] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Logo */}
-        <Link href="/" className="inline-flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8A4C] flex items-center justify-center shadow-lg shadow-[#FF6B35]/25 group-hover:scale-105 transition-transform">
-            <ShieldCheck className="w-5 h-5 text-white stroke-[2.5]" />
+        <Link href="/" className="inline-flex items-center gap-2">
+          <div className="w-8 h-8 rounded-md bg-[#FF6B35] flex items-center justify-center text-white">
+            <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
           </div>
-          <span className="text-2xl font-black tracking-tight text-[#111111]">
-            Spend<span className="text-[#FF6B35]">Guard</span> <span className="text-xs px-2 py-0.5 rounded-md bg-[#FFF1EA] text-[#FF6B35] font-bold border border-[#FFD9C7] ml-1">AI</span>
+          <span className="text-xl font-bold tracking-tight text-[#18191B]">
+            SpendGuard <span className="text-[#FF6B35]">AI</span>
           </span>
         </Link>
 
-        <h2 className="mt-6 text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111111]">
-          Sign in to your account
+        <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#18191B]">
+          Sign in to your FinOps workspace
         </h2>
-        <p className="mt-2 text-sm text-[#666666]">
+        <p className="mt-1.5 text-xs text-[#5F6368]">
           Real-time AI spend governance, budget guardrails, and key vaults.
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-3xl sm:px-10 border border-[#E8E8E8]">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-7 px-6 rounded-xl sm:px-8 border border-[#E4E4E0] shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
           {errorMessage && (
-            <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-xs sm:text-sm text-red-800 font-medium leading-relaxed">
+            <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-800 font-medium leading-relaxed">
                 {errorMessage}
               </p>
             </div>
           )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider mb-2">
+              <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider mb-1.5">
                 Work Email
               </label>
-              <div className="relative rounded-2xl">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
@@ -97,22 +97,22 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="sarah.chen@apexai.io"
-                  className="block w-full pl-10 pr-4 py-3 rounded-2xl border border-[#E8E8E8] bg-white text-sm text-[#111111] placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent transition-all"
+                  className="block w-full pl-9 pr-3 py-2 rounded-md border border-[#E4E4E0] bg-white text-xs sm:text-sm text-[#18191B] placeholder-[#9E9E9E] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-[#111111] uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-[#18191B] uppercase tracking-wider">
                   Password
                 </label>
-                <a href="#" className="text-xs font-semibold text-[#FF6B35] hover:underline">
+                <a href="#" className="text-xs font-medium text-[#FF6B35] hover:underline">
                   Forgot password?
                 </a>
               </div>
-              <div className="relative rounded-2xl">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#999999]">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#737373]">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -121,26 +121,26 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="block w-full pl-10 pr-4 py-3 rounded-2xl border border-[#E8E8E8] bg-white text-sm text-[#111111] placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent transition-all"
+                  className="block w-full pl-9 pr-3 py-2 rounded-md border border-[#E4E4E0] bg-white text-xs sm:text-sm text-[#18191B] placeholder-[#9E9E9E] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   defaultChecked
-                  className="w-4 h-4 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35]"
+                  className="w-3.5 h-3.5 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35]"
                 />
-                <span className="text-xs text-[#666666] font-medium">Keep me signed in</span>
+                <span className="text-xs text-[#5F6368]">Keep me signed in</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm transition-colors disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -149,25 +149,30 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>Sign in to Dashboard</span>
+                  <span>Sign in to FinOps Console</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Demo account helper badge */}
-          <div className="mt-6 pt-5 border-t border-[#F0ECE7] text-center">
-            <p className="text-xs text-[#888888]">
-              Demo credentials: <span className="font-mono text-[#111111] bg-[#F7F5F2] px-1.5 py-0.5 rounded">sarah.chen@apexai.io</span> / <span className="font-mono text-[#111111] bg-[#F7F5F2] px-1.5 py-0.5 rounded">demo-password-123</span>
-            </p>
+          {/* Seed credentials banner */}
+          <div className="mt-6 pt-4 border-t border-[#E4E4E0] text-center">
+            <span className="text-[11px] font-mono text-[#737373] block mb-1">
+              DEMO CREDENTIALS:
+            </span>
+            <div className="inline-flex items-center gap-2 bg-[#F7F7F6] border border-[#E4E4E0] px-2.5 py-1 rounded text-[11px] font-mono text-[#18191B]">
+              <span>sarah.chen@apexai.io</span>
+              <span className="text-[#A0A0A0]">/</span>
+              <span>demo-password-123</span>
+            </div>
           </div>
         </div>
 
-        <p className="mt-8 text-center text-sm text-[#666666]">
+        <p className="mt-6 text-center text-xs text-[#5F6368]">
           Don't have an organization account?{' '}
-          <Link href="/register" className="font-bold text-[#FF6B35] hover:underline">
-            Start free 14-day trial
+          <Link href="/register" className="font-semibold text-[#FF6B35] hover:underline">
+            Register your organization
           </Link>
         </p>
       </div>

@@ -9,13 +9,11 @@ import {
   Send, 
   Mail, 
   MessageSquare, 
-  Flame, 
   CheckCircle2,
   Clock,
-  Sparkles,
   RefreshCw,
-  Activity,
-  Layers
+  Sliders,
+  ExternalLink
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 
@@ -45,8 +43,9 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   const [testChannel, setTestChannel] = useState<'SLACK' | 'EMAIL' | 'IN_APP'>('SLACK');
   const [testThreshold, setTestThreshold] = useState<'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED'>('PERCENT_80');
   const [isSendingTest, setIsSendingTest] = useState(false);
-  const [slackWebhook, setSlackWebhook] = useState('https://api.spendguard.dev/webhooks/slack-alerts');
-  const [emailList, setEmailList] = useState('eng-leads@apexai.io, cto@apexai.io');
+  const [slackWebhook, setSlackWebhook] = useState('https://hooks.slack.com/services/spendguard/alerts');
+  const [emailList, setEmailList] = useState('eng-leads@company.com');
+  const [showConfig, setShowConfig] = useState(false);
 
   const fetchAlerts = async () => {
     setIsLoading(true);
@@ -115,248 +114,213 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
     }
   };
 
+  const unreadCount = alerts.filter(a => !a.isRead).length;
+  const hardBlockCount = alerts.filter(a => a.thresholdType === 'HARD_BLOCK').length;
+  const spikeCount = alerts.filter(a => a.thresholdType === 'ANOMALY_DETECTED').length;
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-5 pb-10">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+          <h2 className="text-xl font-bold text-[#18191B] tracking-tight">
             Alerts & Anomaly Notifications
           </h2>
-          <p className="text-xs sm:text-sm text-[#666666] mt-0.5">
-            Real-time threshold triggers, statistical spike flags, and Slack/email webhook audit feeds.
+          <p className="text-xs text-[#5F6368]">
+            Automated threshold notifications, statistical Z-score spike detections, and incident dispatching.
           </p>
         </div>
 
-        {alerts.some(a => !a.isRead) && (
-          <button
-            type="button"
-            onClick={() => handleMarkAsRead(undefined, true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E8E8E8] text-xs font-bold text-[#111111] hover:text-[#FF6B35] transition-all"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Mark All As Read</span>
-          </button>
-        )}
-      </div>
-
-      {/* Grid: Alerts Feed + Notification Webhooks Config */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Live Alerts Stream (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-[#E8E8E8] shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#F0ECE7]">
-            <h3 className="text-base font-bold text-[#111111]">
-              Triggered Governance Alerts ({alerts.length})
-            </h3>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
             <button
               type="button"
-              onClick={fetchAlerts}
-              className="p-1.5 text-[#666666] hover:text-[#111111] rounded-lg"
-              title="Refresh"
+              onClick={() => handleMarkAsRead(undefined, true)}
+              className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] font-semibold text-xs shadow-xs transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#FF6B35]' : ''}`} />
+              Mark All as Read ({unreadCount})
             </button>
-          </div>
-
-          {alerts.length === 0 ? (
-            <EmptyState
-              icon={Bell}
-              title="No alerts triggered"
-              description="Your projects are currently healthy and well within configured budget parameters."
-              compact
-            />
-          ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-              {alerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    !alert.isRead
-                      ? alert.thresholdType === 'HARD_BLOCK'
-                        ? 'bg-red-50/50 border-red-200'
-                        : 'bg-[#FFF8F5] border-[#FFD9C7]'
-                      : 'bg-white border-[#E8E8E8]'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-xl mt-0.5 ${
-                        alert.thresholdType === 'HARD_BLOCK'
-                          ? 'bg-red-100 text-red-600'
-                          : alert.thresholdType === 'ANOMALY_DETECTED'
-                          ? 'bg-amber-100 text-amber-600'
-                          : 'bg-[#FFF1EA] text-[#FF6B35]'
-                      }`}>
-                        {alert.thresholdType === 'HARD_BLOCK' ? (
-                          <ShieldAlert className="w-4 h-4" />
-                        ) : alert.thresholdType === 'ANOMALY_DETECTED' ? (
-                          <Activity className="w-4 h-4" />
-                        ) : (
-                          <AlertTriangle className="w-4 h-4" />
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-[#111111]">{alert.title}</h4>
-                          {!alert.isRead && (
-                            <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-pulse" />
-                          )}
-                        </div>
-
-                        <p className="text-xs text-[#555555] mt-1 leading-relaxed">
-                          {alert.message}
-                        </p>
-
-                        <div className="flex items-center gap-3 mt-2 text-[10.5px] text-[#777777]">
-                          <span className="font-semibold text-[#111111]">
-                            {alert.projectName || alert.projectId}
-                          </span>
-                          <span>·</span>
-                          <span className="font-mono">{new Date(alert.triggeredAt).toLocaleTimeString()}</span>
-                          <span>·</span>
-                          <span className="font-mono text-[#FF6B35] font-semibold">{alert.channel}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {!alert.isRead && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkAsRead(alert.id)}
-                        className="p-1 text-[#888888] hover:text-[#111111]"
-                        title="Mark as read"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           )}
-        </div>
 
-        {/* Right Column: Webhook Simulator & Integration Test (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-[#E8E8E8] shadow-sm space-y-5">
-          <div className="pb-3 border-b border-[#F0ECE7]">
-            <h3 className="text-base font-bold text-[#111111]">
-              Webhook & Alert Simulator
-            </h3>
-            <p className="text-xs text-[#777777] mt-0.5">
-              Verify Slack and email webhook integration payloads.
-            </p>
+          <button
+            type="button"
+            onClick={() => setShowConfig(!showConfig)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#F3F3F0] hover:bg-[#E4E4E0] text-[#18191B] text-xs font-semibold transition-colors"
+          >
+            <Sliders className="w-3.5 h-3.5 text-[#5F6368]" />
+            <span>Webhook Config</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Aggregate Alert Summary Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-[#E4E4E0] shadow-xs">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Unread Incidents</span>
+          <p className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${unreadCount > 0 ? 'text-[#FF6B35]' : 'text-[#18191B]'}`}>
+            {unreadCount}
+          </p>
+        </div>
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Hard-Blocks Tripped</span>
+          <p className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${hardBlockCount > 0 ? 'text-[#DC2626]' : 'text-[#18191B]'}`}>
+            {hardBlockCount}
+          </p>
+        </div>
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Statistical Spikes</span>
+          <p className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${spikeCount > 0 ? 'text-[#D97706]' : 'text-[#18191B]'}`}>
+            {spikeCount}
+          </p>
+        </div>
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Dispatch Latency</span>
+          <p className="text-lg font-bold text-[#0D9488] font-mono tabular-nums mt-0.5">&lt; 100ms</p>
+        </div>
+      </div>
+
+      {/* Webhook Channel Configuration Accordion */}
+      {showConfig && (
+        <div className="bg-white p-5 rounded-xl border border-[#E4E4E0] shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-[#E4E4E0]">
+            <h3 className="text-sm font-semibold text-[#18191B]">Notification Channel & Webhook Dispatch</h3>
+            <span className="text-xs text-[#5F6368]">Slack BlockKit, Email, and PagerDuty endpoints</span>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                Project Scope
-              </label>
-              <select
-                value={testProjectId}
-                onChange={(e) => setTestProjectId(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-semibold text-[#111111] bg-[#FFF8F5] focus:outline-none focus:border-[#FF6B35]"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                Alert Type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'PERCENT_80', label: '80% Soft Warning' },
-                  { id: 'HARD_BLOCK', label: '100% Hard Block' },
-                  { id: 'ANOMALY_DETECTED', label: 'Token Spike' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTestThreshold(t.id as any)}
-                    className={`py-2 px-1 rounded-xl text-[11px] font-bold text-center border transition-all ${
-                      testThreshold === t.id
-                        ? 'bg-[#FFF1EA] text-[#FF6B35] border-[#FF6B35]'
-                        : 'bg-white text-[#666666] border-[#E8E8E8]'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                Notification Channel
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'SLACK', icon: MessageSquare, label: 'Slack' },
-                  { id: 'EMAIL', icon: Mail, label: 'Email' },
-                  { id: 'IN_APP', icon: Bell, label: 'In-App' },
-                ].map((c) => {
-                  const Icon = c.icon;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setTestChannel(c.id as any)}
-                      className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all ${
-                        testChannel === c.id
-                          ? 'bg-[#FFF1EA] text-[#FF6B35] border-[#FF6B35]'
-                          : 'bg-white text-[#666666] border-[#E8E8E8]'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      <span>{c.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                Webhook Destination
-              </label>
+              <label className="font-semibold text-[#18191B] block mb-1">Slack Incoming Webhook URL</label>
               <input
                 type="text"
-                value={testChannel === 'SLACK' ? slackWebhook : emailList}
-                onChange={(e) => testChannel === 'SLACK' ? setSlackWebhook(e.target.value) : setEmailList(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                value={slackWebhook}
+                onChange={(e) => setSlackWebhook(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] font-mono text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
               />
+            </div>
+            <div>
+              <label className="font-semibold text-[#18191B] block mb-1">Email Alert Recipients (comma-separated)</label>
+              <input
+                type="text"
+                value={emailList}
+                onChange={(e) => setEmailList(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+              />
+            </div>
+          </div>
+
+          {/* Test Dispatch Bar */}
+          <div className="pt-2 border-t border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[#5F6368] font-medium">Test Trigger:</span>
+              <select
+                value={testThreshold}
+                onChange={(e) => setTestThreshold(e.target.value as any)}
+                className="px-2 py-1 rounded border border-[#E4E4E0] text-xs bg-white"
+              >
+                <option value="PERCENT_80">80% Threshold Warning</option>
+                <option value="HARD_BLOCK">Emergency 100% Hard-Block</option>
+                <option value="ANOMALY_DETECTED">Statistical Spike Anomaly</option>
+              </select>
+
+              <select
+                value={testChannel}
+                onChange={(e) => setTestChannel(e.target.value as any)}
+                className="px-2 py-1 rounded border border-[#E4E4E0] text-xs bg-white"
+              >
+                <option value="SLACK">Slack</option>
+                <option value="EMAIL">Email</option>
+                <option value="IN_APP">In-App</option>
+              </select>
             </div>
 
             <button
               type="button"
               onClick={handleSendTestAlert}
               disabled={isSendingTest}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-xs shadow-sm hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              className="px-3 py-1.5 rounded-md bg-[#18191B] hover:bg-[#333333] text-white font-semibold text-xs transition-colors flex items-center gap-1.5"
             >
-              {isSendingTest ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Dispatching Webhook...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Test Alert Notification</span>
-                </>
-              )}
+              <Send className="w-3 h-3" />
+              <span>{isSendingTest ? 'Dispatching...' : 'Dispatch Test Alert'}</span>
             </button>
           </div>
         </div>
+      )}
 
-      </div>
+      {/* Incidents & Alerts List Table */}
+      {alerts.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title="No alerts triggered"
+          description="Your AI project expenditures are healthy. Any budget threshold or anomaly triggers will appear here."
+          compact
+        />
+      ) : (
+        <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+          <div className="divide-y divide-[#E4E4E0]">
+            {alerts.map((alert) => {
+              const isHardBlock = alert.thresholdType === 'HARD_BLOCK';
+              const isAnomaly = alert.thresholdType === 'ANOMALY_DETECTED';
+
+              return (
+                <div
+                  key={alert.id}
+                  className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                    !alert.isRead ? 'bg-[#FFFDFB]' : 'hover:bg-[#FBFBFA]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      {isHardBlock ? (
+                        <div className="w-7 h-7 rounded-md bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] flex items-center justify-center">
+                          <ShieldAlert className="w-4 h-4" />
+                        </div>
+                      ) : isAnomaly ? (
+                        <div className="w-7 h-7 rounded-md bg-[#FFFBEB] border border-[#FDE68A] text-[#D97706] flex items-center justify-center">
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                      ) : (
+                        <div className="w-7 h-7 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] flex items-center justify-center">
+                          <Clock className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-xs text-[#18191B]">{alert.title}</span>
+                        {!alert.isRead && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" />
+                        )}
+                        <span className="text-[10px] font-mono text-[#80868B]">
+                          {alert.projectName || alert.projectId}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#5F6368] leading-relaxed max-w-2xl">{alert.message}</p>
+                      <div className="flex items-center gap-2 pt-1 text-[11px] text-[#80868B] font-mono tabular-nums">
+                        <span>{new Date(alert.triggeredAt).toLocaleString()}</span>
+                        <span>•</span>
+                        <span>Channel: {alert.channel}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    {!alert.isRead && (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(alert.id)}
+                        className="px-2.5 py-1 rounded text-xs font-semibold text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0] transition-colors"
+                      >
+                        Acknowledge
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,145 +1,172 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Check, ShieldCheck, Zap } from 'lucide-react';
-import { GatewayMonitorCard } from './GatewayMonitorCard';
-import { TeamMemberCard } from './TeamMemberCard';
-import { BudgetAlertCard } from './BudgetAlertCard';
-import { TrustBadge } from './TrustBadge';
-import { LogoStrip } from './LogoStrip';
+import { ArrowRight, Terminal, ShieldCheck, Check, Cpu, Zap, Copy, Code2 } from 'lucide-react';
 
 export function Hero() {
+  const [activeTab, setActiveTab] = useState<'curl' | 'python' | 'node'>('curl');
+  const [copied, setCopied] = useState(false);
+
+  const snippets = {
+    curl: `curl -X POST https://gateway.spendguard.ai/v1/chat/completions \\
+  -H "Authorization: Bearer sg_live_9bac36..." \\
+  -H "X-SpendGuard-Project-Id: proj_production" \\
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello SpendGuard"}]}'`,
+    python: `from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://gateway.spendguard.ai/v1",
+    api_key="sg_live_9bac36...",
+    default_headers={"X-SpendGuard-Project-Id": "proj_production"}
+)
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Analyze inference spend."}]
+)`,
+    node: `import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://gateway.spendguard.ai/v1',
+  apiKey: 'sg_live_9bac36...',
+  defaultHeaders: { 'X-SpendGuard-Project-Id': 'proj_production' }
+});
+const response = await client.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Analyze inference spend.' }]
+});`
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(snippets[activeTab]);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <section className="relative w-full py-4 sm:py-6 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Soft Orange Ambient Background Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[950px] h-[550px] bg-gradient-to-br from-[#FFE3D6]/80 via-[#FFD2C0]/50 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-10 right-10 w-[420px] h-[420px] bg-[#FF8A4C]/15 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-10 left-10 w-[480px] h-[480px] bg-[#FF6B35]/12 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      {/* Main SaaS Rounded Container (max-width ~1200-1250px, rounded ~38px) */}
-      <div className="max-w-[1240px] mx-auto bg-white rounded-[36px] sm:rounded-[42px] border border-[#F0ECE7] saas-container-shadow p-6 sm:p-10 lg:p-12 relative">
-        
-        {/* Decorative Top Accent Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-[#FF6B35]/40 to-transparent rounded-full" />
-
-        {/* Top Grid: Two-Column Hero Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          
-          {/* Left Column: Hero Content & CTA (6 cols) */}
-          <div className="lg:col-span-6 space-y-6 sm:space-y-7 text-left">
-            
-            {/* Eyebrow Badge (small pill, light orange bg) */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] text-xs font-semibold text-[#FF6B35]">
-              <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-beacon" />
-              <span>Real-Time AI Spend Control</span>
-            </div>
-
-            {/* Headline (64-78px desktop, tight tracking, 3 lines) */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[68px] font-extrabold tracking-tight leading-[1.06] text-[#111111]">
-              <span className="text-orange-gradient block">AI spend visibility</span>
-              <span className="block">for every team,</span>
-              <span className="block text-[#111111]">provider, and project</span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="text-base sm:text-lg text-[#555555] max-w-lg leading-relaxed font-normal">
-              Track every OpenAI, Gemini, and Claude request in real time — set budgets, catch overspend before it happens, and give every team full accountability for their AI usage.
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-1">
-              {/* Primary CTA: Start for free */}
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-[15.5px] font-semibold text-white bg-gradient-to-r from-[#FF6B35] via-[#FF7B3D] to-[#FF9A62] shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:shadow-[0_8px_25px_rgba(255,107,53,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-              >
-                <span>Start for free</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-
-              {/* Secondary CTA: Contact us */}
-              <a
-                href="#pricing"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-full text-[15.5px] font-medium text-[#222222] bg-white border border-[#E8E8E8] hover:border-[#CCCCCC] hover:bg-[#FAFAFA] transition-all duration-200"
-              >
-                <span>Contact us</span>
-              </a>
-            </div>
-
-            {/* Trust Indicators (small text, dot-separated) */}
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-[13px] text-[#777777] pt-1">
-              <span>14-day free trial</span>
-              <span className="text-[#CCCCCC]">·</span>
-              <span>No credit card required</span>
-              <span className="text-[#CCCCCC]">·</span>
-              <span>Cancel anytime</span>
-            </div>
-          </div>
-
-          {/* Right Column: Hero Visual (6 cols) */}
-          <div className="lg:col-span-6 relative flex items-center justify-center py-6 sm:py-8">
-            
-            {/* Ambient Backlight for Central Card */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#FF6B35]/20 to-[#FF8A4C]/10 rounded-full blur-2xl -z-10 scale-90" />
-
-            {/* Floating Decorative Orange Connection Nodes / Rings */}
-            <div className="absolute -top-4 -right-2 w-3 h-3 rounded-full bg-[#FF6B35] animate-ping opacity-60 hidden sm:block" />
-            <div className="absolute top-1/2 -left-6 w-2.5 h-2.5 rounded-full bg-[#FF8A4C] animate-beacon hidden sm:block" />
-            <div className="absolute -bottom-3 right-1/4 w-2 h-2 rounded-full bg-[#FF6B35] opacity-50 hidden sm:block" />
-
-            {/* Floating Team Member Cards (Top & Left area) */}
-            <div className="absolute -top-6 -left-4 sm:-top-8 sm:-left-6 z-20 animate-float-slow hidden sm:block">
-              <TeamMemberCard
-                name="Elena Vance"
-                role="Eng Lead"
-                statusText="Payments ($1.2k/$3k)"
-                statusColor="green"
-                avatarUrl="/avatars/elena.jpg"
-              />
-            </div>
-
-            <div className="absolute top-20 -left-10 z-20 animate-float-delayed hidden md:block">
-              <TeamMemberCard
-                name="Marcus Thorne"
-                role="Platform Admin"
-                statusText="Gateway v2.4 (Active)"
-                statusColor="green"
-                avatarUrl="/avatars/marcus.jpg"
-              />
-            </div>
-
-            <div className="absolute -bottom-6 -left-2 z-20 animate-float-subtle hidden sm:block">
-              <TeamMemberCard
-                name="Sarah Chen"
-                role="FinOps Lead"
-                statusText="Marketing (82% used)"
-                statusColor="amber"
-                avatarUrl="/avatars/sarah.jpg"
-              />
-            </div>
-
-            {/* Floating AI Insight Card: Budget Alert (Floating above center-right) */}
-            <div className="absolute -top-10 sm:-top-12 -right-2 sm:-right-6 z-30 animate-float-delayed w-full max-w-[280px] sm:max-w-[320px]">
-              <BudgetAlertCard />
-            </div>
-
-            {/* Central Dark Card: Live Gateway Monitor */}
-            <div className="w-full relative z-10 flex justify-center">
-              <GatewayMonitorCard />
-            </div>
-
-            {/* Floating Trust Badge (Bottom-left area) */}
-            <div className="absolute -bottom-8 right-2 sm:right-6 z-20 animate-float-slow">
-              <TrustBadge />
-            </div>
-          </div>
-
+    <section className="relative w-full pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      {/* Hero Header */}
+      <div className="max-w-3xl mx-auto text-center space-y-4">
+        {/* Release Pill */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F3F3F0] border border-[#E4E4E0] text-xs font-semibold text-[#18191B]">
+          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
+          <span>SpendGuard AI v2.0 Gateway Released</span>
+          <span className="text-[#80868B]">|</span>
+          <span className="text-[#5F6368]">Sub-5ms Atomic Budgets</span>
         </div>
 
-        {/* Bottom: Trust & Logo Section */}
-        <LogoStrip />
+        {/* Master Headline */}
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#18191B] leading-[1.1]">
+          One gateway. Every model. <br className="hidden sm:inline" />
+          <span className="text-[#FF6B35]">Complete cost control.</span>
+        </h1>
 
+        {/* Technical Subheadline */}
+        <p className="text-base sm:text-lg text-[#5F6368] leading-relaxed max-w-2xl mx-auto">
+          Centralize API traffic across OpenAI, Anthropic, and Gemini. Enforce pre-flight atomic budget limits, detect token spikes, and maintain immutable audit ledgers.
+        </p>
+
+        {/* Primary CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <Link
+            href="/register"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-[#FF6B35] hover:bg-[#E85520] text-white font-semibold text-sm shadow-xs transition-colors flex items-center justify-center gap-2"
+          >
+            <span>Start Free Trial</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+
+          <Link
+            href="/login"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-white hover:bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] font-semibold text-sm shadow-xs transition-colors"
+          >
+            Sign In to Console
+          </Link>
+        </div>
+
+        {/* Trust Points */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-xs text-[#5F6368]">
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Drop-in OpenAI SDK compatible</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Fail-closed Redis Lua reservations</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Zero plaintext key storage</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Faithful Faithful Product Preview / Gateway Console */}
+      <div className="mt-12 bg-white rounded-xl border border-[#E4E4E0] shadow-sm overflow-hidden max-w-4xl mx-auto">
+        {/* Terminal Titlebar */}
+        <div className="h-11 px-4 bg-[#FBFBFA] border-b border-[#E4E4E0] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
+            </div>
+            <span className="font-mono text-[11px] text-[#5F6368] ml-2">
+              https://gateway.spendguard.ai/v1/chat/completions
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 bg-[#F3F3F0] p-0.5 rounded">
+              {(['curl', 'python', 'node'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                    activeTab === tab ? 'bg-white text-[#18191B] shadow-2xs' : 'text-[#5F6368]'
+                  }`}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="p-1 rounded text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0]"
+              title="Copy snippet"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Code Content */}
+        <div className="p-5 bg-[#18191B] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed">
+          <code>{snippets[activeTab]}</code>
+        </div>
+
+        {/* Live Operational Metrics Footer */}
+        <div className="p-3.5 bg-[#FBFBFA] border-t border-[#E4E4E0] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Gateway Latency</span>
+            <span className="font-mono tabular-nums font-bold text-[#18191B]">3.2ms overhead</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Budget Reservation</span>
+            <span className="font-mono tabular-nums font-bold text-[#0D9488]">Pre-Flight Atomic</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Supported Models</span>
+            <span className="font-mono text-[#18191B]">OpenAI, Claude, Gemini</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Key Encryption</span>
+            <span className="font-mono text-[#18191B]">AES-256-GCM Envelope</span>
+          </div>
+        </div>
       </div>
     </section>
   );

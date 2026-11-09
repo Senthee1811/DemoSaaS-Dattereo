@@ -9,51 +9,51 @@ export function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      desc: "For individual leaders, founders, and consultants looking for automated meeting intelligence.",
-      price: isAnnual ? 19 : 24,
-      period: "per user / month",
+      desc: "Perfect for small teams needing visibility and baseline budget guardrails across OpenAI & Claude.",
+      price: isAnnual ? 39 : 49,
+      period: "per month",
       popular: false,
       cta: "Start 14-Day Free Trial",
       features: [
-        "Up to 25 hours of live conversation analysis / mo",
-        "Real-time action item & decision extraction",
-        "Zoom, Google Meet & Microsoft Teams integration",
-        "Export to Notion, Slack & Email",
-        "7-day audio & transcript history",
-        "Standard email support"
+        "Up to $10,000 monthly AI spend managed",
+        "3 Projects & 5 Team Members",
+        "Unified Gateway for OpenAI, Gemini & Claude",
+        "Soft-warning budget threshold alerts",
+        "30-day immutable audit log history",
+        "Email & Slack notification webhooks"
       ]
     },
     {
-      name: "Pro Intelligence",
-      desc: "For fast-moving product, engineering, and revenue teams requiring deep real-time sync.",
-      price: isAnnual ? 49 : 59,
-      period: "per user / month",
+      name: "Growth & Scale",
+      desc: "For engineering teams requiring hard-block enforcement, key vault encryption, and compliance audit ledgers.",
+      price: isAnnual ? 159 : 199,
+      period: "per month",
       popular: true,
-      cta: "Get Started Free",
+      cta: "Start 14-Day Free Trial",
       features: [
-        "Unlimited live conversation analysis",
-        "Multi-speaker identification & sentiment analytics",
-        "Automated 2-way sync with Jira, Linear & HubSpot",
-        "Live translation across 40+ languages (<180ms)",
-        "Custom vocabulary & acronym training",
-        "Unlimited searchable conversation archive",
-        "Priority 24/7 Slack & chat support"
+        "Up to $100,000 monthly AI spend managed",
+        "Unlimited Projects & 25 Team Members",
+        "Fail-closed automated hard budget blocking",
+        "Statistical token spike anomaly detection",
+        "Encrypted per-project API key vault & rotation",
+        "1-year exportable compliance audit ledger",
+        "Priority routing & dedicated Slack support"
       ]
     },
     {
       name: "Enterprise",
-      desc: "For high-scale enterprises demanding custom LLM routing, strict SLAs, and bespoke security.",
+      desc: "For large organizations needing custom spend limits, SOC2 compliance, custom SLA, and dedicated onboarding.",
       price: "Custom",
-      period: "annual custom billing",
+      period: "contact sales",
       popular: false,
       cta: "Contact Enterprise Sales",
       features: [
-        "Dedicated private LLM instance & zero data retention",
-        "Custom SAML SSO & SCIM directory sync",
-        "SOC2 Type II, HIPAA & GDPR compliance certification",
-        "Custom webhook automation & full REST API access",
-        "Dedicated customer success manager & 99.99% SLA",
-        "On-premise / VPC deployment options"
+        "Unlimited monthly AI spend managed",
+        "Unlimited Projects & Organization RBAC",
+        "Custom fail-closed policy engine & SLA",
+        "Custom ERP & FinOps billing integrations",
+        "Dedicated Customer Success Architect",
+        "99.99% uptime SLA guarantee"
       ]
     }
   ];
@@ -122,7 +122,7 @@ export function PricingSection() {
                 {typeof p.price === 'number' ? (
                   <>
                     <span className="text-4xl font-extrabold text-[#111111]">${p.price}</span>
-                    <span className="text-xs text-[#777777] font-medium">/{p.period}</span>
+                    <span className="text-xs text-[#777777] font-medium">/ {p.period}{isAnnual ? ', billed annually' : ''}</span>
                   </>
                 ) : (
                   <span className="text-4xl font-extrabold text-[#111111]">{p.price}</span>
@@ -142,7 +142,7 @@ export function PricingSection() {
             </div>
 
             <a
-              href="#signup"
+              href={p.name === 'Enterprise' ? '#contact-sales' : '/dashboard'}
               className={`w-full py-3.5 rounded-full text-center text-sm font-bold transition-all duration-200 block ${
                 p.popular
                   ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] hover:from-[#F55D25] hover:to-[#FF7B38] text-white shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35 hover:-translate-y-0.5'

@@ -1,32 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+
+const BACKEND_URL = process.env.API_URL || 'http://localhost:4000';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
-    const limit = Number(searchParams.get('limit')) || 50;
-    const db = getDb();
+    const model = searchParams.get('model');
+    const anomalyOnly = searchParams.get('anomalyOnly');
+    const blockedOnly = searchParams.get('blockedOnly');
+    const limit = searchParams.get('limit');
+    const offset = searchParams.get('offset');
 
-    let query = `
-      SELECT a.*, p.name as project_name
-      FROM audit_logs a
-      LEFT JOIN projects p ON a.project_id = p.id
-    `;
-    const params: any[] = [];
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    if (model) params.set('model', model);
+    if (anomalyOnly) params.set('anomalyOnly', anomalyOnly);
+    if (blockedOnly) params.set('blockedOnly', blockedOnly);
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
 
-    if (projectId) {
-      query += ' WHERE a.project_id = ?';
-      params.push(projectId);
+    const qs = params.toString();
+    const response = await fetch(`${BACKEND_URL}/api/v1/audit${qs ? '?' + qs : ''}`, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Backend error' }));
+      return NextResponse.json(error, { status: response.status });
     }
 
-    query += ' ORDER BY a.created_at DESC LIMIT ?';
-    params.push(limit);
-
-    const logs = db.prepare(query).all(...params);
-
-    return NextResponse.json({ logs });
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Audit proxy error:', err.message);
+    return NextResponse.json({ logs: [], total: 0 });
   }
 }

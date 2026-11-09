@@ -9,38 +9,59 @@ describe('SpendGuard Core Backend Unit Tests', () => {
 
   beforeAll(() => {
     const mockConfigService: any = {
-      get: (key: string) => (key === 'encryptionMasterKey' ? 'test-master-secret-key-32b-length!' : undefined),
+      get: (key: string) => {
+        if (key === 'encryptionMasterKey') return 'test-master-secret-key-32b-length!';
+        if (key === 'jwt.accessSecret') return 'test-jwt-secret-pepper-32b-length!';
+        return undefined;
+      },
+    };
+
+    const mockPrisma: any = {
+      modelPricing: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+
+    const mockRedis: any = {
+      isConnected: false,
+      getClient: () => null,
     };
 
     encryptionService = new EncryptionService(mockConfigService);
-    pricingService = new PricingService();
+    pricingService = new PricingService(mockPrisma, mockRedis);
     anomalyService = new AnomalyService();
   });
 
-  describe('1. AES-256-GCM Envelope Encryption', () => {
-    it('should correctly encrypt and decrypt an OpenAI API key', () => {
+  describe('1. AES-256-GCM Two-Tier Envelope Encryption', () => {
+    it('should correctly encrypt and decrypt an OpenAI API key with envelope encryption', () => {
       const plaintext = 'sk-proj-live-production-secret-key-1234567890';
       const encrypted = encryptionService.encryptApiKey(plaintext);
 
       expect(encrypted).toBeDefined();
-      expect(encrypted).toContain(':');
+      expect(encrypted.startsWith('env:v1:')).toBe(true);
       expect(encrypted).not.toEqual(plaintext);
 
       const decrypted = encryptionService.decryptApiKey(encrypted);
       expect(decrypted).toEqual(plaintext);
     });
 
-    it('should generate masked preview of API key', () => {
+    it('should generate masked preview of API key per PRD (sk-...cdef)', () => {
       const plain = 'sk-proj-9876543210abcdef';
       const masked = encryptionService.maskApiKey(plain);
-      expect(masked).toBe('sk-proj••••••••cdef');
+      expect(masked).toBe('sk-...cdef');
     });
 
-    it('should generate secure gateway token and deterministic hash', () => {
+    it('should generate secure SpendGuard virtual key (sg_live_*) and peppered hash', () => {
       const { secret, keyPrefix, hashedSecret } = encryptionService.generateGatewaySecret();
-      expect(secret.startsWith('spnd_live_')).toBe(true);
-      expect(keyPrefix.length).toBe(14);
+      expect(secret.startsWith('sg_live_')).toBe(true);
+      expect(keyPrefix.startsWith('sg_live_')).toBe(true);
       expect(hashedSecret).toBe(encryptionService.hashToken(secret));
+    });
+
+    it('should generate test SpendGuard virtual key (sg_test_*)', () => {
+      const { secret, keyPrefix } = encryptionService.generateGatewaySecret('sg_test');
+      expect(secret.startsWith('sg_test_')).toBe(true);
+      expect(keyPrefix.startsWith('sg_test_')).toBe(true);
     });
   });
 
@@ -67,6 +88,14 @@ describe('SpendGuard Core Backend Unit Tests', () => {
       expect(pricingService.resolveProvider('gpt-4o')).toBe('OPENAI');
       expect(pricingService.resolveProvider('claude-3-5-sonnet')).toBe('ANTHROPIC');
       expect(pricingService.resolveProvider('gemini-1.5-pro')).toBe('GEMINI');
+    });
+
+    it('should return catalog prices through getAllPrices', () => {
+      const prices = pricingService.getAllPrices();
+      expect(prices.length).toBeGreaterThanOrEqual(10);
+      const gpt4 = prices.find(p => p.model === 'gpt-4o');
+      expect(gpt4).toBeDefined();
+      expect(gpt4?.inputPricePerMillion).toBe(2.50);
     });
   });
 

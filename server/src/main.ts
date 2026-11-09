@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 async function bootstrap() {
   const logger = new Logger('SpendGuardBootstrap');
@@ -23,6 +24,9 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
+
+  // Global request-ID tracing middleware
+  app.use(new RequestIdMiddleware().use);
 
   // Setup Swagger / OpenAPI
   const swaggerConfig = new DocumentBuilder()

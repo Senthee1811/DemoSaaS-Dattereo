@@ -1,5 +1,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
 import { PricingService } from '@/modules/pricing/pricing.service';
 import { AnomalyService } from '@/modules/anomaly/anomaly.service';
@@ -15,6 +16,7 @@ export class GatewayService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
     private readonly budgetService: BudgetService,
     private readonly pricingService: PricingService,
     private readonly anomalyService: AnomalyService,
@@ -28,50 +30,36 @@ export class GatewayService {
     const startTime = Date.now();
     const provider = this.pricingService.resolveProvider(req.model);
 
-    // 1. Pre-Flight Fail-Closed Budget Guardrail Check
+    // 1. Pre-Flight Fail-Closed Budget Guardrail Check (uses Redis-cached spend)
     const budgetGuard = await this.budgetService.checkBudgetGuardrail(req.projectId);
 
     if (!budgetGuard.canProceed) {
       const blockedReqId = `req_blk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       
-      // Log blocked attempt into audit ledger
-      try {
-        await this.prisma.request.create({
-          data: {
-            id: blockedReqId,
-            projectId: req.projectId,
-            userId: req.userId || null,
-            provider,
-            model: req.model,
-            tokensIn: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
-            tokensOut: 0,
-            totalTokens: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
-            costEstimate: 0,
-            latencyMs: 0,
-            statusCode: 429,
-            isAnomaly: false,
-            anomalyReason: budgetGuard.blockReason || 'Hard-block limit active',
-            isBlocked: true,
-            promptPreview: req.messages[0]?.content?.slice(0, 200) || '',
-            responsePreview: 'FAIL_CLOSED_GUARDRAIL_BLOCKED',
-          },
-        });
-      } catch (err: any) {
-        this.logger.warn(`Could not log blocked request: ${err.message}`);
-      }
+      // Log blocked attempt into audit ledger (async — don't block response)
+      this.logBlockedRequest(blockedReqId, req, provider, budgetGuard).catch(err =>
+        this.logger.warn(`Could not log blocked request: ${err.message}`),
+      );
+
+      // Distinguish governance_unavailable (infra failure) from budget_exceeded (policy enforcement)
+      const isGovernanceUnavailable = budgetGuard.blockReason?.includes('Governance engine unavailable');
+      const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : 'budget_exceeded';
+      const httpStatus = isGovernanceUnavailable
+        ? HttpStatus.SERVICE_UNAVAILABLE   // 503 for infra failure
+        : HttpStatus.TOO_MANY_REQUESTS;    // 429 for budget exceeded
 
       throw new HttpException(
         {
           error: {
             message: `SpendGuard AI Guardrail: Request blocked. ${budgetGuard.blockReason}`,
-            type: 'budget_exceeded',
-            code: 'budget_exceeded',
+            type: errorCode,
+            code: errorCode,
             project_id: req.projectId,
             budget_monthly: budgetGuard.budgetMonthly,
             current_spend: budgetGuard.currentMonthlySpend,
           },
         },
-        HttpStatus.TOO_MANY_REQUESTS,
+        httpStatus,
       );
     }
 
@@ -89,11 +77,11 @@ export class GatewayService {
       if (providerKeyRow) {
         decryptedKey = this.encryptionService.decryptApiKey(providerKeyRow.encryptedKey);
         
-        // Update last used timestamp
-        await this.prisma.providerApiKey.update({
+        // Update last used timestamp (async)
+        this.prisma.providerApiKey.update({
           where: { id: providerKeyRow.id },
           data: { lastUsedAt: new Date() },
-        });
+        }).catch(() => {});
       }
     } catch (err: any) {
       this.logger.warn(`Key lookup warning: ${err.message}`);
@@ -143,43 +131,25 @@ export class GatewayService {
       });
     }
 
-    // 5. Append-only Immutable Request Logging
+    // 5. Append-only Immutable Request Logging (async — don't block response)
     const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const promptText = req.messages.map(m => m.content).join(' ');
 
-    await this.prisma.request.create({
-      data: {
-        id: reqId,
-        projectId: req.projectId,
-        userId: req.userId || null,
-        provider,
-        model: req.model,
-        tokensIn: adapterResult.promptTokens,
-        tokensOut: adapterResult.completionTokens,
-        totalTokens: adapterResult.totalTokens,
-        costEstimate,
-        latencyMs,
-        statusCode: 200,
-        isAnomaly: anomalyResult.isAnomaly,
-        anomalyReason: anomalyResult.reason || null,
-        isBlocked: false,
-        promptPreview: promptText.slice(0, 300),
-        responsePreview: adapterResult.responseText.slice(0, 300),
-        metadataJson: JSON.stringify({
-          clientIp: req.clientIp || '127.0.0.1',
-          clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',
-          isSimulated: adapterResult.isSimulated,
-        }),
-      },
-    });
+    this.logSuccessfulRequest(reqId, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText)
+      .catch(err => this.logger.warn(`Failed to log request: ${err.message}`));
 
-    // 6. Post-Request Threshold Check (80% soft warning)
+    // 6. Increment Redis spend counter (async)
+    this.redisService.incrementProjectSpend(req.projectId, costEstimate)
+      .catch(err => this.logger.warn(`Failed to increment Redis spend: ${err.message}`));
+
+    // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;
-    await this.budgetService.evaluatePostRequestThresholds(req.projectId, updatedSpend);
+    this.budgetService.evaluatePostRequestThresholds(req.projectId, updatedSpend)
+      .catch(err => this.logger.warn(`Post-request threshold check error: ${err.message}`));
 
     const budgetRemaining = Math.max(0, budgetGuard.budgetMonthly - updatedSpend);
 
-    // 7. OpenAI-Compatible Response Structure
+    // 8. OpenAI-Compatible Response Structure
     return {
       id: `chatcmpl-${reqId}`,
       object: 'chat.completion',
@@ -216,5 +186,65 @@ export class GatewayService {
         'X-SpendGuard-Blocked': 'false',
       },
     };
+  }
+
+  private async logBlockedRequest(reqId: string, req: GatewayChatRequest, provider: string, budgetGuard: any) {
+    await this.prisma.request.create({
+      data: {
+        id: reqId,
+        projectId: req.projectId,
+        userId: req.userId || null,
+        provider: provider as any,
+        model: req.model,
+        tokensIn: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
+        tokensOut: 0,
+        totalTokens: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
+        costEstimate: 0,
+        latencyMs: 0,
+        statusCode: 429,
+        isAnomaly: false,
+        anomalyReason: budgetGuard.blockReason || 'Hard-block limit active',
+        isBlocked: true,
+        promptPreview: req.messages[0]?.content?.slice(0, 200) || '',
+        responsePreview: 'FAIL_CLOSED_GUARDRAIL_BLOCKED',
+      },
+    });
+  }
+
+  private async logSuccessfulRequest(
+    reqId: string,
+    req: GatewayChatRequest,
+    provider: string,
+    adapterResult: any,
+    costEstimate: number,
+    latencyMs: number,
+    anomalyResult: any,
+    promptText: string,
+  ) {
+    await this.prisma.request.create({
+      data: {
+        id: reqId,
+        projectId: req.projectId,
+        userId: req.userId || null,
+        provider: provider as any,
+        model: req.model,
+        tokensIn: adapterResult.promptTokens,
+        tokensOut: adapterResult.completionTokens,
+        totalTokens: adapterResult.totalTokens,
+        costEstimate,
+        latencyMs,
+        statusCode: 200,
+        isAnomaly: anomalyResult.isAnomaly,
+        anomalyReason: anomalyResult.reason || null,
+        isBlocked: false,
+        promptPreview: promptText.slice(0, 300),
+        responsePreview: adapterResult.responseText.slice(0, 300),
+        metadataJson: JSON.stringify({
+          clientIp: req.clientIp || '127.0.0.1',
+          clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',
+          isSimulated: adapterResult.isSimulated,
+        }),
+      },
+    });
   }
 }

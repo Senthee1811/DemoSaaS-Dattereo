@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
+import { RedisModule } from './modules/redis/redis.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { EncryptionModule } from './modules/encryption/encryption.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { AnomalyModule } from './modules/anomaly/anomaly.module';
@@ -13,6 +15,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TeamModule } from './modules/team/team.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -22,6 +25,8 @@ import { HealthModule } from './health/health.module';
       load: [configuration],
     }),
     PrismaModule,
+    RedisModule,
+    AuthModule,
     EncryptionModule,
     PricingModule,
     AnomalyModule,
@@ -33,7 +38,9 @@ import { HealthModule } from './health/health.module';
     AlertsModule,
     AnalyticsModule,
     TeamModule,
+    BillingModule,
     HealthModule,
   ],
 })
 export class AppModule {}
+

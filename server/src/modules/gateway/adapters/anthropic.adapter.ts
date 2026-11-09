@@ -9,17 +9,22 @@ export class AnthropicAdapter implements ProviderAdapter {
   constructor(private readonly pricingService: PricingService) {}
 
   async execute(req: GatewayChatRequest, decryptedApiKey?: string): Promise<AdapterExecutionResult> {
-    const isRealKey = decryptedApiKey && decryptedApiKey.startsWith('sk-ant') && !decryptedApiKey.includes('demo');
+    const effectiveKey = (decryptedApiKey && decryptedApiKey.startsWith('sk-ant') && !decryptedApiKey.includes('demo'))
+      ? decryptedApiKey
+      : (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.startsWith('sk-ant') && !process.env.ANTHROPIC_API_KEY.includes('demo'))
+        ? process.env.ANTHROPIC_API_KEY
+        : undefined;
+
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);
 
-    if (isRealKey) {
+    if (effectiveKey) {
       try {
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': decryptedApiKey,
+            'x-api-key': effectiveKey,
             'anthropic-version': '2023-06-01'
           },
           body: JSON.stringify({
@@ -46,6 +51,9 @@ export class AnthropicAdapter implements ProviderAdapter {
             totalTokens: pTokens + cTokens,
             isSimulated: false
           };
+        } else {
+          const errBody = await resp.text();
+          this.logger.warn(`Anthropic returned ${resp.status}: ${errBody}`);
         }
       } catch (err: any) {
         this.logger.warn(`Anthropic upstream call failed, falling back to synthesis: ${err.message}`);

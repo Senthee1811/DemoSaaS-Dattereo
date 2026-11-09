@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RedisService } from '@/modules/redis/redis.service';
 
 export interface BudgetGuardrailResult {
   canProceed: boolean;
@@ -14,10 +15,16 @@ export interface BudgetGuardrailResult {
 export class BudgetService {
   private readonly logger = new Logger(BudgetService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
   /**
    * Pre-flight synchronous budget verification (Fail-Closed Policy)
+   * 
+   * Uses Redis-cached spend counters for speed. If Redis is unavailable,
+   * blocks the request (fail-closed) — never silently allows it through.
    */
   async checkBudgetGuardrail(projectId: string): Promise<BudgetGuardrailResult> {
     try {
@@ -48,22 +55,34 @@ export class BudgetService {
         };
       }
 
-      // Calculate current month's aggregate spend
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Try Redis-cached spend first (fast path)
+      const cachedSpend = await this.redisService.getProjectSpend(projectId);
 
-      const aggregate = await this.prisma.request.aggregate({
-        where: {
-          projectId,
-          createdAt: { gte: firstDayOfMonth },
-          isBlocked: false,
-        },
-        _sum: {
-          costEstimate: true,
-        },
-      });
+      let currentMonthlySpend: number;
 
-      const currentMonthlySpend = Number(aggregate._sum.costEstimate || 0);
+      if (cachedSpend !== null) {
+        // Redis is available — use cached value
+        currentMonthlySpend = cachedSpend;
+      } else if (!this.redisService.isConnected) {
+        // FAIL-CLOSED: Redis is unavailable — hard-block the request.
+        // Per PRD: "If Redis is unreachable, block the request and return a governance error — 
+        // do not fall back to allowing it." We must NOT query Postgres as a fallback.
+        this.logger.error(
+          `FAIL-CLOSED: Redis unavailable for project ${projectId}. Blocking request. governance_unavailable.`,
+        );
+        return {
+          canProceed: false,
+          isHardBlocked: true,
+          blockReason: 'Governance engine unavailable (Redis unreachable). Fail-closed policy enforced — all requests blocked until governance infrastructure is restored.',
+          budgetMonthly: Number(project.budgetMonthly),
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      } else {
+        // Redis is connected but returned null — means no spend recorded yet
+        currentMonthlySpend = 0;
+      }
+
       const budgetMonthly = Number(project.budgetMonthly);
       const utilizationPct = budgetMonthly > 0 ? (currentMonthlySpend / budgetMonthly) * 100 : 0;
 
@@ -117,7 +136,8 @@ export class BudgetService {
   }
 
   /**
-   * Post-request budget check to trigger 80% soft warning alerts
+   * Post-request budget check to trigger 80% soft warning alerts.
+   * Idempotent — won't re-fire if already triggered this month.
    */
   async evaluatePostRequestThresholds(projectId: string, currentSpend: number): Promise<void> {
     try {
@@ -133,7 +153,7 @@ export class BudgetService {
       const warningThreshold = budget * (warningPct / 100);
 
       if (currentSpend >= warningThreshold && currentSpend < budget) {
-        // Check if an 80% alert was already sent this month
+        // Check if an 80% alert was already sent this month (idempotent)
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -189,5 +209,28 @@ export class BudgetService {
     } catch (err: any) {
       this.logger.error(`Failed to record alert: ${err.message}`);
     }
+  }
+
+  /**
+   * Reconcile Redis spend counter with actual DB aggregate.
+   * Called by BullMQ reconciliation processor.
+   */
+  async reconcileProjectSpend(projectId: string): Promise<void> {
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const aggregate = await this.prisma.request.aggregate({
+      where: {
+        projectId,
+        createdAt: { gte: firstDayOfMonth },
+        isBlocked: false,
+      },
+      _sum: { costEstimate: true },
+    });
+
+    const trueSpend = Number(aggregate._sum.costEstimate || 0);
+    await this.redisService.setProjectSpend(projectId, trueSpend);
+
+    this.logger.log(`Reconciled spend for project ${projectId}: $${trueSpend.toFixed(4)}`);
   }
 }

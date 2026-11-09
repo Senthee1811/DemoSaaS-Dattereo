@@ -6,24 +6,40 @@ console.log('=== SpendGuard Production NestJS Backend Verification Suite ===\n')
 
 async function run() {
   const mockConfigService: any = {
-    get: (key: string) => (key === 'encryptionMasterKey' ? 'test-master-secret-key-32b-length!' : undefined),
+    get: (key: string) => {
+      if (key === 'encryptionMasterKey') return 'test-master-secret-key-32b-length!';
+      if (key === 'jwt.accessSecret') return 'test-jwt-secret-pepper-32b-length!';
+      return undefined;
+    },
+  };
+
+  const mockPrisma: any = {
+    modelPricing: {
+      findMany: async () => [],
+    },
+  };
+
+  const mockRedis: any = {
+    isConnected: false,
+    getClient: () => null,
   };
 
   const encryptionService = new EncryptionService(mockConfigService);
-  const pricingService = new PricingService();
+  const pricingService = new PricingService(mockPrisma, mockRedis);
   const anomalyService = new AnomalyService();
 
   // 1. Encryption
   console.log('▶ 1. AES-256-GCM Envelope Encryption & Masking');
   const plain = 'sk-proj-live-production-secret-key-1234567890';
   const encrypted = encryptionService.encryptApiKey(plain);
-  console.log('  ✓ Encrypted cipher length:', encrypted.length);
+  console.log('  ✓ Encrypted cipher:', encrypted.slice(0, 30) + '...');
   const decrypted = encryptionService.decryptApiKey(encrypted);
   if (decrypted !== plain) throw new Error('Decryption mismatch');
   console.log('  ✓ Decrypted matches plain:', decrypted === plain);
 
   const masked = encryptionService.maskApiKey(plain);
   console.log('  ✓ Masked preview:', masked);
+  if (!masked.startsWith('sk-') || !masked.endsWith('7890')) throw new Error('Masking format mismatch');
 
   const { secret, keyPrefix, hashedSecret } = encryptionService.generateGatewaySecret();
   console.log('  ✓ Generated gateway secret:', keyPrefix + '••••••••');

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Play, 
   ShieldCheck, 
@@ -99,13 +100,13 @@ export function InteractiveGatewayDemo() {
       <div className="text-center max-w-2xl mx-auto mb-12">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] text-xs font-semibold text-[#FF6B35] mb-3">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Interactive Sandbox</span>
+          <span>Interactive Sandbox Simulator</span>
         </div>
         <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#111111]">
           Test Gateway Routing & Guardrails in Action
         </h2>
         <p className="mt-3 text-base text-[#666666]">
-          See how SpendGuard intercepts every LLM call, computes live costs across providers, and enforces fail-closed budget caps in milliseconds.
+          Interactive simulation demonstrating how SpendGuard intercepts every LLM call, calculates live per-token costs across providers, and enforces fail-closed budget caps in milliseconds.
         </p>
       </div>
 
@@ -304,12 +305,20 @@ export function InteractiveGatewayDemo() {
             </div>
 
             {/* Bottom info banner */}
-            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/50">
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50">
               <span className="flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-[#FF6B35]" />
                 Zero Prompt Stored · AES-256 Key Vault
               </span>
-              <span className="text-[#FF8A4C] font-semibold">SpendGuard v2.4</span>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF8A4C] hover:text-[#FF6B35] transition-colors"
+                >
+                  <span>Launch Live Gateway Test Bench</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 

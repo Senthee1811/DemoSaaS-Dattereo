@@ -9,17 +9,22 @@ export class OpenAIAdapter implements ProviderAdapter {
   constructor(private readonly pricingService: PricingService) {}
 
   async execute(req: GatewayChatRequest, decryptedApiKey?: string): Promise<AdapterExecutionResult> {
-    const isRealKey = decryptedApiKey && decryptedApiKey.startsWith('sk-') && !decryptedApiKey.includes('demo');
+    const effectiveKey = (decryptedApiKey && decryptedApiKey.startsWith('sk-') && !decryptedApiKey.includes('demo'))
+      ? decryptedApiKey
+      : (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-') && !process.env.OPENAI_API_KEY.includes('demo'))
+        ? process.env.OPENAI_API_KEY
+        : undefined;
+
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);
 
-    if (isRealKey) {
+    if (effectiveKey) {
       try {
         const resp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${decryptedApiKey}`
+            'Authorization': `Bearer ${effectiveKey}`
           },
           body: JSON.stringify({
             model: req.model,
@@ -42,6 +47,9 @@ export class OpenAIAdapter implements ProviderAdapter {
             totalTokens: pTokens + cTokens,
             isSimulated: false
           };
+        } else {
+          const errBody = await resp.text();
+          this.logger.warn(`OpenAI returned ${resp.status}: ${errBody}`);
         }
       } catch (err: any) {
         this.logger.warn(`OpenAI upstream call failed, falling back to synthesis: ${err.message}`);

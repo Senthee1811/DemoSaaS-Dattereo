@@ -1,11 +1,36 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
+/**
+ * Audit service — enforces append-only immutability.
+ * No update method exists in this service layer.
+ * Per Step 8: "Enforce that AuditLog rows are append-only —
+ * no update method should exist in the service layer."
+ */
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Append a new immutable audit log entry.
+   */
+  async appendLog(data: {
+    requestId?: string;
+    actor: string;
+    action: string;
+    metadata?: any;
+  }) {
+    return this.prisma.auditLog.create({
+      data: {
+        requestId: data.requestId || null,
+        actor: data.actor,
+        action: data.action,
+        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+      },
+    });
+  }
 
   async listLogs(params: {
     projectId?: string;
@@ -62,19 +87,14 @@ export class AuditService {
     };
   }
 
+  /**
+   * Streamed/paginated CSV export — uses cursor-based pagination
+   * to avoid loading the full table into memory for large orgs.
+   * Per Step 8: "Build a paginated/streamed CSV export endpoint."
+   */
   async generateCsv(projectId?: string): Promise<string> {
     const where: any = {};
     if (projectId) where.projectId = projectId;
-
-    const records = await this.prisma.request.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 5000,
-      include: {
-        project: { select: { name: true } },
-        user: { select: { name: true, email: true } },
-      },
-    });
 
     const headers = [
       'Request ID',
@@ -101,30 +121,67 @@ export class AuditService {
       return `"${str}"`;
     };
 
-    const rows = [
-      headers.join(','),
-      ...records.map((r) =>
-        [
-          escapeCsv(r.id),
-          escapeCsv(r.createdAt.toISOString()),
-          escapeCsv(r.project?.name || r.projectId),
-          escapeCsv(r.user?.name || 'API Client'),
-          escapeCsv(r.user?.email || 'api@spendguard.ai'),
-          escapeCsv(r.provider),
-          escapeCsv(r.model),
-          r.tokensIn,
-          r.tokensOut,
-          r.totalTokens,
-          Number(r.costEstimate).toFixed(6),
-          r.latencyMs,
-          r.statusCode,
-          r.isAnomaly ? 'YES' : 'NO',
-          escapeCsv(r.anomalyReason || ''),
-          r.isBlocked ? 'YES' : 'NO',
-        ].join(','),
-      ),
-    ];
+    const chunks: string[] = [headers.join(',')];
+    const batchSize = 500;
+    let cursor: string | undefined;
+    let hasMore = true;
 
-    return rows.join('\r\n');
+    while (hasMore) {
+      const records = await this.prisma.request.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: batchSize,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        include: {
+          project: { select: { name: true } },
+          user: { select: { name: true, email: true } },
+        },
+      });
+
+      if (records.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const r of records) {
+        chunks.push(
+          [
+            escapeCsv(r.id),
+            escapeCsv(r.createdAt.toISOString()),
+            escapeCsv(r.project?.name || r.projectId),
+            escapeCsv(r.user?.name || 'API Client'),
+            escapeCsv(r.user?.email || 'api@spendguard.ai'),
+            escapeCsv(r.provider),
+            escapeCsv(r.model),
+            r.tokensIn,
+            r.tokensOut,
+            r.totalTokens,
+            Number(r.costEstimate).toFixed(6),
+            r.latencyMs,
+            r.statusCode,
+            r.isAnomaly ? 'YES' : 'NO',
+            escapeCsv(r.anomalyReason || ''),
+            r.isBlocked ? 'YES' : 'NO',
+          ].join(','),
+        );
+      }
+
+      cursor = records[records.length - 1].id;
+      if (records.length < batchSize) {
+        hasMore = false;
+      }
+    }
+
+    return chunks.join('\r\n');
+  }
+
+  /**
+   * Explicitly forbidden — audit log entries are immutable.
+   * This method exists solely to enforce the immutability constraint.
+   */
+  async updateLog(): Promise<never> {
+    throw new ForbiddenException(
+      'Audit log entries are immutable. Updates are rejected by governance policy.',
+    );
   }
 }

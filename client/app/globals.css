@@ -1,7 +1,79 @@
 @import "tailwindcss";
 
+/*
+ * SpendGuard Design System — Centralized Palette (Rule 7)
+ * 
+ * Orange + White Identity. All colors defined as Tailwind v4 theme tokens.
+ * Components use `text-sg-primary`, `bg-sg-light`, `border-sg-border`, etc.
+ * Chart colors read CSS variables: var(--color-sg-primary), etc.
+ * 
+ * NO hardcoded hex values in components — reference these tokens only.
+ */
+
+@theme {
+  /* === Core Brand Palette === */
+  --color-sg-primary: #FF6B35;
+  --color-sg-secondary: #FF8A4C;
+  --color-sg-light: #FFF1EA;
+  --color-sg-soft-bg: #FFF8F5;
+  --color-sg-warm-bg: #FFF9F6;
+  --color-sg-background: #FFFFFF;
+  --color-sg-page-bg: #FAFAFA;
+
+  /* === Text Colors === */
+  --color-sg-text-primary: #111111;
+  --color-sg-text-secondary: #666666;
+  --color-sg-text-muted: #777777;
+  --color-sg-text-subtle: #888888;
+  --color-sg-text-dim: #555555;
+  --color-sg-text-body: #444444;
+  --color-sg-text-dark: #333333;
+
+  /* === Border Colors === */
+  --color-sg-border: #E8E8E8;
+  --color-sg-border-light: #F0ECE7;
+  --color-sg-border-warm: #FFD9C7;
+  --color-sg-border-accent: #FFD4C2;
+  --color-sg-border-hover: #FFC7B0;
+
+  /* === Surface / Card Colors === */
+  --color-sg-surface: #FFFFFF;
+  --color-sg-surface-muted: #F4F1ED;
+  --color-sg-surface-hover: #F5F5F5;
+  --color-sg-surface-code: #F6F6F6;
+
+  /* === Dark Elements === */
+  --color-sg-dark: #111111;
+  --color-sg-dark-secondary: #222222;
+  --color-sg-dark-muted: #555555;
+  --color-sg-dark-subtle: #888888;
+
+  /* === Status Colors === */
+  --color-sg-success: #10B981;
+  --color-sg-success-bg: #ECFDF5;
+  --color-sg-warning: #F59E0B;
+  --color-sg-warning-bg: #FFFBEB;
+  --color-sg-error: #EF4444;
+  --color-sg-error-bg: #FEF2F2;
+
+  /* === Chart Palette (read via CSS vars for Recharts) === */
+  --color-sg-chart-primary: #FF6B35;
+  --color-sg-chart-secondary: #FF8A4C;
+  --color-sg-chart-tertiary: #FFA06E;
+  --color-sg-chart-quaternary: #FFD4C2;
+  --color-sg-chart-dark: #111111;
+  --color-sg-chart-gray: #A3A3A3;
+  --color-sg-chart-grid: #F0ECE7;
+
+  /* === Provider Brand Colors === */
+  --color-sg-provider-openai: #10A37F;
+  --color-sg-provider-anthropic: #D97706;
+  --color-sg-provider-google: #4285F4;
+}
+
 @layer base {
   :root {
+    /* Legacy CSS variable aliases (for components not yet migrated to Tailwind tokens) */
     --primary-orange: #FF6B35;
     --secondary-orange: #FF8A4C;
     --light-orange: #FFF1EA;
@@ -21,7 +93,7 @@
   }
 }
 
-/* Custom animations for floating cards and audio visualizer */
+/* Custom animations for floating cards and hero section */
 @keyframes floatSlow {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
@@ -86,9 +158,9 @@
   animation: beaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Orange gradients */
+/* Orange gradients (use CSS vars from theme) */
 .bg-orange-gradient {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8A4C 50%, #FF9A62 100%);
+  background: linear-gradient(135deg, var(--color-sg-primary) 0%, var(--color-sg-secondary) 50%, #FF9A62 100%);
 }
 
 .bg-orange-gradient-hover:hover {
@@ -96,13 +168,13 @@
 }
 
 .text-orange-gradient {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8A4C 45%, #FF9E68 100%);
+  background: linear-gradient(135deg, var(--color-sg-primary) 0%, var(--color-sg-secondary) 45%, #FF9E68 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-orange-gradient-bright {
-  background: linear-gradient(135deg, #FF5519 0%, #FF6B35 50%, #FFA06E 100%);
+  background: linear-gradient(135deg, #FF5519 0%, var(--color-sg-primary) 50%, #FFA06E 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -125,10 +197,10 @@
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #FFF8F5;
+  background: var(--color-sg-soft-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #FFD4C2;
+  background: var(--color-sg-border-accent);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {

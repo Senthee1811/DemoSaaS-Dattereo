@@ -21,8 +21,12 @@ export async function GET(req: NextRequest) {
     if (offset) params.set('offset', offset);
 
     const qs = params.toString();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const auth = req.headers.get('authorization');
+    if (auth) headers['Authorization'] = auth;
+
     const response = await fetch(`${BACKEND_URL}/api/v1/audit${qs ? '?' + qs : ''}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       cache: 'no-store',
     });
 

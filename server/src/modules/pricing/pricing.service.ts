@@ -189,6 +189,17 @@ export class PricingService implements OnModuleInit {
   }
 
   /**
+   * Estimate maximum potential cost for pre-flight budget reservation.
+   * Assumes completion may generate up to maxTokens.
+   */
+  estimateMaxCost(model: string, promptTokens: number, maxTokens = 1000): number {
+    const config = this.memoryCache.get(model) || PRICING_CATALOG[model] || PRICING_CATALOG['gpt-4o-mini'];
+    const inputCost = (promptTokens / 1_000_000) * config.inputPricePerMillion;
+    const maxOutputCost = (maxTokens / 1_000_000) * config.outputPricePerMillion;
+    return Number((inputCost + maxOutputCost).toFixed(6));
+  }
+
+  /**
    * Returns list of all current model pricing configurations
    */
   getAllPrices(): { model: string; provider: string; inputPricePerMillion: number; outputPricePerMillion: number; displayName?: string }[] {

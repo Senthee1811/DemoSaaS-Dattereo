@@ -8,8 +8,12 @@ export async function GET(req: NextRequest) {
     const orgId = searchParams.get('orgId');
     const params = orgId ? `?orgId=${orgId}` : '';
 
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const auth = req.headers.get('authorization');
+    if (auth) headers['Authorization'] = auth;
+
     const response = await fetch(`${BACKEND_URL}/api/v1/team${params}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       cache: 'no-store',
     });
 

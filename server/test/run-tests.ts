@@ -59,6 +59,12 @@ async function run() {
   if (claudeCost !== 0.01035) throw new Error('Claude calculation mismatch');
   if (geminiCost !== 0.00375) throw new Error('Gemini calculation mismatch');
 
+  // Max Potential Cost Estimation for Atomic Budget Reservation
+  const maxGpt4oEst = pricingService.estimateMaxCost('gpt-4o', 1000, 2000);
+  // (1000 / 1M * 2.50) + (2000 / 1M * 10.00) = 0.0025 + 0.0200 = 0.022500
+  console.log(`  ✓ Max estimated reservation cost (1000 in / 2000 max out): $${maxGpt4oEst.toFixed(6)}`);
+  if (maxGpt4oEst !== 0.0225) throw new Error('Max cost estimation mismatch');
+
   // 3. Anomaly
   console.log('\n▶ 3. Statistical Usage Spike Anomaly Detection');
   const baseline = [

@@ -13,6 +13,12 @@ export class KeysController {
     return this.keysService.listKeys(projectId);
   }
 
+  @Post('provider/test')
+  @ApiOperation({ summary: 'Test upstream provider connection before storing key' })
+  async testConnection(@Body() body: { provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI'; plainKey: string }) {
+    return this.keysService.testProviderConnection(body.provider, body.plainKey);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Store provider key (encrypted) or generate gateway token' })
   async handleCreateKey(@Body() body: any) {

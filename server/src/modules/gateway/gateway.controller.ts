@@ -73,88 +73,112 @@ export class GatewayController {
         where: { hashedSecret },
       });
 
-      if (gwKey) {
-        if (!gwKey.isActive) {
-          throw new HttpException(
-            { error: { message: 'SpendGuard Gateway API key has been revoked.', type: 'authentication_error' } },
-            HttpStatus.UNAUTHORIZED,
-          );
-        }
-
-        // Check Key Expiry
-        if (gwKey.expiresAt && new Date() > gwKey.expiresAt) {
-          throw new HttpException(
-            { error: { message: 'SpendGuard Gateway API key has expired.', type: 'authentication_error' } },
-            HttpStatus.UNAUTHORIZED,
-          );
-        }
-
-        // Check Model Allowlist
-        if (gwKey.allowedModels) {
-          try {
-            const allowed: string[] = JSON.parse(gwKey.allowedModels);
-            if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(body.model)) {
-              throw new HttpException(
-                { error: { message: `Model '${body.model}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
-                HttpStatus.FORBIDDEN,
-              );
-            }
-          } catch (e: any) {
-            if (e instanceof HttpException) throw e;
-          }
-        }
-
-        // Check Provider Allowlist
-        const provider = this.pricingService.resolveProvider(body.model);
-        if (gwKey.allowedProviders) {
-          try {
-            const allowed: string[] = JSON.parse(gwKey.allowedProviders);
-            if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(provider)) {
-              throw new HttpException(
-                { error: { message: `Provider '${provider}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
-                HttpStatus.FORBIDDEN,
-              );
-            }
-          } catch (e: any) {
-            if (e instanceof HttpException) throw e;
-          }
-        }
-
-        // Rate Limiting (Sliding RPM counter in Redis if available)
-        if (this.redisService.isConnected && gwKey.rateLimitRpm) {
-          const client = this.redisService.getClient();
-          if (client) {
-            const currentMinute = Math.floor(Date.now() / 60000);
-            const rateKey = `gw:rpm:${gwKey.id}:${currentMinute}`;
-            const reqCount = await client.incr(rateKey);
-            if (reqCount === 1) {
-              await client.expire(rateKey, 120);
-            }
-            if (reqCount > gwKey.rateLimitRpm) {
-              throw new HttpException(
-                { error: { message: `SpendGuard Key Rate limit exceeded: ${gwKey.rateLimitRpm} RPM cap.`, type: 'rate_limit_exceeded' } },
-                HttpStatus.TOO_MANY_REQUESTS,
-              );
-            }
-          }
-        }
-
-        resolvedProjectId = gwKey.projectId;
-
-        // Update key usage timestamp asynchronously
-        this.prisma.gatewayApiKey.update({
-          where: { id: gwKey.id },
-          data: { lastUsedAt: new Date() },
-        }).catch(() => {});
+      if (!gwKey) {
+        throw new HttpException(
+          { error: { message: 'Invalid SpendGuard Gateway API key.', type: 'authentication_error', code: 'invalid_api_key' } },
+          HttpStatus.UNAUTHORIZED,
+        );
       }
+
+      if (!gwKey.isActive) {
+        throw new HttpException(
+          { error: { message: 'SpendGuard Gateway API key has been revoked.', type: 'authentication_error' } },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Check Key Expiry
+      if (gwKey.expiresAt && new Date() > gwKey.expiresAt) {
+        throw new HttpException(
+          { error: { message: 'SpendGuard Gateway API key has expired.', type: 'authentication_error' } },
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // Check Model Allowlist
+      if (gwKey.allowedModels) {
+        try {
+          const allowed: string[] = JSON.parse(gwKey.allowedModels);
+          if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(body.model)) {
+            throw new HttpException(
+              { error: { message: `Model '${body.model}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
+              HttpStatus.FORBIDDEN,
+            );
+          }
+        } catch (e: any) {
+          if (e instanceof HttpException) throw e;
+        }
+      }
+
+      // Check Provider Allowlist
+      const provider = this.pricingService.resolveProvider(body.model);
+      if (gwKey.allowedProviders) {
+        try {
+          const allowed: string[] = JSON.parse(gwKey.allowedProviders);
+          if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(provider)) {
+            throw new HttpException(
+              { error: { message: `Provider '${provider}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
+              HttpStatus.FORBIDDEN,
+            );
+          }
+        } catch (e: any) {
+          if (e instanceof HttpException) throw e;
+        }
+      }
+
+      // Rate Limiting (Sliding RPM counter in Redis if available)
+      if (this.redisService.isConnected && gwKey.rateLimitRpm) {
+        const client = this.redisService.getClient();
+        if (client) {
+          const currentMinute = Math.floor(Date.now() / 60000);
+          const rateKey = `gw:rpm:${gwKey.id}:${currentMinute}`;
+          const reqCount = await client.incr(rateKey);
+          if (reqCount === 1) {
+            await client.expire(rateKey, 120);
+          }
+          if (reqCount > gwKey.rateLimitRpm) {
+            throw new HttpException(
+              { error: { message: `SpendGuard Key Rate limit exceeded: ${gwKey.rateLimitRpm} RPM cap.`, type: 'rate_limit_exceeded' } },
+              HttpStatus.TOO_MANY_REQUESTS,
+            );
+          }
+        }
+      }
+
+      resolvedProjectId = gwKey.projectId;
+
+      // Update key usage timestamp asynchronously
+      this.prisma.gatewayApiKey.update({
+        where: { id: gwKey.id },
+        data: { lastUsedAt: new Date() },
+      }).catch(() => {});
     }
 
-    // Default to first active project if no project specified
+    // Require valid authentication / project resolution
     if (!resolvedProjectId) {
-      const firstProject = await this.prisma.project.findFirst({
-        where: { isBlocked: false },
-      });
-      resolvedProjectId = firstProject ? firstProject.id : 'proj_copilot';
+      throw new HttpException(
+        {
+          error: {
+            message: 'Missing authentication. Please provide a valid SpendGuard API key via "Authorization: Bearer <sg_live_*>" or a valid project header.',
+            type: 'authentication_error',
+            code: 'missing_credentials',
+          },
+        },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    // Verify project exists
+    const targetProject = await this.prisma.project.findUnique({
+      where: { id: resolvedProjectId },
+      select: { id: true, orgId: true, isBlocked: true },
+    });
+
+    if (!targetProject) {
+      throw new HttpException(
+        { error: { message: `Project '${resolvedProjectId}' was not found.`, type: 'invalid_request_error', code: 'project_not_found' } },
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';

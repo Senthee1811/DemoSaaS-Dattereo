@@ -9,6 +9,7 @@ export interface BudgetGuardrailResult {
   budgetMonthly: number;
   currentMonthlySpend: number;
   utilizationPct: number;
+  reservedAmount?: number;
 }
 
 @Injectable()
@@ -133,6 +134,132 @@ export class BudgetService {
         utilizationPct: 100,
       };
     }
+  }
+
+  /**
+   * Atomic Pre-Flight Budget Capacity Reservation (Concurrency-Safe)
+   * Prevents parallel requests from simultaneously breaching the budget cap.
+   */
+  async reserveCapacity(
+    projectId: string,
+    maxEstimatedCost: number,
+  ): Promise<BudgetGuardrailResult> {
+    try {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
+
+      if (!project) {
+        return {
+          canProceed: false,
+          isHardBlocked: true,
+          blockReason: `Project ${projectId} not found. Fail-closed governance policy enforced.`,
+          budgetMonthly: 0,
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      }
+
+      if (project.isBlocked) {
+        return {
+          canProceed: false,
+          isHardBlocked: true,
+          blockReason: project.blockReason || `Project ${project.name} is currently hard-blocked.`,
+          budgetMonthly: Number(project.budgetMonthly),
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      }
+
+      const budgetMonthly = Number(project.budgetMonthly);
+
+      // Execute atomic reservation via Redis Lua script
+      const reservation = await this.redisService.reserveBudget(
+        projectId,
+        maxEstimatedCost,
+        budgetMonthly,
+      );
+
+      // Fail-closed if Redis is disconnected or failed
+      if (!reservation) {
+        this.logger.error(`FAIL-CLOSED: Redis atomic reservation failed for project ${projectId}.`);
+        return {
+          canProceed: false,
+          isHardBlocked: true,
+          blockReason: 'Governance engine unavailable (Redis unreachable). Fail-closed policy enforced.',
+          budgetMonthly,
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      }
+
+      const { success, currentSpend, currentReserved } = reservation;
+      const totalCommitted = currentSpend + currentReserved;
+      const utilizationPct = budgetMonthly > 0 ? (totalCommitted / budgetMonthly) * 100 : 0;
+
+      if (!success && project.budgetHardBlockEnabled) {
+        const reason = `Budget Cap Exceeded: Committed spend ($${totalCommitted.toFixed(2)}) + estimated request cost ($${maxEstimatedCost.toFixed(4)}) exceeds monthly cap of $${budgetMonthly.toFixed(2)}.`;
+
+        await this.prisma.project.update({
+          where: { id: projectId },
+          data: { isBlocked: true, blockReason: reason },
+        });
+
+        await this.recordAlert({
+          projectId,
+          thresholdType: 'HARD_BLOCK',
+          thresholdValue: budgetMonthly,
+          title: `🛑 Hard-Block Activated: ${project.name}`,
+          message: reason,
+        });
+
+        return {
+          canProceed: false,
+          isHardBlocked: true,
+          blockReason: reason,
+          budgetMonthly,
+          currentMonthlySpend: currentSpend,
+          utilizationPct,
+        };
+      }
+
+      return {
+        canProceed: true,
+        isHardBlocked: false,
+        budgetMonthly,
+        currentMonthlySpend: currentSpend,
+        utilizationPct,
+        reservedAmount: maxEstimatedCost,
+      };
+    } catch (err: any) {
+      this.logger.error(`reserveCapacity failed: ${err.message}. Fail-closed active.`);
+      return {
+        canProceed: false,
+        isHardBlocked: true,
+        blockReason: 'Governance engine unavailable. Fail-closed policy enforced.',
+        budgetMonthly: 0,
+        currentMonthlySpend: 0,
+        utilizationPct: 100,
+      };
+    }
+  }
+
+  /**
+   * Reconcile atomic reservation with verified actual provider token usage.
+   */
+  async reconcileReservation(
+    projectId: string,
+    estimatedAmount: number,
+    actualCost: number,
+  ): Promise<{ newSpend: number; newReserved: number } | null> {
+    return this.redisService.reconcileBudget(projectId, estimatedAmount, actualCost);
+  }
+
+  /**
+   * Release reserved capacity when request fails or is canceled.
+   */
+  async releaseReservation(projectId: string, estimatedAmount: number): Promise<void> {
+    return this.redisService.releaseReservation(projectId, estimatedAmount);
   }
 
   /**

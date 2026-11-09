@@ -4,28 +4,28 @@ import React from 'react';
 
 export function CardSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`p-5 bg-white rounded-xl border border-[#E4E4E0] animate-pulse space-y-3 shadow-xs ${className}`}>
+    <div className={`p-6 bg-white rounded-[24px] border border-[#E4E4E0] animate-pulse space-y-3 shadow-2xs ${className}`}>
       <div className="flex items-center justify-between">
-        <div className="w-24 h-3.5 bg-[#F3F3F0] rounded" />
-        <div className="w-6 h-6 bg-[#F3F3F0] rounded" />
+        <div className="w-24 h-3.5 bg-[#F3F3F0] rounded-full" />
+        <div className="w-6 h-6 bg-[#F3F3F0] rounded-full" />
       </div>
-      <div className="w-32 h-6 bg-[#ECECE8] rounded" />
-      <div className="w-40 h-3 bg-[#F3F3F0] rounded" />
+      <div className="w-32 h-7 bg-[#ECECE8] rounded-xl" />
+      <div className="w-40 h-3 bg-[#F3F3F0] rounded-full" />
     </div>
   );
 }
 
 export function ChartSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`p-5 bg-white rounded-xl border border-[#E4E4E0] animate-pulse space-y-4 shadow-xs ${className}`}>
+    <div className={`p-6 bg-white rounded-[24px] border border-[#E4E4E0] animate-pulse space-y-4 shadow-2xs ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="space-y-1.5">
-          <div className="w-28 h-4 bg-[#ECECE8] rounded" />
-          <div className="w-44 h-3 bg-[#F3F3F0] rounded" />
+          <div className="w-28 h-4 bg-[#ECECE8] rounded-full" />
+          <div className="w-44 h-3 bg-[#F3F3F0] rounded-full" />
         </div>
-        <div className="w-16 h-5 bg-[#F3F3F0] rounded" />
+        <div className="w-16 h-5 bg-[#F3F3F0] rounded-full" />
       </div>
-      <div className="w-full h-56 bg-[#F8F8F6] rounded-lg flex items-end justify-between p-4 gap-2">
+      <div className="w-full h-56 bg-[#FAF8F5] rounded-2xl flex items-end justify-between p-4 gap-2">
         {[35, 60, 25, 75, 50, 85, 65].map((h, i) => (
           <div
             key={i}

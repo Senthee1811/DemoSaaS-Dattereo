@@ -1,39 +1,66 @@
-# SpendGuard AI — Product Context & Specifications
+# SpendGuard AI — Product Identity & Architecture (Dattreo Studio)
 
-## 1. Product Identity
+## 1. Product Summary & Identity
+
 - **Product Name**: SpendGuard AI
-- **Category**: AI FinOps & Multi-Provider AI Gateway Infrastructure
-- **Tagline**: Developer-first governance, atomic budget enforcement, and unified gateway routing for engineering teams.
-- **Tone**: Precise, authoritative, operational, technical, restrained.
+- **Category**: AI FinOps / LLM Usage Management / Cost Intelligence / Multi-Model AI Gateway
+- **Brand & Studio**: Dattreo ([www.dattreo.com](https://www.dattreo.com))
+- **Mission**: Provide engineering, FinOps, and leadership teams with complete cost transparency, sub-5ms pre-flight budget guardrails, and cryptographic auditability across multi-provider LLM infrastructure (OpenAI, Anthropic Claude, Google Gemini).
 
 ## 2. Target Personas
+
 1. **AI Infrastructure Engineers & Tech Leads**:
-   - Needs: Drop-in unified OpenAI/Anthropic/Gemini SDK proxy, sub-5ms latency overhead, reliable rate-limiting, and zero developer friction.
-   - Key Workflows: Creating virtual gateway keys (`sg_live_*`), testing upstream provider connections, debugging request latencies in the gateway test bench.
+   - Needs: Drop-in SDK compatibility (OpenAI `/v1/chat/completions`), sub-5ms proxy overhead, reliable fail-closed behavior, zero prompt retention, automated key rotation.
 2. **FinOps & Engineering Managers**:
-   - Needs: Hard monthly and weekly budget limits that cannot be bypassed by parallel agent loops; automated alerts before overspending occurs.
-   - Key Workflows: Assigning dollar caps per project, configuring Slack/Email webhook alerts at 80% and 100% thresholds, reviewing monthly burn.
-3. **Finance & Compliance Leaders (SOC2 / CFO)**:
-   - Needs: Cryptographically sealed immutable audit ledger, exact token attribution per department, and seamless CSV exports.
-   - Key Workflows: Downloading monthly audit logs, verifying tenant data isolation, reviewing Stripe subscription invoices.
+   - Needs: Real-time spend attribution per team/project, hard budget caps preventing runaway overages, statistical anomaly detection (3-sigma spikes), automated Slack/Email alerts.
+3. **CFO, Finance & Compliance Officers**:
+   - Needs: Immutable audit trails with cryptographically verifiable timestamps and cost metrics, SOC2-ready CSV exports, centralized Stripe subscription management.
 
-## 3. Core Operational Workflows
-1. **Self-Serve Onboarding**:
-   - Register organization -> Connect upstream provider API keys (OpenAI, Anthropic, Gemini) with live ping verification -> Set first project budget -> Receive scoped virtual gateway key (`sg_live_*`).
-2. **Gateway Request Lifecycle**:
-   - Client sends OpenAI-compatible request to `https://gateway.spendguard.ai/v1/chat/completions`.
-   - Redis executes atomic Lua pre-flight capacity reservation (worst-case token cost).
-   - If over budget: Immediately fail closed with HTTP 429 `budget_exceeded`.
-   - If healthy: Forward request to upstream provider with 60-second timeout abort.
-   - On completion: Reconcile actual token cost, credit unused reservation back to Redis, and log immutable audit record.
-3. **Statistical Anomaly Detection (FR-9)**:
-   - Dynamic Z-score analysis of token usage and spend compared against project moving averages.
-   - Automatic flagging of abnormal inference spikes (>3.0 Z-score) and instantaneous Slack/Webhook notification.
-4. **Subscription Management**:
-   - Tiered plans: Starter ($39/mo), Growth ($199/mo), Enterprise ($799/mo / custom VPC deployment).
-   - Stripe Checkout and signature-verified webhook lifecycle.
+## 3. Two Coordinated Design Directions
 
-## 4. Architecture & Technical Foundation
-- **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4, Lucide Icons, Recharts.
-- **Backend**: NestJS 10 modular monolith, Prisma ORM, PostgreSQL 16, Redis 7 (ioredis), BullMQ.
-- **Security**: AES-256-GCM envelope encryption for upstream credentials, salted SHA-256/Argon2 hashing for virtual gateway keys, strict tenant isolation on every SQL query (`orgId`).
+SpendGuard AI unifies two complementary, premium design languages under the **Dattreo brand identity**:
+
+### Direction A: Authenticated Application — Steep Editorial Analytics
+- **Visual Personality**: High-end editorial financial intelligence workspace rather than conventional SaaS dashboard chrome.
+- **Typography**: Refined serif display headings (Source Serif 4 / Georgia) combined with minimalist sans-serif interface typography (Inter) and monospace data tokens.
+- **Surfaces**: Pure crisp white (`#FFFFFF`) canvas, soft neutral secondary surfaces (`#F4F4F3`), and restrained warm Dattreo orange tints (`#FFF7F2`).
+- **Geometry**: 24px content card radius (`rounded-[24px]`), 16px small card/input radius (`rounded-2xl`), pill-shaped interactive buttons (`rounded-full`), hairline neutral borders (`#E4E4E0`), and subtle elevation.
+- **Data Visualizations**: Prominent spending summaries, compact budget utilization indicators, multi-model time-series velocity charts, structured provider cost tables, and tabular numerals (`tabular-nums`) across all financial figures.
+
+### Direction B: Public Marketing Website — Anthropic-Inspired Editorial Design
+- **Visual Personality**: Sophisticated editorial technology publication. Thoughtful, authoritative, technical, and restrained.
+- **Typography**: Large editorial serif headlines (Source Serif 4, 48–68px display), clean sans-serif controls (16–20px body), and small technical monospace badges (12px).
+- **Surfaces**: Warm parchment-inspired palette — warm ivory canvas (`#FAF8F5`), oat-toned secondary sections (`#EFECE6`), manilla-accented features (`#F5EFEB`), and an authoritative near-black inversion footer (`#141413`).
+- **Button Geometry**: Pill-shaped and selective bottom-corner radii on filled buttons for an unmistakably art-directed feel.
+- **Compositions**: Asymmetric hero layouts, live interactive gateway sandbox, editorial two-column technical storytelling, transparent pricing tiers (Starter, Growth, Enterprise), and technical architecture explanations.
+
+## 4. Dattreo Brand Palette Integration
+
+- **Primary Brand Orange**: `#FF6B35` (Dattreo Brand Orange)
+- **Primary Hover**: `#E55A25`
+- **Subtle Tint Surface**: `#FFF7F2` / `#FFF5F0`
+- **Hairline Border (Light)**: `#FFD2C0` (Warm Orange) / `#E4E4E0` (Neutral)
+- **Neutral Canvas (Dashboard)**: `#FFFFFF`
+- **Parchment Canvas (Marketing)**: `#FAF8F5`
+- **Deep Inversion (Footer & Code Blocks)**: `#141413`
+- **Text Primary**: `#18191B`
+- **Text Secondary**: `#5F6368`
+- **Chart Model Palette**:
+  - GPT-4o: `#FF6B35` (Dattreo Orange)
+  - Claude 3.5 Sonnet: `#2563EB` (Cobalt Blue)
+  - Gemini 1.5 Pro: `#0D9488` (Teal)
+  - Other / Aggregated: `#7C3AED` (Purple)
+
+## 5. Architectural & Governance Invariants
+
+1. **Sub-5ms Atomic Redis Lua Budget Enforcement**:
+   - Evaluates project budget reservations atomically before dispatching outbound requests to upstream AI providers.
+   - Returns immediate HTTP 429 when budget is exceeded.
+2. **Fail-Closed Disaster Policy**:
+   - If Redis or networking dependencies degrade, the gateway fails closed with HTTP 503 rather than allowing unmetered spend leaks.
+3. **Envelope AES-256-GCM Key Encryption**:
+   - Raw provider keys are encrypted with unique per-organization data keys and master environment keys. Plaintext keys never leave the encryption boundary.
+4. **Zero Prompt Retention**:
+   - Raw prompt payloads and model completions are streamed directly without being written to disk or audit logs. Only telemetry metadata is preserved.
+5. **Multi-Tenant Data Boundary**:
+   - Every database query strictly isolates records by `orgId`.

@@ -59,48 +59,49 @@ const FEATURES = [
 
 export function FeaturesGrid() {
   return (
-    <section id="features" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Section Header */}
-      <div className="text-center max-w-2xl mx-auto mb-12">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF5F0] border border-[#FFD2C0] px-2 py-0.5 rounded">
-          Core Capabilities
+    <section id="features" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+      {/* Section Header — Editorial */}
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          Platform Architecture
         </span>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B] mt-2">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
           Infrastructure Built for FinOps Rigor
         </h2>
-        <p className="mt-2 text-xs sm:text-sm text-[#5F6368]">
+        <p className="mt-2 text-sm text-[#555550] font-sans">
           Multi-provider flexibility with mathematical budget guarantees and complete cryptographic accountability.
         </p>
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {FEATURES.map((feat, idx) => {
           const Icon = feat.icon;
           return (
             <div
               key={idx}
-              className="bg-white rounded-xl p-5 border border-[#E4E4E0] shadow-xs flex flex-col justify-between transition-colors hover:border-[#D2D2CC]"
+              className="bg-white rounded-2xl p-6 border border-[#E5E0D8] shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
             >
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-md bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] flex items-center justify-center">
-                    <Icon className="w-4 h-4" strokeWidth={1.8} />
+                  <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] text-[#141413] border border-[#E5E0D8] flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                   </div>
-                  <span className="text-[10px] font-semibold text-[#5F6368] bg-[#FBFBFA] px-2 py-0.5 rounded border border-[#E4E4E0]">
+                  <span className="text-[10px] font-mono text-[#666660] bg-[#FAF8F5] px-2.5 py-0.5 rounded-full border border-[#E5E0D8]">
                     {feat.badge}
                   </span>
                 </div>
 
-                <h3 className="text-sm font-semibold text-[#18191B]">{feat.title}</h3>
+                <h3 className="font-serif text-base font-normal text-[#141413]">{feat.title}</h3>
 
-                <p className="text-xs text-[#5F6368] leading-relaxed">
+                <p className="text-xs text-[#555550] leading-relaxed font-sans">
                   {feat.description}
                 </p>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-[#ECECE8] text-[11px] font-medium text-[#0D9488]">
-                ✓ {feat.highlight}
+              <div className="mt-4 pt-3.5 border-t border-[#F0ECE6] text-[11px] font-mono text-[#0D9488] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0D9488]" />
+                <span>{feat.highlight}</span>
               </div>
             </div>
           );

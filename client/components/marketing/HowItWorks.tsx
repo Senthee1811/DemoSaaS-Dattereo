@@ -30,49 +30,49 @@ const STEPS = [
 export function HowItWorks() {
   return (
     <section id="how-it-works" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      <div className="bg-white rounded-xl border border-[#E4E4E0] p-6 sm:p-10 shadow-xs">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF5F0] border border-[#FFD2C0] px-2 py-0.5 rounded">
+      <div className="bg-white rounded-2xl border border-[#E5E0D8] p-8 sm:p-12 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        {/* Header — Editorial */}
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
             Integration Workflow
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B] mt-2">
+          <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
             3-Step Developer Integration
           </h2>
-          <p className="mt-2 text-xs sm:text-sm text-[#5F6368]">
-            Zero infrastructure rewrites. Swap your API endpoint and gain immediate enterprise FinOps controls.
+          <p className="mt-2 text-sm text-[#555550] font-sans">
+            Zero infrastructure rewrites. Swap your API base URL and gain immediate enterprise FinOps controls.
           </p>
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {STEPS.map((s, idx) => {
             const Icon = s.icon;
             return (
               <div
                 key={idx}
-                className="bg-[#FBFBFA] rounded-lg p-5 border border-[#E4E4E0] flex flex-col justify-between"
+                className="bg-[#FAF8F5] rounded-xl p-6 border border-[#E5E0D8] flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-xl font-bold text-[#FF6B35] font-mono">
+                    <span className="text-2xl font-serif font-normal text-[#FF6B35]">
                       {s.step}
                     </span>
-                    <div className="w-8 h-8 rounded-md bg-white border border-[#E4E4E0] text-[#18191B] flex items-center justify-center">
-                      <Icon className="w-4 h-4" strokeWidth={1.8} />
+                    <div className="w-9 h-9 rounded-lg bg-white border border-[#E5E0D8] text-[#141413] flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-semibold text-[#18191B] mb-1.5">
+                  <h3 className="font-serif text-base font-normal text-[#141413] mb-2">
                     {s.title}
                   </h3>
 
-                  <p className="text-xs text-[#5F6368] leading-relaxed mb-4">
+                  <p className="text-xs text-[#555550] leading-relaxed mb-4 font-sans">
                     {s.description}
                   </p>
                 </div>
 
-                <div className="p-2.5 bg-[#18191B] rounded border border-white/5 text-[11px] font-mono text-[#D2D2CC] overflow-x-auto">
+                <div className="p-3 bg-[#141413] rounded-lg border border-[#2A2A28] text-[11px] font-mono text-[#D6D6D0] overflow-x-auto">
                   <code>{s.snippet}</code>
                 </div>
               </div>

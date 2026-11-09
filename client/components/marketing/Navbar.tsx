@@ -8,50 +8,51 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="w-full pt-4 pb-2 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      <nav className="flex items-center justify-between py-2.5 px-5 bg-white rounded-xl border border-[#E4E4E0] shadow-xs">
-        {/* Left: Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-[#FF6B35] flex items-center justify-center text-white shadow-2xs">
+    <header className="sticky top-0 z-50 w-full pt-4 pb-2 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      <nav className="flex items-center justify-between py-2.5 px-6 bg-[#FFFFFF]/90 backdrop-blur-md rounded-full border border-[#E5E0D8] shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        {/* Left: Brand Identity */}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center text-white">
             <ShieldCheck className="w-4 h-4 text-white" strokeWidth={2.2} />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-baseline gap-1.5">
             <span className="font-bold text-sm tracking-tight text-[#18191B]">SpendGuard</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-1 py-0.2 rounded bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]">
-              AI
-            </span>
+            <span className="text-[10px] font-mono text-[#80868B] tracking-normal">by Dattreo</span>
           </div>
         </Link>
 
         {/* Center: Navigation Links */}
-        <div className="hidden md:flex items-center gap-6 text-xs font-semibold text-[#5F6368]">
+        <div className="hidden md:flex items-center gap-7 text-xs font-medium text-[#555550]">
+          <a href="#demo" className="hover:text-[#18191B] transition-colors">
+            Interactive Gateway
+          </a>
           <a href="#how-it-works" className="hover:text-[#18191B] transition-colors">
             Integration
           </a>
-          <a href="#demo" className="hover:text-[#18191B] transition-colors">
-            Test Bench
-          </a>
           <a href="#features" className="hover:text-[#18191B] transition-colors">
-            Capabilities
+            FinOps Engine
           </a>
           <a href="#pricing" className="hover:text-[#18191B] transition-colors">
             Pricing
           </a>
+          <a href="#faq" className="hover:text-[#18191B] transition-colors">
+            Architecture
+          </a>
         </div>
 
-        {/* Right: Login & CTA */}
-        <div className="hidden sm:flex items-center gap-2.5">
+        {/* Right: Login & Pill CTA */}
+        <div className="hidden sm:flex items-center gap-3">
           <Link
             href="/login"
-            className="text-xs font-semibold text-[#5F6368] hover:text-[#18191B] px-3 py-1.5 transition-colors"
+            className="text-xs font-medium text-[#555550] hover:text-[#18191B] px-3 py-1.5 transition-colors"
           >
-            Log in
+            Sign In
           </Link>
           <Link
             href="/register"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-3.5 py-1.5 rounded-md bg-[#FF6B35] hover:bg-[#E85520] shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-4 py-2 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] transition-colors shadow-2xs"
           >
-            <span>Start Free</span>
+            <span>Start Free Trial</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -61,7 +62,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1.5 text-[#5F6368] hover:text-[#18191B]"
+            className="p-1.5 text-[#555550] hover:text-[#18191B]"
             aria-label="Toggle Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -71,47 +72,54 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-md flex flex-col gap-3 text-xs">
+        <div className="md:hidden mt-2 p-5 bg-white rounded-2xl border border-[#E5E0D8] shadow-lg flex flex-col gap-3.5 text-xs">
+          <a
+            href="#demo"
+            onClick={() => setMobileMenuOpen(false)}
+            className="font-medium text-[#555550] hover:text-[#18191B] py-1"
+          >
+            Interactive Gateway
+          </a>
           <a
             href="#how-it-works"
             onClick={() => setMobileMenuOpen(false)}
-            className="font-medium text-[#5F6368] hover:text-[#18191B] py-1"
+            className="font-medium text-[#555550] hover:text-[#18191B] py-1"
           >
             Integration
           </a>
           <a
-            href="#demo"
-            onClick={() => setMobileMenuOpen(false)}
-            className="font-medium text-[#5F6368] hover:text-[#18191B] py-1"
-          >
-            Test Bench
-          </a>
-          <a
             href="#features"
             onClick={() => setMobileMenuOpen(false)}
-            className="font-medium text-[#5F6368] hover:text-[#18191B] py-1"
+            className="font-medium text-[#555550] hover:text-[#18191B] py-1"
           >
-            Capabilities
+            FinOps Engine
           </a>
           <a
             href="#pricing"
             onClick={() => setMobileMenuOpen(false)}
-            className="font-medium text-[#5F6368] hover:text-[#18191B] py-1"
+            className="font-medium text-[#555550] hover:text-[#18191B] py-1"
           >
             Pricing
           </a>
-          <div className="pt-2 border-t border-[#E4E4E0] flex flex-col gap-2">
+          <a
+            href="#faq"
+            onClick={() => setMobileMenuOpen(false)}
+            className="font-medium text-[#555550] hover:text-[#18191B] py-1"
+          >
+            Architecture
+          </a>
+          <div className="pt-3 border-t border-[#E5E0D8] flex flex-col gap-2">
             <Link
               href="/login"
-              className="w-full text-center py-2 rounded-md bg-[#F3F3F0] font-semibold text-[#18191B]"
+              className="text-center py-2 text-xs font-medium text-[#555550] hover:text-[#18191B]"
             >
-              Log in
+              Sign In
             </Link>
             <Link
               href="/register"
-              className="w-full text-center py-2 rounded-md bg-[#FF6B35] font-semibold text-white shadow-xs"
+              className="text-center py-2.5 rounded-full bg-[#FF6B35] text-white text-xs font-semibold"
             >
-              Start Free
+              Start Free Trial
             </Link>
           </div>
         </div>

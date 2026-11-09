@@ -52,17 +52,17 @@ const CASE_STUDIES: CaseStudy[] = [
 
 export function TestimonialsSection() {
   return (
-    <section className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E4E4E0]">
-      {/* Section Header */}
-      <div className="max-w-2xl mb-12">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F3F3F0] border border-[#E4E4E0] text-[11px] font-mono text-[#5F6368] mb-3">
-          <span>finops_case_studies.json</span>
+    <section className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+      {/* Section Header — Editorial */}
+      <div className="max-w-2xl mb-14">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[11px] font-mono text-[#FF6B35] mb-3">
+          <span>finops_engineering_reports.json</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B]">
-          Engineered for production reliability & cost containment
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
+          Engineered for production reliability &amp; cost containment
         </h2>
-        <p className="mt-2 text-sm text-[#5F6368] leading-relaxed">
-          How infrastructure teams eliminate surprise LLM billing spikes and automate governance across OpenAI, Anthropic, and Google Gemini.
+        <p className="mt-2 text-sm text-[#555550] leading-relaxed font-sans">
+          How engineering teams eliminate surprise LLM overages and automate governance across OpenAI, Anthropic, and Google Gemini.
         </p>
       </div>
 
@@ -71,44 +71,44 @@ export function TestimonialsSection() {
         {CASE_STUDIES.map((study, idx) => (
           <div
             key={idx}
-            className="bg-white rounded-xl p-6 border border-[#E4E4E0] flex flex-col justify-between hover:border-[#CCCCCC] transition-colors"
+            className="bg-white rounded-2xl p-7 border border-[#E5E0D8] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between hover:border-[#CDC7BC] transition-colors"
           >
             <div>
               {/* Quantified Impact Metric */}
-              <div className="pb-4 mb-4 border-b border-[#F0ECE7] flex items-center justify-between">
+              <div className="pb-4 mb-4 border-b border-[#F0ECE6] flex items-center justify-between">
                 <div>
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#737373]">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#888882]">
                     {study.metricLabel}
                   </span>
-                  <div className="text-xl font-bold font-mono text-[#FF6B35] tabular-nums mt-0.5">
+                  <div className="text-2xl font-serif font-normal text-[#FF6B35] tabular-nums mt-0.5">
                     {study.metricValue}
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-[#F7F7F6] border border-[#E4E4E0] flex items-center justify-center text-[#5F6368]">
+                <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-center text-[#555550]">
                   <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
                 </div>
               </div>
 
               {/* Quotation */}
-              <p className="text-xs text-[#2A2B2E] leading-relaxed mb-6 font-normal">
+              <p className="font-serif text-sm text-[#2A2B28] leading-relaxed mb-6 font-normal italic">
                 "{study.quote}"
               </p>
             </div>
 
             {/* Author & Stack */}
-            <div className="pt-4 border-t border-[#F0ECE7] space-y-3">
+            <div className="pt-4 border-t border-[#F0ECE6] space-y-3 font-sans">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-md bg-[#18191B] text-white flex items-center justify-center font-mono font-bold text-xs">
+                <div className="w-9 h-9 rounded-full bg-[#141413] text-white flex items-center justify-center font-mono font-bold text-xs">
                   {study.initials}
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-xs font-semibold text-[#18191B]">{study.author}</span>
-                  <span className="text-[11px] text-[#5F6368]">{study.role} · {study.company}</span>
+                  <span className="text-xs font-semibold text-[#141413]">{study.author}</span>
+                  <span className="text-[11px] text-[#555550]">{study.role} · {study.company}</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#737373] bg-[#F7F7F6] px-2.5 py-1 rounded border border-[#E4E4E0]">
-                <Cpu className="w-3 h-3 text-[#5F6368]" />
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#777770] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#E5E0D8]">
+                <Cpu className="w-3 h-3 text-[#FF6B35]" />
                 <span>Stack: {study.stack}</span>
               </div>
             </div>

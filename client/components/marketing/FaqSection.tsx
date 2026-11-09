@@ -50,50 +50,50 @@ export function FaqSection() {
   };
 
   return (
-    <section id="faq" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[960px] mx-auto border-t border-[#E4E4E0]">
-      {/* Section Header */}
-      <div className="max-w-2xl mb-12">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F3F3F0] border border-[#E4E4E0] text-[11px] font-mono text-[#5F6368] mb-3">
-          <HelpCircle className="w-3.5 h-3.5 text-[#FF6B35]" />
-          <span>system_faq.md</span>
+    <section id="faq" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[960px] mx-auto border-t border-[#E5E0D8]">
+      {/* Section Header — Editorial */}
+      <div className="max-w-2xl mb-14">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[11px] font-mono text-[#FF6B35] mb-3">
+          <HelpCircle className="w-3.5 h-3.5" />
+          <span>architecture_faq.md</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B]">
-          Technical architecture & operational questions
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
+          Technical architecture &amp; operational questions
         </h2>
-        <p className="mt-2 text-sm text-[#5F6368] leading-relaxed">
+        <p className="mt-2 text-sm text-[#555550] leading-relaxed font-sans">
           Detailed explanations of proxy latency, budget reservation mechanics, and security guarantees.
         </p>
       </div>
 
       {/* Accordion List */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {FAQS.map((faq, idx) => {
           const isOpen = openIdx === idx;
           return (
             <div
               key={idx}
-              className={`rounded-lg border transition-colors ${
+              className={`rounded-2xl border transition-all ${
                 isOpen
-                  ? 'bg-white border-[#18191B]'
-                  : 'bg-white border-[#E4E4E0] hover:border-[#CCCCCC]'
+                  ? 'bg-white border-[#141413] shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
+                  : 'bg-white border-[#E5E0D8] hover:border-[#CDC7BC]'
               }`}
             >
               <button
                 type="button"
                 onClick={() => toggleFaq(idx)}
-                className="w-full p-4 sm:p-5 text-left flex items-start justify-between gap-4 focus:outline-none"
+                className="w-full p-5 text-left flex items-start justify-between gap-4 focus:outline-none"
               >
                 <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-medium text-[#737373] tracking-wider">
+                  <span className="text-[10px] font-mono font-medium text-[#888882] tracking-wider">
                     {faq.tag}
                   </span>
-                  <h3 className="text-sm sm:text-base font-semibold text-[#18191B]">
+                  <h3 className="font-serif text-base font-normal text-[#141413]">
                     {faq.q}
                   </h3>
                 </div>
                 <div
-                  className={`w-7 h-7 rounded border border-[#E4E4E0] flex items-center justify-center shrink-0 transition-transform duration-200 mt-1 ${
-                    isOpen ? 'bg-[#18191B] text-white rotate-180 border-[#18191B]' : 'bg-[#F7F7F6] text-[#5F6368]'
+                  className={`w-7 h-7 rounded-full border border-[#E5E0D8] flex items-center justify-center shrink-0 transition-transform duration-200 mt-1 ${
+                    isOpen ? 'bg-[#141413] text-white rotate-180 border-[#141413]' : 'bg-[#FAF8F5] text-[#555550]'
                   }`}
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -101,7 +101,7 @@ export function FaqSection() {
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-5 sm:px-5 sm:pb-5 text-xs sm:text-sm text-[#44464A] leading-relaxed border-t border-[#F0ECE7] pt-3">
+                <div className="px-5 pb-5 text-xs sm:text-sm text-[#555550] leading-relaxed border-t border-[#F0ECE6] pt-3 font-sans">
                   {faq.a}
                 </div>
               )}

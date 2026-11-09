@@ -98,29 +98,29 @@ export function PricingSection() {
   };
 
   return (
-    <section id="pricing" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Header */}
-      <div className="text-center max-w-2xl mx-auto mb-10">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF5F0] border border-[#FFD2C0] px-2 py-0.5 rounded">
-          Transparent Pricing
+    <section id="pricing" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+      {/* Header — Editorial */}
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          Transparent Pricing &amp; Quotas
         </span>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B] mt-2">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
           Predictable Governance Tiers
         </h2>
-        <p className="mt-2 text-xs sm:text-sm text-[#5F6368]">
-          Transparent plans with zero surprise billings. 14-day free trial on all self-serve tiers.
+        <p className="mt-2 text-sm text-[#555550] font-sans">
+          Deterministic billing with zero surprise invoice spikes. 14-day free trial on all self-serve tiers.
         </p>
 
         {/* Toggle */}
         <div className="flex items-center justify-center gap-3 mt-6">
-          <span className={`text-xs font-semibold ${!isAnnual ? 'text-[#18191B]' : 'text-[#5F6368]'}`}>
+          <span className={`text-xs font-medium ${!isAnnual ? 'text-[#141413]' : 'text-[#888882]'}`}>
             Monthly
           </span>
           <button
             type="button"
             onClick={() => setIsAnnual(!isAnnual)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              isAnnual ? 'bg-[#FF6B35]' : 'bg-[#E4E4E0]'
+              isAnnual ? 'bg-[#FF6B35]' : 'bg-[#E5E0D8]'
             }`}
           >
             <span
@@ -130,10 +130,10 @@ export function PricingSection() {
             />
           </button>
           <div className="flex items-center gap-1.5">
-            <span className={`text-xs font-semibold ${isAnnual ? 'text-[#18191B]' : 'text-[#5F6368]'}`}>
+            <span className={`text-xs font-medium ${isAnnual ? 'text-[#141413]' : 'text-[#888882]'}`}>
               Annual
             </span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
               Save 20%
             </span>
           </div>
@@ -141,55 +141,55 @@ export function PricingSection() {
       </div>
 
       {/* Plan Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {PLANS.map((plan) => {
           const price = isAnnual ? plan.annualPrice : plan.monthlyPrice;
           return (
             <div
               key={plan.id}
-              className={`flex flex-col justify-between p-6 rounded-xl bg-white transition-all ${
+              className={`flex flex-col justify-between p-7 rounded-2xl bg-white transition-all ${
                 plan.popular
-                  ? 'border-2 border-[#FF6B35] shadow-xs'
-                  : 'border border-[#E4E4E0] shadow-xs'
+                  ? 'border-2 border-[#FF6B35] shadow-[0_4px_20px_rgba(255,107,53,0.08)] relative'
+                  : 'border border-[#E5E0D8] shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
               }`}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-[#18191B]">{plan.name}</h3>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                  <h3 className="font-serif text-lg font-normal text-[#141413]">{plan.name}</h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono ${
                     plan.popular
-                      ? 'bg-[#18191B] text-white'
-                      : 'bg-[#F3F3F0] text-[#5F6368]'
+                      ? 'bg-[#FF6B35] text-white font-semibold'
+                      : 'bg-[#FAF8F5] text-[#666660] border border-[#E5E0D8]'
                   }`}>
                     {plan.badge}
                   </span>
                 </div>
 
-                <p className="text-xs text-[#5F6368] leading-relaxed min-h-[32px]">
+                <p className="text-xs text-[#555550] leading-relaxed min-h-[32px] font-sans">
                   {plan.description}
                 </p>
 
                 <div className="pt-2 flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-[#18191B] font-mono tabular-nums">
+                  <span className="font-serif text-4xl font-normal text-[#141413] tabular-nums">
                     ${price}
                   </span>
-                  <span className="text-xs text-[#80868B]">/ month</span>
+                  <span className="text-xs text-[#888882] font-mono">/ mo</span>
                   {isAnnual && (
-                    <span className="text-[10px] text-[#80868B] ml-1">billed annually</span>
+                    <span className="text-[10px] text-[#888882] ml-1 font-mono">billed annually</span>
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-[#E4E4E0] space-y-2">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[#80868B]">
-                    Capabilities
+                <div className="pt-5 border-t border-[#F0ECE6] space-y-2.5">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#888882]">
+                    Capabilities Included
                   </div>
                   {plan.features.map((feat, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-[#18191B]">
+                    <div key={i} className="flex items-start gap-2 text-xs text-[#141413]">
                       <Check className="w-3.5 h-3.5 text-[#0D9488] shrink-0 mt-0.5" strokeWidth={2.5} />
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 font-sans">
                         <span>{feat.text}</span>
                         {feat.badge && (
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] text-[#555550] border border-[#E5E0D8] font-mono">
                             {feat.badge}
                           </span>
                         )}
@@ -199,12 +199,12 @@ export function PricingSection() {
                 </div>
               </div>
 
-              <div className="pt-6 mt-6 border-t border-[#E4E4E0]">
+              <div className="pt-6 mt-6 border-t border-[#F0ECE6]">
                 {plan.isEnterpriseModal ? (
                   <button
                     type="button"
                     onClick={() => setShowSalesModal(true)}
-                    className="w-full py-2.5 px-4 rounded-md text-center font-semibold text-xs bg-[#18191B] hover:bg-[#333333] text-white transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full py-3 px-5 rounded-full text-center font-semibold text-xs bg-[#141413] hover:bg-[#2A2A28] text-white transition-colors flex items-center justify-center gap-1.5"
                   >
                     <span>{plan.ctaText}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -212,10 +212,10 @@ export function PricingSection() {
                 ) : (
                   <Link
                     href="/register"
-                    className={`w-full py-2.5 px-4 rounded-md text-center font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 ${
+                    className={`w-full py-3 px-5 rounded-full text-center font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 ${
                       plan.popular
-                        ? 'bg-[#FF6B35] hover:bg-[#E85520] text-white'
-                        : 'bg-[#18191B] hover:bg-[#333333] text-white'
+                        ? 'bg-[#FF6B35] hover:bg-[#E55A25] text-white shadow-2xs'
+                        : 'bg-[#FAF8F5] hover:bg-[#EFECE6] text-[#141413] border border-[#E5E0D8]'
                     }`}
                   >
                     <span>{plan.ctaText}</span>
@@ -231,84 +231,84 @@ export function PricingSection() {
       {/* Enterprise Qualification Modal */}
       {showSalesModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 border border-[#E4E4E0] shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E4E4E0]">
+          <div className="bg-[#FAF8F5] rounded-[24px] max-w-lg w-full p-6 border border-[#E5E0D8] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E0D8]">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
-                <h3 className="text-sm font-bold text-[#18191B]">Enterprise Architecture Review</h3>
+                <h3 className="font-serif text-lg font-normal text-[#141413]">Enterprise Architecture Review</h3>
               </div>
               <button
                 type="button"
                 onClick={() => { setShowSalesModal(false); setIsSubmitted(false); }}
-                className="p-1 text-[#80868B] hover:text-[#18191B] rounded"
+                className="p-1.5 text-[#888882] hover:text-[#141413] rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {isSubmitted ? (
-              <div className="p-5 text-center space-y-2.5 bg-[#F0FDF4] rounded-lg border border-[#BBF7D0]">
-                <CheckCircle2 className="w-6 h-6 text-[#0D9488] mx-auto" />
-                <h4 className="text-xs font-bold text-[#0D9488]">Inquiry Received</h4>
+              <div className="p-6 text-center space-y-3 bg-[#F0FDF4] rounded-2xl border border-[#BBF7D0]">
+                <CheckCircle2 className="w-7 h-7 text-[#0D9488] mx-auto" />
+                <h4 className="font-serif text-base font-normal text-[#0D9488]">Inquiry Received</h4>
                 <p className="text-xs text-[#134E4A] leading-relaxed">
                   A FinOps Solutions Architect will reach out within 2 hours to schedule your custom VPC proxy sizing.
                 </p>
                 <button
                   type="button"
                   onClick={() => { setShowSalesModal(false); setIsSubmitted(false); }}
-                  className="px-3 py-1.5 bg-[#0D9488] text-white font-semibold text-xs rounded shadow-xs"
+                  className="px-5 py-2 bg-[#0D9488] text-white font-semibold text-xs rounded-full shadow-2xs"
                 >
                   Close
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSalesSubmit} className="space-y-3 text-xs">
+              <form onSubmit={handleSalesSubmit} className="space-y-4 text-xs">
                 <p className="text-[#5F6368] leading-relaxed">
                   Enterprise plans include custom VPC proxy deployments, SAML 2.0 SSO/SCIM directory sync, tailored SLA guarantees, and dedicated solutions architecture.
                 </p>
 
                 <div>
-                  <label className="font-semibold text-[#18191B] block mb-1">Your Name *</label>
+                  <label className="font-semibold text-[#141413] block mb-1.5">Your Name *</label>
                   <input
                     type="text"
                     required
                     value={salesName}
                     onChange={(e) => setSalesName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="e.g. Alex Rivera"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#18191B] block mb-1">Work Email *</label>
+                  <label className="font-semibold text-[#141413] block mb-1.5">Work Email *</label>
                   <input
                     type="email"
                     required
                     value={salesEmail}
                     onChange={(e) => setSalesEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="alex@company.com"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#18191B] block mb-1">Company & Domain *</label>
+                  <label className="font-semibold text-[#141413] block mb-1.5">Company & Domain *</label>
                   <input
                     type="text"
                     required
                     value={salesCompany}
                     onChange={(e) => setSalesCompany(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="e.g. Acme Corp"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#18191B] block mb-1">Monthly AI Spend Estimate</label>
+                  <label className="font-semibold text-[#141413] block mb-1.5">Monthly AI Spend Estimate</label>
                   <select
                     value={salesSpend}
                     onChange={(e) => setSalesSpend(e.target.value)}
-                    className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] bg-white focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
                   >
                     <option>$10,000 – $50,000 / month</option>
                     <option>$50,000 – $250,000 / month</option>
@@ -316,17 +316,17 @@ export function PricingSection() {
                   </select>
                 </div>
 
-                <div className="pt-2 border-t border-[#E4E4E0] flex justify-end gap-2">
+                <div className="pt-3 border-t border-[#E5E0D8] flex justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setShowSalesModal(false)}
-                    className="px-3 py-1.5 rounded-md font-semibold text-[#5F6368] hover:bg-[#F3F3F0]"
+                    className="px-4 py-2 rounded-full font-semibold text-[#5F6368] hover:bg-[#EFECE6] transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-3.5 py-1.5 rounded-md font-semibold text-white bg-[#FF6B35] hover:bg-[#E85520] shadow-xs transition-colors"
+                    className="px-5 py-2 rounded-full font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] shadow-2xs transition-colors"
                   >
                     Submit Request
                   </button>

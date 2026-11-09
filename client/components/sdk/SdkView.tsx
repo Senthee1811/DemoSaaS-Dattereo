@@ -109,32 +109,32 @@ console.log(response.content);`
   };
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-[#18191B] tracking-tight">
+        <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
           SDK & Gateway Integration
         </h2>
-        <p className="text-xs text-[#5F6368]">
+        <p className="text-xs text-[#5F6368] mt-1">
           SpendGuard AI exposes a 100% OpenAI-compatible endpoint. Swap your `baseURL` and enforce budget guardrails with zero code rewrites.
         </p>
       </div>
 
       {/* Integration Workspace */}
-      <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 bg-[#FBFBFA]">
+        <div className="p-4 border-b border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 bg-[#FAF8F5]">
           {/* Language Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 p-0.5 rounded-full bg-[#EFECE6] border border-[#E5E0D8]">
             {(['node', 'python', 'curl', 'langchain'] as const).map((lang) => (
               <button
                 key={lang}
                 type="button"
                 onClick={() => setActiveLang(lang)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                   activeLang === lang
-                    ? 'bg-[#18191B] text-white'
-                    : 'text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0]'
+                    ? 'bg-white text-[#141413] shadow-xs'
+                    : 'text-[#5F6368] hover:text-[#141413]'
                 }`}
               >
                 {lang === 'node' ? 'Node.js' : lang === 'python' ? 'Python' : lang === 'curl' ? 'cURL' : 'LangChain'}
@@ -143,12 +143,12 @@ console.log(response.content);`
           </div>
 
           {/* Project Scoping & Copy */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-xs text-[#5F6368]">Bind Project:</span>
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-white border border-[#E4E4E0] rounded px-2.5 py-1 text-xs text-[#18191B] font-medium"
+              className="bg-white border border-[#E4E4E0] rounded-full px-3 py-1 text-xs text-[#141413] font-medium cursor-pointer"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -160,7 +160,7 @@ console.log(response.content);`
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] rounded text-xs font-semibold shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] rounded-full text-xs font-semibold shadow-xs transition-colors"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5 text-[#5F6368]" />}
               <span>{copied ? 'Copied' : 'Copy Snippet'}</span>
@@ -169,15 +169,15 @@ console.log(response.content);`
         </div>
 
         {/* Code Box */}
-        <pre className="p-4 bg-[#18191B] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed">
+        <pre className="p-5 bg-[#141413] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed border-t border-white/10">
           <code>{currentSnippet}</code>
         </pre>
       </div>
 
       {/* Integration Architectural Guardrails */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
             <Cpu className="w-4 h-4 text-[#FF6B35]" />
             <span>Zero SDK Vendor Lock-in</span>
           </div>
@@ -186,8 +186,8 @@ console.log(response.content);`
           </p>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
             <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
             <span>Sub-5ms Atomic Check</span>
           </div>
@@ -196,8 +196,8 @@ console.log(response.content);`
           </p>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs space-y-1">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#18191B]">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
             <Code2 className="w-4 h-4 text-[#5F6368]" />
             <span>Multi-Provider Fallbacks</span>
           </div>

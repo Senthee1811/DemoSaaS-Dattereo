@@ -92,28 +92,28 @@ export function InteractiveGatewayDemo() {
 
   return (
     <section id="demo" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Section Header */}
-      <div className="text-center max-w-2xl mx-auto mb-10">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF5F0] border border-[#FFD2C0] px-2 py-0.5 rounded">
-          Gateway Test Bench
+      {/* Section Header — Editorial */}
+      <div className="text-center max-w-2xl mx-auto mb-12">
+        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          Interactive Gateway Test Bench
         </span>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#18191B] mt-2">
-          Test Gateway Routing & Pre-Flight Budgets
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+          Test Gateway Routing &amp; Pre-Flight Budgets
         </h2>
-        <p className="mt-2 text-xs sm:text-sm text-[#5F6368]">
-          Interactive demonstration of atomic pre-flight capacity checks and token cost attribution in real time.
+        <p className="mt-2 text-sm text-[#555550] font-sans">
+          Simulate multi-model execution, sub-5ms Redis capacity reservations, and fail-closed over-budget blocking in real time.
         </p>
       </div>
 
       {/* Sandbox Workspace Card */}
-      <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12">
           {/* Controls Panel (5 cols) */}
-          <div className="lg:col-span-5 p-5 bg-[#FBFBFA] border-b lg:border-b-0 lg:border-r border-[#E4E4E0] flex flex-col justify-between space-y-4">
+          <div className="lg:col-span-5 p-6 bg-[#FAF8F5] border-b lg:border-b-0 lg:border-r border-[#E5E0D8] flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-[#5F6368] block mb-1.5">
-                  1. Foundation Model
+                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                  1. Upstream Foundation Model
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {MODELS.map((model) => (
@@ -121,14 +121,14 @@ export function InteractiveGatewayDemo() {
                       key={model.id}
                       type="button"
                       onClick={() => setSelectedModel(model)}
-                      className={`p-2.5 rounded-lg text-left border text-xs transition-colors ${
+                      className={`p-2.5 rounded-xl text-left border text-xs transition-colors ${
                         selectedModel.id === model.id
-                          ? 'bg-white border-[#FF6B35] shadow-2xs font-semibold'
-                          : 'bg-white border-[#E4E4E0] hover:bg-[#F3F3F0]'
+                          ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-[#141413]'
+                          : 'bg-white border-[#E5E0D8] text-[#555550] hover:bg-[#F3EFE9]'
                       }`}
                     >
-                      <div className="text-[#18191B] truncate">{model.name}</div>
-                      <div className="text-[10px] font-mono text-[#5F6368] mt-0.5">
+                      <div className="truncate font-sans">{model.name}</div>
+                      <div className="text-[10px] font-mono text-[#888882] mt-0.5">
                         ${model.inCost} / ${model.outCost} (1M)
                       </div>
                     </button>
@@ -137,10 +137,10 @@ export function InteractiveGatewayDemo() {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-[#5F6368] block mb-1.5">
-                  2. Project Allocation
+                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                  2. Project Allocation &amp; Guardrail
                 </label>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {PROJECTS.map((proj) => {
                     const percent = Math.min(100, Math.round((proj.currentSpend / proj.budget) * 100));
                     return (
@@ -148,19 +148,19 @@ export function InteractiveGatewayDemo() {
                         key={proj.id}
                         type="button"
                         onClick={() => setSelectedProject(proj)}
-                        className={`w-full p-2.5 rounded-lg text-left border transition-colors ${
+                        className={`w-full p-2.5 rounded-xl text-left border transition-colors ${
                           selectedProject.id === proj.id
-                            ? 'bg-white border-[#FF6B35] shadow-2xs'
-                            : 'bg-white border-[#E4E4E0] hover:bg-[#F3F3F0]'
+                            ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35]'
+                            : 'bg-white border-[#E5E0D8] hover:bg-[#F3EFE9]'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-[#18191B]">{proj.name}</span>
+                          <span className="font-semibold text-[#141413]">{proj.name}</span>
                           <span className={`text-[11px] font-mono tabular-nums ${percent >= 100 ? 'text-[#DC2626]' : percent >= 80 ? 'text-[#D97706]' : 'text-[#0D9488]'}`}>
                             ${proj.currentSpend} / ${proj.budget} ({percent}%)
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full mt-1.5 overflow-hidden">
+                        <div className="w-full h-1.5 bg-[#EFECE6] rounded-full mt-2 overflow-hidden">
                           <div
                             style={{ width: `${percent}%` }}
                             className={`h-full ${
@@ -175,9 +175,9 @@ export function InteractiveGatewayDemo() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-[#5F6368]">Simulated Tokens</span>
-                  <span className="font-mono tabular-nums text-[#18191B]">{tokenLength.toLocaleString()}</span>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-mono text-[11px] text-[#555550]">Simulated Prompt + Completion Tokens</span>
+                  <span className="font-mono tabular-nums font-bold text-[#141413]">{tokenLength.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -195,7 +195,7 @@ export function InteractiveGatewayDemo() {
               type="button"
               onClick={handleExecute}
               disabled={isExecuting}
-              className="w-full py-2.5 px-4 rounded-lg bg-[#FF6B35] hover:bg-[#E85520] text-white font-semibold text-xs shadow-xs transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center justify-center gap-2"
             >
               {isExecuting ? (
                 <>
@@ -212,7 +212,7 @@ export function InteractiveGatewayDemo() {
           </div>
 
           {/* Real-time Response & Audit Stream (7 cols) */}
-          <div className="lg:col-span-7 p-5 bg-[#18191B] text-[#ECECE8] flex flex-col justify-between">
+          <div className="lg:col-span-7 p-6 bg-[#141413] text-[#ECECE8] flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
                 <div className="flex items-center gap-2">

@@ -1,24 +1,45 @@
 @import "tailwindcss";
 
 /*
- * SpendGuard AI — Developer FinOps Precision Design System
+ * SpendGuard AI — Dual Editorial Design System (Dattreo Studio)
  * 
- * Palette: Pure White / Neutral Canvas, Restrained Separation, High-Contrast Typography,
- * Intentional Brand Orange (#FF6B35) for functional actions only.
+ * 1. Steep Editorial Analytics (Dashboard): Refined serif display titles, minimalist sans-serif
+ *    interface elements, 24px card radii, 16px input radii, pill-shaped buttons (rounded-full).
+ * 2. Anthropic Editorial (Marketing): Warm parchment canvas (#FAF8F5), oat secondary surfaces,
+ *    refined serif headlines (48-68px), hairline dividers (#E5E0D8), near-black footer (#141413).
  */
 
 @theme {
-  /* === Core Palette === */
+  /* === Typography === */
+  --font-serif: "Source Serif 4", Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Monaco, Menlo, Consolas, monospace;
+
+  /* === Core Dattreo Brand Palette === */
+  --color-dattreo-orange: #FF6B35;
+  --color-dattreo-orange-hover: #E55A25;
+  --color-dattreo-orange-subtle: #FFF7F2;
+  --color-dattreo-orange-border: #FFD2C0;
+
+  /* === Backward-compatible sg tokens === */
   --color-sg-primary: #FF6B35;
-  --color-sg-primary-hover: #E85520;
-  --color-sg-primary-subtle: #FFF5F0;
+  --color-sg-primary-hover: #E55A25;
+  --color-sg-primary-subtle: #FFF7F2;
   --color-sg-primary-border: #FFD2C0;
 
   /* === Surfaces & Backgrounds === */
-  --color-sg-canvas: #FBFBFA;
+  --color-sg-canvas: #FFFFFF;
   --color-sg-surface: #FFFFFF;
-  --color-sg-surface-muted: #F3F3F0;
-  --color-sg-surface-hover: #F8F8F6;
+  --color-sg-surface-muted: #F4F4F3;
+  --color-sg-surface-hover: #F8F8F7;
+
+  /* === Anthropic Parchment Palette === */
+  --color-parchment-ivory: #FAF8F5;
+  --color-parchment-card: #FFFFFF;
+  --color-parchment-oat: #EFECE6;
+  --color-parchment-manilla: #F5EFEB;
+  --color-parchment-border: #E5E0D8;
+  --color-inversion-dark: #141413;
 
   /* === High-Contrast Text === */
   --color-sg-text-primary: #18191B;
@@ -44,7 +65,7 @@
   --color-sg-critical-bg: #FEF2F2;
   --color-sg-critical-border: #FECACA;
 
-  /* === FinOps Charts === */
+  /* === Multi-Provider FinOps Charts === */
   --color-sg-chart-primary: #FF6B35;
   --color-sg-chart-secondary: #2563EB;
   --color-sg-chart-tertiary: #0D9488;
@@ -61,12 +82,25 @@
   }
 
   body {
-    background-color: #FBFBFA;
+    background-color: #FAF8F5;
     color: #18191B;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  /* Refined Serif Display Utility */
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
   }
 
   /* Accessible Focus Rings */
@@ -81,22 +115,42 @@
   }
 }
 
-/* Restrained Elevation */
-.finops-card {
+/* Steep Editorial Analytics Card (24px radius, hairline border, subtle elevation) */
+.steep-card {
   background-color: #FFFFFF;
   border: 1px solid #E4E4E0;
-  border-radius: 0.75rem; /* 12px */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border-radius: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.finops-card:hover {
+.steep-card:hover {
   border-color: #D2D2CC;
+}
+
+/* Anthropic Editorial Surface */
+.anthropic-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E0D8;
+  border-radius: 20px;
 }
 
 /* Precision Clean Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #D8D8D4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #B5B5B0;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

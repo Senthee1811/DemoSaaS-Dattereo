@@ -84,11 +84,11 @@ export function OverviewView({
     }));
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-12">
       {/* Top Banner if hard blocks exist */}
       {summary.blockedCount > 0 && (
-        <div className="p-3.5 rounded-lg bg-[#FEF2F2] border border-[#FECACA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+        <div className="p-4 rounded-2xl bg-[#FEF2F2] border border-[#FECACA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
             <ShieldAlert className="w-5 h-5 text-[#DC2626] shrink-0" />
             <div>
               <p className="text-xs font-bold text-[#991B1B]">Active Budget Hard-Block Enforced</p>
@@ -100,7 +100,7 @@ export function OverviewView({
           <button
             type="button"
             onClick={onNavigateToProjects}
-            className="px-3 py-1.5 rounded-md bg-[#DC2626] text-white font-semibold text-xs hover:bg-[#B91C1C] transition-colors"
+            className="px-4 py-1.5 rounded-full bg-[#DC2626] text-white font-semibold text-xs hover:bg-[#B91C1C] transition-colors shrink-0 shadow-xs"
           >
             Review Limits
           </button>
@@ -110,14 +110,14 @@ export function OverviewView({
       {/* Primary FinOps KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Month-to-Date Spend */}
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-semibold uppercase tracking-wider text-[11px]">MTD AI Spend</span>
+              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">MTD AI Spend</span>
               <DollarSign className="w-4 h-4 text-[#FF6B35]" />
             </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+            <div className="mt-3 flex items-baseline gap-1.5">
+              <span className="font-serif text-3xl font-normal text-[#141413] tabular-nums tracking-tight">
                 ${totalSpend.toFixed(2)}
               </span>
               <span className="text-xs text-[#80868B] font-mono tabular-nums">
@@ -125,7 +125,7 @@ export function OverviewView({
               </span>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-4">
             <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full overflow-hidden">
               <div
                 style={{ width: `${utilizationPct}%` }}
@@ -134,7 +134,7 @@ export function OverviewView({
                 }`}
               />
             </div>
-            <div className="flex items-center justify-between mt-1 text-[11px] text-[#5F6368] font-mono tabular-nums">
+            <div className="flex items-center justify-between mt-1.5 text-[11px] text-[#5F6368] font-mono tabular-nums">
               <span>{utilizationPct}% utilized</span>
               <span>${Math.max(0, totalBudget - totalSpend).toFixed(2)} remaining</span>
             </div>
@@ -142,60 +142,60 @@ export function OverviewView({
         </div>
 
         {/* Metric 2: Projected Month-End Burn */}
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-semibold uppercase tracking-wider text-[11px]">Projected Burn</span>
+              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Projected Burn</span>
               <TrendingUp className="w-4 h-4 text-[#5F6368]" />
             </div>
-            <div className="mt-2">
-              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+            <div className="mt-3">
+              <span className="font-serif text-3xl font-normal text-[#141413] tabular-nums tracking-tight">
                 ${projectedSpend.toFixed(2)}
               </span>
             </div>
           </div>
-          <div className="mt-3 text-[11px] text-[#5F6368] flex items-center gap-1.5">
+          <div className="mt-4 text-[11px] text-[#5F6368] flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${projectedSpend > totalBudget ? 'bg-[#DC2626]' : 'bg-[#0D9488]'}`} />
             <span>{projectedSpend > totalBudget ? 'Projected to exceed budget' : 'Pacing within monthly limit'}</span>
           </div>
         </div>
 
         {/* Metric 3: Total Requests & Tokens */}
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-semibold uppercase tracking-wider text-[11px]">Tokens Processed</span>
+              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Tokens Processed</span>
               <Zap className="w-4 h-4 text-[#5F6368]" />
             </div>
-            <div className="mt-2">
-              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+            <div className="mt-3">
+              <span className="font-serif text-3xl font-normal text-[#141413] tabular-nums tracking-tight">
                 {(summary.totalTokens || 0).toLocaleString()}
               </span>
             </div>
           </div>
-          <div className="mt-3 text-[11px] text-[#5F6368]">
-            Across <span className="font-mono tabular-nums font-semibold text-[#18191B]">{(summary.totalRequests || 0).toLocaleString()}</span> requests
+          <div className="mt-4 text-[11px] text-[#5F6368]">
+            Across <span className="font-mono tabular-nums font-semibold text-[#141413]">{(summary.totalRequests || 0).toLocaleString()}</span> requests
           </div>
         </div>
 
         {/* Metric 4: Governance Guardrails */}
-        <div className="p-4 bg-white rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-semibold uppercase tracking-wider text-[11px]">Guardrails & Alerts</span>
+              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Guardrails & Alerts</span>
               <Activity className="w-4 h-4 text-[#5F6368]" />
             </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-[#18191B] font-mono tabular-nums tracking-tight">
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-serif text-3xl font-normal text-[#141413] tabular-nums tracking-tight">
                 {summary.anomalyCount || 0}
               </span>
-              <span className="text-[11px] font-semibold text-[#D97706] bg-[#FFFBEB] px-1.5 py-0.5 rounded border border-[#FDE68A]">
+              <span className="text-[11px] font-semibold text-[#D97706] bg-[#FFFBEB] px-2 py-0.5 rounded-full border border-[#FDE68A]">
                 Spikes Flagged
               </span>
             </div>
           </div>
-          <div className="mt-3 text-[11px] text-[#5F6368]">
-            <span className="font-mono tabular-nums font-semibold text-[#18191B]">{summary.blockedCount || 0}</span> requests hard-blocked
+          <div className="mt-4 text-[11px] text-[#5F6368]">
+            <span className="font-mono tabular-nums font-semibold text-[#141413]">{summary.blockedCount || 0}</span> requests hard-blocked
           </div>
         </div>
       </div>
@@ -203,18 +203,18 @@ export function OverviewView({
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Spend Velocity Chart (8 cols) */}
-        <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-sm font-semibold text-[#18191B]">
+                <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
                   Spend Velocity (Past 7 Days)
                 </h3>
-                <p className="text-xs text-[#5F6368]">
+                <p className="text-xs text-[#5F6368] mt-0.5">
                   Aggregated USD cost across OpenAI, Anthropic, and Gemini
                 </p>
               </div>
-              <span className="px-2 py-0.5 text-[10px] font-semibold text-[#0D9488] bg-[#F0FDF4] border border-[#BBF7D0] rounded">
+              <span className="px-2.5 py-0.5 text-[10px] font-semibold text-[#0D9488] bg-[#F0FDF4] border border-[#BBF7D0] rounded-full">
                 Live Telemetry
               </span>
             </div>
@@ -229,7 +229,7 @@ export function OverviewView({
                 compact
               />
             ) : (
-              <div className="h-60 w-full">
+              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dailySpend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -257,10 +257,10 @@ export function OverviewView({
                       contentStyle={{
                         backgroundColor: '#FFFFFF',
                         borderColor: '#E4E4E0',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                         fontSize: '11px',
-                        color: '#18191B'
+                        color: '#141413'
                       }}
                       formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
                     />
@@ -280,12 +280,12 @@ export function OverviewView({
         </div>
 
         {/* Spend by Model (4 cols) */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-xl border border-[#E4E4E0] shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-[#18191B]">Cost by Model</h3>
-                <p className="text-xs text-[#5F6368]">Relative expenditure</p>
+                <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Cost by Model</h3>
+                <p className="text-xs text-[#5F6368] mt-0.5">Relative expenditure</p>
               </div>
             </div>
 
@@ -297,16 +297,16 @@ export function OverviewView({
                 compact
               />
             ) : (
-              <div className="space-y-3">
-                <div className="h-40 w-full">
+              <div className="space-y-4">
+                <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={46}
-                        outerRadius={68}
+                        innerRadius={48}
+                        outerRadius={72}
                         paddingAngle={2}
                         dataKey="value"
                       >
@@ -318,8 +318,8 @@ export function OverviewView({
                         contentStyle={{
                           backgroundColor: '#FFFFFF',
                           borderColor: '#E4E4E0',
-                          borderRadius: '8px',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                          borderRadius: '16px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                           fontSize: '11px',
                         }}
                         formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
@@ -329,18 +329,18 @@ export function OverviewView({
                 </div>
 
                 {/* Model Legend */}
-                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {modelBreakdown.map((m: any, idx: number) => {
                     const modelSpend = Number(m.spend || 0);
                     const pct = totalSpend > 0 ? Math.round((modelSpend / totalSpend) * 100) : 0;
                     return (
-                      <div key={idx} className="flex items-center justify-between text-xs py-0.5">
+                      <div key={idx} className="flex items-center justify-between text-xs py-1">
                         <div className="flex items-center gap-2">
                           <span
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: MODEL_CHART_COLORS[m.model] || MODEL_CHART_COLORS.default }}
                           />
-                          <span className="font-mono text-xs text-[#18191B] truncate max-w-[130px]">
+                          <span className="font-mono text-xs text-[#141413] truncate max-w-[130px]">
                             {m.model}
                           </span>
                         </div>
@@ -358,16 +358,16 @@ export function OverviewView({
       </div>
 
       {/* Live Request Telemetry Table */}
-      <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-[#E4E4E0] flex items-center justify-between">
+      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-[#E4E4E0] flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-[#18191B]">Live Inference Telemetry</h3>
-            <p className="text-xs text-[#5F6368]">Recent gateway transactions with exact cost attribution</p>
+            <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Live Inference Telemetry</h3>
+            <p className="text-xs text-[#5F6368] mt-0.5">Recent gateway transactions with exact cost attribution</p>
           </div>
           <button
             type="button"
             onClick={onNavigateToAudit}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#FF6B35] hover:text-[#E85520] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-[#FF6B35] hover:bg-[#FFF7F2] transition-colors"
           >
             <span>Audit Ledger</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -375,7 +375,7 @@ export function OverviewView({
         </div>
 
         {recentRequests.length === 0 ? (
-          <div className="p-6">
+          <div className="p-8">
             <EmptyState
               icon={Layers}
               title="No recent requests"
@@ -386,47 +386,47 @@ export function OverviewView({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#F3F3F0] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
                 <tr>
-                  <th className="py-2.5 px-3.5">Timestamp</th>
-                  <th className="py-2.5 px-3.5">Project</th>
-                  <th className="py-2.5 px-3.5">Model</th>
-                  <th className="py-2.5 px-3.5 text-right">Tokens</th>
-                  <th className="py-2.5 px-3.5 text-right">Cost (USD)</th>
-                  <th className="py-2.5 px-3.5 text-right">Latency</th>
-                  <th className="py-2.5 px-3.5 text-center">Status</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Timestamp</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Model</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Tokens</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Cost (USD)</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Latency</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#18191B]">
+              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
                 {recentRequests.slice(0, 6).map((req: any, i: number) => (
-                  <tr key={i} className="hover:bg-[#FBFBFA] transition-colors">
-                    <td className="py-2.5 px-3.5 font-mono text-[11px] text-[#5F6368]">
+                  <tr key={i} className="hover:bg-[#FAF8F5] transition-colors">
+                    <td className="py-3 px-4 font-mono text-[11px] text-[#5F6368]">
                       {new Date(req.created_at || req.timestamp).toLocaleTimeString()}
                     </td>
-                    <td className="py-2.5 px-3.5 font-medium">
+                    <td className="py-3 px-4 font-medium">
                       {req.project_name || req.projectName || req.project_id}
                     </td>
-                    <td className="py-2.5 px-3.5">
-                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0]">
+                    <td className="py-3 px-4">
+                      <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]">
                         {req.model}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right text-[#5F6368]">
+                    <td className="py-3 px-4 font-mono tabular-nums text-right text-[#5F6368]">
                       {(req.total_tokens || req.totalTokens || 0).toLocaleString()}
                     </td>
-                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right font-semibold text-[#0D9488]">
+                    <td className="py-3 px-4 font-mono tabular-nums text-right font-semibold text-[#0D9488]">
                       ${Number(req.cost_estimate || req.costEstimate || 0).toFixed(5)}
                     </td>
-                    <td className="py-2.5 px-3.5 font-mono tabular-nums text-right text-[#5F6368]">
+                    <td className="py-3 px-4 font-mono tabular-nums text-right text-[#5F6368]">
                       {req.latency_ms || req.latencyMs || 0}ms
                     </td>
-                    <td className="py-2.5 px-3.5 text-center">
+                    <td className="py-3 px-4 text-center">
                       {req.is_blocked || req.isBlocked ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                           Blocked (429)
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                           200 OK
                         </span>
                       )}

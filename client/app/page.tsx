@@ -16,7 +16,7 @@ import {
 
 export default function MarketingLandingPage() {
   return (
-    <div className="min-h-screen bg-[#FBFBFA] text-[#18191B] overflow-x-hidden flex flex-col justify-between selection:bg-[#FF6B35] selection:text-white">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#141413] overflow-x-hidden flex flex-col justify-between selection:bg-[#FF6B35] selection:text-white">
       {/* Top Navigation */}
       <Navbar />
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Terminal, ShieldCheck, Check, Cpu, Zap, Copy, Code2 } from 'lucide-react';
+import { ArrowRight, Check, Copy } from 'lucide-react';
 
 export function Hero() {
   const [activeTab, setActiveTab] = useState<'curl' | 'python' | 'node'>('curl');
@@ -44,87 +44,89 @@ const response = await client.chat.completions.create({
   };
 
   return (
-    <section className="relative w-full pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Hero Header */}
-      <div className="max-w-3xl mx-auto text-center space-y-4">
+    <section className="relative w-full pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      {/* Hero Header — Editorial Composition */}
+      <div className="max-w-3xl mx-auto text-center space-y-5">
         {/* Release Pill */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F3F3F0] border border-[#E4E4E0] text-xs font-semibold text-[#18191B]">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-xs font-mono text-[#555550] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
-          <span>SpendGuard AI v2.0 Gateway Released</span>
-          <span className="text-[#80868B]">|</span>
-          <span className="text-[#5F6368]">Sub-5ms Atomic Budgets</span>
+          <span>SpendGuard AI · by Dattreo</span>
+          <span className="text-[#C4BFB8]">|</span>
+          <span className="text-[#666660]">Sub-5ms Pre-Flight Guardrails</span>
         </div>
 
-        {/* Master Headline */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#18191B] leading-[1.1]">
+        {/* Master Headline in Refined Editorial Serif */}
+        <h1 className="font-serif text-4xl sm:text-5xl lg:text-[62px] font-normal tracking-tight text-[#141413] leading-[1.08]">
           One gateway. Every model. <br className="hidden sm:inline" />
-          <span className="text-[#FF6B35]">Complete cost control.</span>
+          <span className="italic font-normal text-[#FF6B35]">Complete cost control.</span>
         </h1>
 
         {/* Technical Subheadline */}
-        <p className="text-base sm:text-lg text-[#5F6368] leading-relaxed max-w-2xl mx-auto">
-          Centralize API traffic across OpenAI, Anthropic, and Gemini. Enforce pre-flight atomic budget limits, detect token spikes, and maintain immutable audit ledgers.
+        <p className="text-base sm:text-lg text-[#555550] leading-relaxed max-w-2xl mx-auto font-sans font-normal">
+          Centralize LLM usage across OpenAI, Anthropic, and Google Gemini. Enforce pre-flight atomic budget reservations, halt runaway token loops, and maintain cryptographically verified audit ledgers.
         </p>
 
-        {/* Primary CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        {/* Primary Pill CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
           <Link
             href="/register"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-[#FF6B35] hover:bg-[#E85520] text-white font-semibold text-sm shadow-xs transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
           >
             <span>Start Free Trial</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
 
           <Link
-            href="/login"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-white hover:bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0] font-semibold text-sm shadow-xs transition-colors"
+            href="/dashboard"
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-white hover:bg-[#F7F5F0] text-[#141413] border border-[#E5E0D8] font-semibold text-sm transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
-            Sign In to Console
+            Explore Live Console
           </Link>
         </div>
 
-        {/* Trust Points */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-xs text-[#5F6368]">
+        {/* Architectural Guarantees */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-3 text-xs text-[#666660]">
           <div className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
             <span>Drop-in OpenAI SDK compatible</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
-            <span>Fail-closed Redis Lua reservations</span>
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
+            <span>Fail-closed Redis Lua capacity check</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-[#0D9488]" />
-            <span>Zero plaintext key storage</span>
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
+            <span>Zero prompt retention & AES-256 vault</span>
           </div>
         </div>
       </div>
 
-      {/* Faithful Faithful Product Preview / Gateway Console */}
-      <div className="mt-12 bg-white rounded-xl border border-[#E4E4E0] shadow-sm overflow-hidden max-w-4xl mx-auto">
+      {/* Editorial Gateway Console Artefact */}
+      <div className="mt-14 bg-[#141413] rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
         {/* Terminal Titlebar */}
-        <div className="h-11 px-4 bg-[#FBFBFA] border-b border-[#E4E4E0] flex items-center justify-between text-xs">
+        <div className="h-11 px-5 bg-[#1B1B1A] border-b border-[#2A2A28] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <div className="flex gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E4E4E0]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
             </div>
-            <span className="font-mono text-[11px] text-[#5F6368] ml-2">
+            <span className="font-mono text-[11px] text-[#A0A09B] ml-2">
               https://gateway.spendguard.ai/v1/chat/completions
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-[#F3F3F0] p-0.5 rounded">
+            <div className="flex gap-1 bg-[#242422] p-0.5 rounded-full border border-[#333330]">
               {(['curl', 'python', 'node'] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-                    activeTab === tab ? 'bg-white text-[#18191B] shadow-2xs' : 'text-[#5F6368]'
+                  className={`px-3 py-0.5 rounded-full text-[11px] font-mono transition-colors ${
+                    activeTab === tab
+                      ? 'bg-[#333330] text-white font-semibold'
+                      : 'text-[#888882] hover:text-white'
                   }`}
                 >
                   {tab.toUpperCase()}
@@ -135,37 +137,30 @@ const response = await client.chat.completions.create({
             <button
               type="button"
               onClick={handleCopy}
-              className="p-1 rounded text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0]"
+              className="p-1.5 rounded hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
               title="Copy snippet"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
 
-        {/* Code Content */}
-        <div className="p-5 bg-[#18191B] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed">
-          <code>{snippets[activeTab]}</code>
+        {/* Code Snippet Box */}
+        <div className="p-5 font-mono text-xs overflow-x-auto leading-relaxed text-[#D6D6D0]">
+          <pre>{snippets[activeTab]}</pre>
         </div>
 
-        {/* Live Operational Metrics Footer */}
-        <div className="p-3.5 bg-[#FBFBFA] border-t border-[#E4E4E0] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div>
-            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Gateway Latency</span>
-            <span className="font-mono tabular-nums font-bold text-[#18191B]">3.2ms overhead</span>
+        {/* Operational Telemetry Footer */}
+        <div className="px-5 py-3 bg-[#1B1B1A] border-t border-[#2A2A28] flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-[#A0A09B]">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              STATUS: 200 OK
+            </span>
+            <span>PRE-FLIGHT: 3.2ms</span>
+            <span>MODEL: gpt-4o / claude-3-5</span>
           </div>
-          <div>
-            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Budget Reservation</span>
-            <span className="font-mono tabular-nums font-bold text-[#0D9488]">Pre-Flight Atomic</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Supported Models</span>
-            <span className="font-mono text-[#18191B]">OpenAI, Claude, Gemini</span>
-          </div>
-          <div>
-            <span className="text-[10px] text-[#5F6368] uppercase font-semibold block">Key Encryption</span>
-            <span className="font-mono text-[#18191B]">AES-256-GCM Envelope</span>
-          </div>
+          <span className="text-[#888882]">RESERVATION: ATOMIC_LUA_OK</span>
         </div>
       </div>
     </section>

@@ -135,14 +135,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   };
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#18191B] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
             Projects & Budget Guardrails
           </h2>
-          <p className="text-xs text-[#5F6368]">
+          <p className="text-xs text-[#5F6368] mt-1">
             Assign monthly limits, soft-warning thresholds, and fail-closed blocking rules per team.
           </p>
         </div>
@@ -150,7 +150,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FF6B35] hover:bg-[#E85520] text-white font-semibold text-xs shadow-xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Project</span>
@@ -158,22 +158,22 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       </div>
 
       {/* Aggregate FinOps Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-[#E4E4E0] shadow-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
         <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Active Projects</span>
-          <p className="text-lg font-bold text-[#18191B] font-mono tabular-nums mt-0.5">{projects.length}</p>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Active Projects</span>
+          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">{projects.length}</p>
         </div>
         <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
-          <p className="text-lg font-bold text-[#18191B] font-mono tabular-nums mt-0.5">${totalAllocation.toLocaleString()}</p>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
+          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">${totalAllocation.toLocaleString()}</p>
         </div>
         <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
-          <p className="text-lg font-bold text-[#0D9488] font-mono tabular-nums mt-0.5">${totalSpend.toFixed(2)}</p>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
+          <p className="font-serif text-2xl font-normal text-[#0D9488] tabular-nums mt-1">${totalSpend.toFixed(2)}</p>
         </div>
         <div>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
-          <p className={`text-lg font-bold font-mono tabular-nums mt-0.5 ${blockedCount > 0 ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${blockedCount > 0 ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>
             {blockedCount}
           </p>
         </div>
@@ -189,20 +189,20 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           onAction={() => setShowCreateModal(true)}
         />
       ) : (
-        <div className="bg-white rounded-xl border border-[#E4E4E0] shadow-xs overflow-hidden">
+        <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#F3F3F0] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
                 <tr>
-                  <th className="py-2.5 px-3.5">Project Name & ID</th>
-                  <th className="py-2.5 px-3.5">Status</th>
-                  <th className="py-2.5 px-3.5">MTD Spend vs Budget</th>
-                  <th className="py-2.5 px-3.5 text-right">Utilization</th>
-                  <th className="py-2.5 px-3.5">Enforcement</th>
-                  <th className="py-2.5 px-3.5 text-right">Actions</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project Name & ID</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">MTD Spend vs Budget</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Utilization</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Enforcement</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#18191B]">
+              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
                 {projects.map((proj) => {
                   const currentSpend = Number(proj.currentMonthlySpend || 0);
                   const budget = Number(proj.budgetMonthly || 1000);
@@ -211,37 +211,37 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   const isWarning = utilization >= 80 && !isExceeded;
 
                   return (
-                    <tr key={proj.id} className="hover:bg-[#FBFBFA] transition-colors">
-                      <td className="py-3 px-3.5">
-                        <div className="font-semibold text-xs text-[#18191B]">{proj.name}</div>
+                    <tr key={proj.id} className="hover:bg-[#FAF8F5] transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-xs text-[#141413]">{proj.name}</div>
                         <div className="text-[11px] font-mono text-[#80868B]">id: {proj.id}</div>
                         {proj.description && (
                           <div className="text-[11px] text-[#5F6368] mt-0.5 line-clamp-1">{proj.description}</div>
                         )}
                       </td>
 
-                      <td className="py-3 px-3.5">
+                      <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                             <ShieldAlert className="w-3 h-3" />
                             <span>BLOCKED</span>
                           </span>
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                             <AlertTriangle className="w-3 h-3" />
                             <span>WARNING (80%)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                             <ShieldCheck className="w-3 h-3" />
                             <span>HEALTHY</span>
                           </span>
                         )}
                       </td>
 
-                      <td className="py-3 px-3.5 min-w-[200px]">
-                        <div className="flex items-center justify-between text-[11px] font-mono tabular-nums mb-1">
-                          <span className="font-semibold text-[#18191B]">${currentSpend.toFixed(2)}</span>
+                      <td className="py-3.5 px-4 min-w-[200px]">
+                        <div className="flex items-center justify-between text-[11px] font-mono tabular-nums mb-1.5">
+                          <span className="font-semibold text-[#141413]">${currentSpend.toFixed(2)}</span>
                           <span className="text-[#80868B]">/ ${budget.toLocaleString()}</span>
                         </div>
                         <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full overflow-hidden">
@@ -254,23 +254,23 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                         </div>
                       </td>
 
-                      <td className="py-3 px-3.5 text-right font-mono tabular-nums text-xs font-semibold">
-                        <span className={isExceeded ? 'text-[#DC2626]' : isWarning ? 'text-[#D97706]' : 'text-[#18191B]'}>
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-xs font-semibold">
+                        <span className={isExceeded ? 'text-[#DC2626]' : isWarning ? 'text-[#D97706]' : 'text-[#141413]'}>
                           {utilization}%
                         </span>
                       </td>
 
-                      <td className="py-3 px-3.5">
-                        <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${
+                      <td className="py-3.5 px-4">
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                           proj.budgetHardBlockEnabled
-                            ? 'bg-[#F3F3F0] text-[#18191B] border border-[#E4E4E0]'
+                            ? 'bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]'
                             : 'bg-transparent text-[#80868B]'
                         }`}>
                           {proj.budgetHardBlockEnabled ? 'Fail-Closed (429)' : 'Soft Warning Only'}
                         </span>
                       </td>
 
-                      <td className="py-3 px-3.5 text-right">
+                      <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
@@ -279,7 +279,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                               setBudgetMonthly(String(proj.budgetMonthly));
                               setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
                             }}
-                            className="p-1 text-[#5F6368] hover:text-[#18191B] hover:bg-[#F3F3F0] rounded transition-colors"
+                            className="p-1.5 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full transition-colors"
                             title="Edit budget allocation"
                           >
                             <Settings2 className="w-3.5 h-3.5" />
@@ -288,7 +288,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                           <button
                             type="button"
                             onClick={() => handleToggleBlock(proj)}
-                            className={`p-1 rounded transition-colors ${
+                            className={`p-1.5 rounded-full transition-colors ${
                               proj.isBlocked
                                 ? 'text-[#0D9488] hover:bg-[#F0FDF4]'
                                 : 'text-[#80868B] hover:text-[#DC2626] hover:bg-[#FEF2F2]'
@@ -311,21 +311,21 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       {/* Modal: Create Project */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E4E4E0]">
-              <h3 className="text-sm font-bold text-[#18191B]">Create FinOps Project</h3>
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+              <h3 className="font-serif text-lg font-normal text-[#141413]">Create FinOps Project</h3>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-[#80868B] hover:text-[#18191B] rounded"
+                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[#18191B] block mb-1">Project Name *</label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Project Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Production Copilot"
@@ -334,38 +334,38 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     setName(e.target.value);
                     if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'));
                   }}
-                  className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#18191B] block mb-1">Slug Identifier</label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Slug Identifier</label>
                 <input
                   type="text"
                   placeholder="production-copilot"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border border-[#E4E4E0] font-mono text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#18191B] block mb-1">Monthly Budget Limit (USD) *</label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Budget Limit (USD) *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-[#80868B] font-mono">$</span>
+                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
                   <input
                     type="number"
                     min="10"
                     step="10"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 rounded-md border border-[#E4E4E0] font-mono text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                   />
                 </div>
               </div>
 
               <div className="pt-1">
-                <label className="flex items-start gap-2 cursor-pointer">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={budgetHardBlockEnabled}
@@ -373,8 +373,8 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     className="rounded text-[#FF6B35] mt-0.5"
                   />
                   <div>
-                    <span className="font-semibold text-[#18191B] block">Enforce Atomic Hard-Block (Fail-Closed)</span>
-                    <span className="text-[#5F6368] text-[11px] block">
+                    <span className="font-semibold text-[#141413] block">Enforce Atomic Hard-Block (Fail-Closed)</span>
+                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
                       Rejects proxy requests with HTTP 429 once allocation is exhausted.
                     </span>
                   </div>
@@ -382,11 +382,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[#E4E4E0] flex justify-end gap-2">
+            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0]"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>
@@ -394,7 +394,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                 type="button"
                 onClick={handleCreateProject}
                 disabled={isSubmitting || !name}
-                className="px-3.5 py-1.5 rounded-md text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E85520] disabled:opacity-50 transition-colors"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
               </button>
@@ -406,36 +406,36 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       {/* Modal: Edit Budget */}
       {editingProject && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E4E4E0]">
-              <h3 className="text-sm font-bold text-[#18191B]">Edit Budget — {editingProject.name}</h3>
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+              <h3 className="font-serif text-lg font-normal text-[#141413]">Edit Budget — {editingProject.name}</h3>
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="p-1 text-[#80868B] hover:text-[#18191B] rounded"
+                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[#18191B] block mb-1">Monthly Allocation (USD) *</label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Allocation (USD) *</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-[#80868B] font-mono">$</span>
+                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
                   <input
                     type="number"
                     min="10"
                     step="10"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 rounded-md border border-[#E4E4E0] font-mono text-xs text-[#18191B] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                   />
                 </div>
               </div>
 
               <div className="pt-1">
-                <label className="flex items-start gap-2 cursor-pointer">
+                <label className="flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={budgetHardBlockEnabled}
@@ -443,8 +443,8 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     className="rounded text-[#FF6B35] mt-0.5"
                   />
                   <div>
-                    <span className="font-semibold text-[#18191B] block">Fail-Closed Hard Limit</span>
-                    <span className="text-[#5F6368] text-[11px] block">
+                    <span className="font-semibold text-[#141413] block">Fail-Closed Hard Limit</span>
+                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
                       Enforces sub-5ms Redis reservation checks to block overspend immediately.
                     </span>
                   </div>
@@ -452,11 +452,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[#E4E4E0] flex justify-end gap-2">
+            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0]"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>
@@ -464,7 +464,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                 type="button"
                 onClick={handleUpdateProject}
                 disabled={isSubmitting}
-                className="px-3.5 py-1.5 rounded-md text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E85520] disabled:opacity-50 transition-colors"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Saving...' : 'Save Allocation'}
               </button>

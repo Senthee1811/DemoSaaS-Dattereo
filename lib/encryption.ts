@@ -78,3 +78,5 @@ export function generateGatewayToken(projectId: string): { token: string; prefix
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
+
+export const hashGatewaySecret = hashToken;

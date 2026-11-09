@@ -6,7 +6,8 @@ import {
   Bell, 
   RefreshCw, 
   Terminal, 
-  LogOut
+  LogOut,
+  Menu
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -19,6 +20,7 @@ interface HeaderProps {
   onRefreshData: () => void;
   isRefreshing: boolean;
   unreadAlertsCount: number;
+  onToggleMobileMenu?: () => void;
 }
 
 export function Header({
@@ -30,6 +32,7 @@ export function Header({
   onRefreshData,
   isRefreshing,
   unreadAlertsCount,
+  onToggleMobileMenu,
 }: HeaderProps) {
   const router = useRouter();
   const [userName, setUserName] = useState('Sarah Chen');
@@ -63,10 +66,21 @@ export function Header({
   };
 
   return (
-    <header className="h-16 border-b border-[#E4E4E0] bg-white px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Project Selector */}
-      <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2.5 bg-[#FAF8F5] border border-[#E4E4E0] rounded-full px-4 py-1.5 text-xs text-[#141413] shadow-2xs">
+    <header className="h-16 border-b border-[#E4E4E0] bg-white px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+      {/* Project Selector & Mobile Menu Trigger */}
+      <div className="flex items-center space-x-2.5 sm:space-x-3">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="p-2 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full border border-[#E4E4E0] transition-colors lg:hidden"
+            title="Toggle Navigation Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+
+        <div className="flex items-center space-x-2.5 bg-[#FAF8F5] border border-[#E4E4E0] rounded-full px-3 sm:px-4 py-1.5 text-xs text-[#141413] shadow-2xs">
           <Building2 className="w-3.5 h-3.5 text-[#5F6368]" />
           <span className="text-[#5F6368] font-medium">Scope:</span>
           <select

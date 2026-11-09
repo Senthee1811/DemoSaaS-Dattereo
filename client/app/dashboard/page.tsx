@@ -23,6 +23,7 @@ export default function AppDashboard() {
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -102,6 +103,8 @@ export default function AppDashboard() {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         unreadAlertsCount={unreadAlertsCount}
+        isOpenMobile={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Main Content Area */}
@@ -116,6 +119,7 @@ export default function AppDashboard() {
           onRefreshData={refreshAll}
           isRefreshing={isRefreshing}
           unreadAlertsCount={unreadAlertsCount}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 
         {/* Dynamic Viewport Container */}

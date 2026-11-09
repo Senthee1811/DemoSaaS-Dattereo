@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SpendGuard AI — Real-Time AI Spend Governance Platform",
-  description: "See, control, and audit AI cost the same way you manage cloud spend. Real-time budget guardrails and immutable audit logs across OpenAI, Gemini, and Claude.",
+  title: "SpendGuard AI · by Dattreo — Real-Time AI FinOps & Governance Gateway",
+  description: "Enterprise AI FinOps platform by Dattreo. Sub-5ms atomic budget reservations, multi-provider routing (OpenAI, Claude, Gemini), statistical anomaly detection, and immutable audit ledgers.",
+  keywords: ["AI FinOps", "LLM Cost Management", "SpendGuard", "Dattreo", "OpenAI Proxy", "AI Budget Enforcement", "Token Cost Tracking"],
+  authors: [{ name: "Dattreo", url: "https://www.dattreo.com" }],
 };
 
 export default function RootLayout({

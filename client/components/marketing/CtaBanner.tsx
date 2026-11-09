@@ -34,7 +34,7 @@ export function CtaBanner() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <Link
-              href="/dashboard"
+              href="/register"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-[0_8px_25px_rgba(255,107,53,0.4)] hover:shadow-[0_12px_32px_rgba(255,107,53,0.5)] hover:scale-105 active:scale-95 transition-all"
             >
               <span>Get Started Free</span>

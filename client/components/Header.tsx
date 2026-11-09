@@ -1,14 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Bell, 
   RefreshCw, 
   Terminal, 
   ShieldAlert,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   projects: Array<{ id: string; name: string }>;
@@ -31,6 +33,36 @@ export function Header({
   isRefreshing,
   unreadAlertsCount,
 }: HeaderProps) {
+  const router = useRouter();
+  const [userName, setUserName] = useState('Sarah Chen');
+  const [userRole, setUserRole] = useState('FinOps Lead');
+  const [userInitials, setUserInitials] = useState('SC');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('spendguard_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.name) {
+            setUserName(u.name);
+            const parts = u.name.trim().split(' ');
+            setUserInitials(parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase());
+          }
+          if (u.role) setUserRole(u.role === 'OWNER' ? 'Organization Owner' : u.role === 'ADMIN' ? 'FinOps Admin' : 'Member');
+        } catch {}
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('spendguard_token');
+      localStorage.removeItem('spendguard_refresh_token');
+      localStorage.removeItem('spendguard_user');
+    }
+    router.push('/login');
+  };
   return (
     <header className="h-16 border-b border-[#E8E8E8] bg-white/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
       {/* Project Selector */}
@@ -93,15 +125,23 @@ export function Header({
           )}
         </button>
 
-        {/* User Profile */}
+        {/* User Profile & Sign Out */}
         <div className="flex items-center space-x-2.5 pl-2 border-l border-[#E8E8E8]">
           <div className="w-8 h-8 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] flex items-center justify-center text-xs font-bold text-[#FF6B35]">
-            SC
+            {userInitials}
           </div>
           <div className="hidden sm:block text-left text-xs">
-            <p className="font-bold text-[#111111] leading-none">Sarah Chen</p>
-            <p className="text-[10px] text-[#777777] leading-none mt-0.5">FinOps Lead</p>
+            <p className="font-bold text-[#111111] leading-none">{userName}</p>
+            <p className="text-[10px] text-[#777777] leading-none mt-0.5">{userRole}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="p-1.5 text-[#888888] hover:text-red-600 hover:bg-red-50 rounded-lg transition-all ml-1"
+            title="Sign out of SpendGuard"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

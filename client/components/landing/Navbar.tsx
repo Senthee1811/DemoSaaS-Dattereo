@@ -59,13 +59,13 @@ export function Navbar() {
         {/* Right: Actions */}
         <div className="hidden sm:flex items-center space-x-3">
           <a
-            href="/dashboard"
+            href="/login"
             className="px-4 py-2 text-[14.5px] font-semibold text-[#333333] hover:text-[#FF6B35] hover:bg-[#FFF8F5] rounded-xl transition-all duration-150"
           >
-            Live App Demo
+            Sign in
           </a>
           <a
-            href="/dashboard"
+            href="/register"
             className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] hover:from-[#F55D25] hover:to-[#FF7B38] text-white text-[14.5px] font-semibold rounded-full shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35 hover:-translate-y-0.5 transition-all duration-200"
           >
             <span>Start for free</span>
@@ -125,13 +125,13 @@ export function Navbar() {
           </nav>
           <div className="pt-3 border-t border-[#F0ECE7] flex flex-col space-y-2">
             <a
-              href="#login"
+              href="/login"
               className="w-full text-center py-2.5 font-semibold text-[#333333] hover:bg-[#FFF8F5] rounded-xl"
             >
-              Login
+              Sign in
             </a>
             <a
-              href="#signup"
+              href="/register"
               className="w-full text-center py-3 bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-semibold rounded-full shadow-md shadow-[#FF6B35]/25"
             >
               Start for free →

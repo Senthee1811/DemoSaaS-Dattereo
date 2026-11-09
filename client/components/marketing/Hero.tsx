@@ -51,7 +51,7 @@ export function Hero() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-1">
               {/* Primary CTA: Start for free */}
               <Link
-                href="/dashboard"
+                href="/register"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-[15.5px] font-semibold text-white bg-gradient-to-r from-[#FF6B35] via-[#FF7B3D] to-[#FF9A62] shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:shadow-[0_8px_25px_rgba(255,107,53,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 <span>Start for free</span>

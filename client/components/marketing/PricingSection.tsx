@@ -236,7 +236,7 @@ export function PricingSection() {
                 </button>
               ) : (
                 <Link
-                  href="/dashboard"
+                  href="/register"
                   className={`w-full py-3.5 px-6 rounded-2xl text-center font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                     plan.popular
                       ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:scale-[1.02]'

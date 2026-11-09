@@ -47,13 +47,13 @@ export function Navbar() {
         {/* Right: Login & CTA */}
         <div className="hidden sm:flex items-center gap-3">
           <Link
-            href="/dashboard"
+            href="/login"
             className="text-[14.5px] font-medium text-[#444444] hover:text-[#111111] px-3.5 py-2 transition-colors"
           >
             Log in
           </Link>
           <Link
-            href="/dashboard"
+            href="/register"
             className="inline-flex items-center gap-1.5 text-[14.5px] font-semibold text-white px-5 py-2.5 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-[0_4px_14px_rgba(255,107,53,0.35)] hover:shadow-[0_6px_20px_rgba(255,107,53,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all"
           >
             <span>Get Started</span>
@@ -114,13 +114,13 @@ export function Navbar() {
           </a>
           <div className="pt-3 border-t border-[#E8E8E8] flex flex-col gap-2">
             <Link
-              href="/dashboard"
+              href="/login"
               className="w-full text-center text-sm font-medium text-[#444444] py-2 rounded-xl bg-[#F6F6F6]"
             >
               Log in
             </Link>
             <Link
-              href="/dashboard"
+              href="/register"
               className="w-full text-center text-sm font-semibold text-white py-2.5 rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-md"
             >
               Get Started Free

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sidebar, NavTab } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { OverviewView } from '@/components/dashboard/OverviewView';
@@ -13,17 +14,34 @@ import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
 
 export default function AppDashboard() {
+  const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projects, setProjects] = useState<any[]>([]);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('spendguard_token');
+      if (!storedToken) {
+        // Redirect unauthenticated visitors to login
+        router.push('/login');
+        return;
+      }
+      setToken(storedToken);
+    }
+  }, [router]);
 
   // Fetch Projects List
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/projects');
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/projects', {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+      });
       const data = await res.json();
       setProjects(data.projects || []);
     } catch (err) {
@@ -34,8 +52,11 @@ export default function AppDashboard() {
   // Fetch Analytics Metrics
   const fetchAnalytics = useCallback(async () => {
     try {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const url = selectedProjectId ? `/api/v1/analytics?projectId=${selectedProjectId}` : '/api/v1/analytics';
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+      });
       const data = await res.json();
       setAnalyticsData(data);
     } catch (err) {
@@ -46,8 +67,17 @@ export default function AppDashboard() {
   // Fetch Unread Alerts
   const fetchUnreadAlerts = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/alerts');
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/alerts', {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+      });
       const data = await res.json();
+      const unread = (data.alerts || []).filter((a: any) => !a.isRead).length;
+      setUnreadAlertsCount(unread);
+    } catch (err) {
+      console.error('Failed to fetch alert counts:', err);
+    }
+  }, []);
       const unread = (data.alerts || []).filter((a: any) => !a.isRead).length;
       setUnreadAlertsCount(unread);
     } catch (err) {

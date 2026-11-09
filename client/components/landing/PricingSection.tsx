@@ -142,7 +142,7 @@ export function PricingSection() {
             </div>
 
             <a
-              href={p.name === 'Enterprise' ? '#contact-sales' : '/dashboard'}
+              href={p.name === 'Enterprise' ? '#contact-sales' : '/register'}
               className={`w-full py-3.5 rounded-full text-center text-sm font-bold transition-all duration-200 block ${
                 p.popular
                   ? 'bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] hover:from-[#F55D25] hover:to-[#FF7B38] text-white shadow-md shadow-[#FF6B35]/25 hover:shadow-lg hover:shadow-[#FF6B35]/35 hover:-translate-y-0.5'

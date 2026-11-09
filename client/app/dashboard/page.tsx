@@ -12,6 +12,7 @@ import { AuditView } from '@/components/audit/AuditView';
 import { AlertsView } from '@/components/alerts/AlertsView';
 import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
+import { BillingView } from '@/components/billing/BillingView';
 
 export default function AppDashboard() {
   const router = useRouter();
@@ -72,12 +73,6 @@ export default function AppDashboard() {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
       });
       const data = await res.json();
-      const unread = (data.alerts || []).filter((a: any) => !a.isRead).length;
-      setUnreadAlertsCount(unread);
-    } catch (err) {
-      console.error('Failed to fetch alert counts:', err);
-    }
-  }, []);
       const unread = (data.alerts || []).filter((a: any) => !a.isRead).length;
       setUnreadAlertsCount(unread);
     } catch (err) {
@@ -178,6 +173,10 @@ export default function AppDashboard() {
 
             {currentTab === 'team' && (
               <TeamView />
+            )}
+
+            {currentTab === 'billing' && (
+              <BillingView />
             )}
           </div>
         </main>

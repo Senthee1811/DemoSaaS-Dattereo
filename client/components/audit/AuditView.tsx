@@ -66,7 +66,10 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
       if (filterAnomalyOnly) params.append('anomalyOnly', 'true');
       if (filterBlockedOnly) params.append('blockedOnly', 'true');
       
-      const res = await fetch(`/api/v1/audit?${params.toString()}`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch(`/api/v1/audit?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setLogs(data.logs || []);
     } catch (err) {

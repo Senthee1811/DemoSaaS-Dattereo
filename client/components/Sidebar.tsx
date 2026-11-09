@@ -16,7 +16,8 @@ import {
   Flame,
   Globe,
   Lock,
-  ChevronRight
+  ChevronRight,
+  CreditCard
 } from 'lucide-react';
 
 export type NavTab = 
@@ -27,7 +28,8 @@ export type NavTab =
   | 'audit' 
   | 'alerts' 
   | 'sdk' 
-  | 'team';
+  | 'team'
+  | 'billing';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -36,6 +38,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarProps) {
+  const [orgName, setOrgName] = React.useState('SpendGuard Org');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('spendguard_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.orgName) setOrgName(u.orgName);
+        } catch {}
+      }
+    }
+  }, []);
+
   const navItems = [
     { id: 'overview' as NavTab, label: 'Spend Analytics', icon: LayoutDashboard },
     { id: 'projects' as NavTab, label: 'Projects & Budgets', icon: Layers },
@@ -50,6 +66,7 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
     },
     { id: 'sdk' as NavTab, label: 'Integration & SDK', icon: Code2 },
     { id: 'team' as NavTab, label: 'Team & RBAC', icon: Users },
+    { id: 'billing' as NavTab, label: 'Plans & Billing', icon: CreditCard },
   ];
 
   return (
@@ -75,9 +92,9 @@ export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarP
         {/* Organization Badge */}
         <div className="px-4 py-3 border-b border-[#E8E8E8] bg-[#FFF8F5] shrink-0">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#444444] font-semibold truncate">Apex Innovations Inc.</span>
+            <span className="text-[#444444] font-semibold truncate">{orgName}</span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700 border border-emerald-200">
-              Enterprise
+              Active Org
             </span>
           </div>
         </div>

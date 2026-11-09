@@ -47,9 +47,14 @@ export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewPro
     setIsLoading(true);
     setExecutionResult(null);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const res = await fetch('/api/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-spendguard-project-id': selectedProjectId,
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           projectId: selectedProjectId,
           model: selectedModel,

@@ -134,6 +134,7 @@ export class AuthService {
         name: user.name,
         role: user.role,
         orgId: org.id,
+        orgName: org.name,
       },
       ...tokens,
     };

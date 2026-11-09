@@ -151,13 +151,9 @@ export class BillingService {
    */
   async getSubscription(orgId: string) {
     try {
-      // Use raw query to avoid type errors when Prisma client hasn't been regenerated
-      const subscriptions = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM subscriptions WHERE org_id = $1 LIMIT 1`,
-        orgId,
-      );
-
-      const subscription = subscriptions?.[0];
+      const subscription = await (this.prisma as any).subscription?.findUnique({
+        where: { orgId },
+      });
 
       if (!subscription) {
         return {
@@ -169,13 +165,13 @@ export class BillingService {
       }
 
       return {
-        orgId: subscription.org_id,
+        orgId: subscription.orgId,
         tier: subscription.tier,
         status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
+        currentPeriodEnd: subscription.currentPeriodEnd,
       };
     } catch {
-      // Table may not exist yet — return default free tier
+      // Table may not exist yet or query failed — return default free tier
       return {
         orgId,
         tier: 'starter',

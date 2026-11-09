@@ -67,6 +67,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
   const [plainKey, setPlainKey] = useState('');
   const [rateLimit, setRateLimit] = useState('1200');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTestingProvider, setIsTestingProvider] = useState(false);
+  const [testResult, setTestResult] = useState<{ valid: boolean; message: string } | null>(null);
+
+  const handleTestProvider = async () => {
+    if (!plainKey) return;
+    setIsTestingProvider(true);
+    setTestResult(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/keys/provider/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ provider, apiKey: plainKey }),
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch (err: any) {
+      setTestResult({ valid: false, message: `Test failed: ${err.message}` });
+    } finally {
+      setIsTestingProvider(false);
+    }
+  };
 
   const fetchKeys = async () => {
     setIsLoading(true);
@@ -410,16 +435,41 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Plaintext API Key (Write-Once) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#666666]">
+                    Plaintext API Key (Write-Once) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleTestProvider}
+                    disabled={isTestingProvider || !plainKey}
+                    className="text-[11px] font-bold text-[#FF6B35] hover:underline disabled:opacity-50"
+                  >
+                    {isTestingProvider ? 'Testing live...' : '⚡ Test Connection'}
+                  </button>
+                </div>
                 <input
                   type="password"
                   placeholder="sk-proj-..."
                   value={plainKey}
-                  onChange={(e) => setPlainKey(e.target.value)}
+                  onChange={(e) => {
+                    setPlainKey(e.target.value);
+                    setTestResult(null);
+                  }}
                   className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
                 />
+                {testResult && (
+                  <div
+                    className={`mt-2 p-2.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                      testResult.valid
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}
+                  >
+                    <span>{testResult.valid ? '✓' : '✕'}</span>
+                    <span>{testResult.message}</span>
+                  </div>
+                )}
                 <p className="text-[10.5px] text-[#777777] mt-1">
                   Key is encrypted with AES-256 before storage and never returned in plaintext.
                 </p>

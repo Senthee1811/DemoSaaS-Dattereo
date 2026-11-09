@@ -51,7 +51,10 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   const fetchAlerts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/v1/alerts');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/alerts', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setAlerts(data.alerts || []);
     } catch (err) {
@@ -67,9 +70,13 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
 
   const handleMarkAsRead = async (id?: string, markAll = false) => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       await fetch('/api/v1/alerts', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ id, isRead: true, markAllRead: markAll })
       });
       fetchAlerts();
@@ -82,9 +89,13 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   const handleSendTestAlert = async () => {
     setIsSendingTest(true);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const res = await fetch('/api/v1/alerts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           projectId: testProjectId || projects[0]?.id || 'proj_copilot',
           thresholdType: testThreshold,

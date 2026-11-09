@@ -31,10 +31,26 @@ export function TeamView() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orgName, setOrgName] = useState('My Organization');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('spendguard_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.orgName) setOrgName(u.orgName);
+        } catch {}
+      }
+    }
+  }, []);
 
   const fetchTeam = async () => {
     try {
-      const res = await fetch('/api/v1/team');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/team', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
       setUsers(data.users || []);
     } catch (err) {
@@ -50,9 +66,13 @@ export function TeamView() {
     if (!name || !email) return;
     setIsSubmitting(true);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const res = await fetch('/api/v1/team', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ name, email, role })
       });
       if (res.ok) {
@@ -97,7 +117,7 @@ export function TeamView() {
           <h3 className="text-base font-bold text-[#111111]">
             Organization Members ({users.length})
           </h3>
-          <span className="text-xs text-[#777777] font-medium">Apex Innovations Inc.</span>
+          <span className="text-xs text-[#777777] font-medium">{orgName}</span>
         </div>
 
         {users.length === 0 ? (

@@ -7,7 +7,8 @@ import {
   RefreshCw, 
   Terminal, 
   LogOut,
-  Menu
+  Menu,
+  HelpCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -21,6 +22,8 @@ interface HeaderProps {
   isRefreshing: boolean;
   unreadAlertsCount: number;
   onToggleMobileMenu?: () => void;
+  onOpenHelp?: () => void;
+  onStartTour?: () => void;
 }
 
 export function Header({
@@ -33,6 +36,8 @@ export function Header({
   isRefreshing,
   unreadAlertsCount,
   onToggleMobileMenu,
+  onOpenHelp,
+  onStartTour,
 }: HeaderProps) {
   const router = useRouter();
   const [userName, setUserName] = useState('Sarah Chen');
@@ -122,6 +127,18 @@ export function Header({
           <Terminal className="w-3.5 h-3.5" />
           <span>Test Bench</span>
         </button>
+
+        {/* Help Center Trigger */}
+        {onOpenHelp && (
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            className="p-2 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full border border-[#E4E4E0] transition-colors"
+            title="Open Help Center & Documentation"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Notifications Icon */}
         <button

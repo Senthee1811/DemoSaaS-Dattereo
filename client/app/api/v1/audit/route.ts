@@ -7,6 +7,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
     const model = searchParams.get('model');
+    const provider = searchParams.get('provider');
+    const search = searchParams.get('search');
+    const status = searchParams.get('status');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
     const anomalyOnly = searchParams.get('anomalyOnly');
     const blockedOnly = searchParams.get('blockedOnly');
     const limit = searchParams.get('limit');
@@ -15,6 +20,11 @@ export async function GET(req: NextRequest) {
     const params = new URLSearchParams();
     if (projectId) params.set('projectId', projectId);
     if (model) params.set('model', model);
+    if (provider) params.set('provider', provider);
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
     if (anomalyOnly) params.set('anomalyOnly', anomalyOnly);
     if (blockedOnly) params.set('blockedOnly', blockedOnly);
     if (limit) params.set('limit', limit);

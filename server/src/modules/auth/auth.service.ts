@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RedisService } from '@/modules/redis/redis.service';
 import * as crypto from 'crypto';
 
 export interface RegisterDto {
@@ -15,6 +16,15 @@ export interface RegisterDto {
 export interface LoginDto {
   email: string;
   password: string;
+}
+
+export interface ForgotPasswordDto {
+  email: string;
+}
+
+export interface ResetPasswordDto {
+  token: string;
+  newPassword: string;
 }
 
 export interface TokenPayload {
@@ -32,6 +42,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -230,6 +241,73 @@ export class AuthService {
       name: user.name,
       role: user.role,
       orgId: user.orgId,
+    };
+  }
+
+  /**
+   * Request password recovery token.
+   * To prevent email enumeration, this returns a generic success message regardless of existence.
+   */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase().trim() },
+    });
+
+    if (user) {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const payload = JSON.stringify({ userId: user.id, email: user.email });
+      // Store in Redis with 1-hour expiration
+      await this.redisService.setCache(`spendguard:pwd_reset:${resetToken}`, payload, 3600);
+      this.logger.log(`Password reset token issued for user ${user.id}. SMTP delivery pending service configuration.`);
+      
+      return {
+        success: true,
+        message: 'If this email is associated with an account, instructions have been sent.',
+        deliveryStatus: 'simulated_pending_smtp_integration',
+        resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
+      };
+    }
+
+    return {
+      success: true,
+      message: 'If this email is associated with an account, instructions have been sent.',
+      deliveryStatus: 'simulated_pending_smtp_integration',
+    };
+  }
+
+  /**
+   * Reset password with valid time-limited one-time token.
+   */
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!dto.token || !dto.newPassword || dto.newPassword.length < 8) {
+      throw new BadRequestException('Invalid token or password does not meet the minimum length (8 chars).');
+    }
+
+    const cachedData = await this.redisService.getCache(`spendguard:pwd_reset:${dto.token}`);
+    if (!cachedData) {
+      throw new BadRequestException('Password reset token is invalid, expired, or has already been used.');
+    }
+
+    let parsed: { userId: string; email: string };
+    try {
+      parsed = JSON.parse(cachedData);
+    } catch {
+      throw new BadRequestException('Corrupt reset token payload.');
+    }
+
+    const newHash = await this.hashPassword(dto.newPassword);
+    await this.prisma.user.update({
+      where: { id: parsed.userId },
+      data: { passwordHash: newHash },
+    });
+
+    // Invalidate the token immediately (one-time usage)
+    await this.redisService.delCache(`spendguard:pwd_reset:${dto.token}`);
+    this.logger.log(`Password successfully updated for user ${parsed.userId}.`);
+
+    return {
+      success: true,
+      message: 'Your password has been reset successfully. Please log in with your new credentials.',
     };
   }
 }

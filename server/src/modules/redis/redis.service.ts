@@ -294,6 +294,44 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Generic key-value cache methods for tokens, session data, and analytics
+   */
+  async getCache(key: string): Promise<string | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      return await client.get(key);
+    } catch (err: any) {
+      this.logger.warn(`Redis getCache failed for ${key}: ${err.message}`);
+      return null;
+    }
+  }
+
+  async setCache(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    try {
+      if (ttlSeconds && ttlSeconds > 0) {
+        await client.set(key, value, 'EX', ttlSeconds);
+      } else {
+        await client.set(key, value);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Redis setCache failed for ${key}: ${err.message}`);
+    }
+  }
+
+  async delCache(key: string): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    try {
+      await client.del(key);
+    } catch (err: any) {
+      this.logger.warn(`Redis delCache failed for ${key}: ${err.message}`);
+    }
+  }
+
   private getSpendKey(projectId: string): string {
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

@@ -1,13 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RedisService } from '@/modules/redis/redis.service';
 
 @Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+  ) {}
 
-  async getDashboardAnalytics(projectId?: string) {
+  async getDashboardAnalytics(projectId?: string, orgId?: string) {
+    const cacheKey = `spendguard:analytics:${orgId || 'all'}:${projectId || 'all'}`;
+    const cached = await this.redisService.getCache(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (err: any) {
+        this.logger.warn(`Failed to parse cached analytics: ${err.message}`);
+      }
+    }
+
     const where: any = {};
     if (projectId) where.projectId = projectId;
 
@@ -128,7 +142,7 @@ export class AnalyticsService {
       },
     });
 
-    return {
+    const result = {
       summary: {
         totalSpend: Number(totalSpend.toFixed(4)),
         totalBudget,
@@ -161,5 +175,10 @@ export class AnalyticsService {
         created_at: r.createdAt,
       })),
     };
+
+    // Cache computed analytics in Redis for 15 seconds to prevent full DB scans
+    await this.redisService.setCache(cacheKey, JSON.stringify(result), 15);
+
+    return result;
   }
 }

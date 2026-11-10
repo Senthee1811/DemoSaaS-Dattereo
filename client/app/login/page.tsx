@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowRight, Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Lock, Mail, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -26,7 +27,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
       const data = await res.json();
@@ -44,7 +45,7 @@ export default function LoginPage() {
 
       router.push('/dashboard');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Login failed. Please check your credentials.');
+      setErrorMessage(err.message || 'Login failed. Please verify your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -97,9 +98,10 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="sarah.chen@apexai.io"
+                  placeholder="name@company.com"
                   className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
                 />
               </div>
@@ -110,22 +112,32 @@ export default function LoginPage() {
                 <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
                   Password
                 </label>
-                <a href="#" className="text-xs font-medium text-[#FF6B35] hover:underline">
+                <Link href="/forgot-password" className="text-xs font-medium text-[#FF6B35] hover:underline">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
+                  className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-[#141413] transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -159,16 +171,11 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Seed credentials banner */}
+          {/* Secure Infrastructure Assurance */}
           <div className="mt-6 pt-4 border-t border-[#E5E0D8] text-center">
-            <span className="text-[11px] font-mono text-[#888882] block mb-1">
-              DEMO CREDENTIALS:
+            <span className="text-[11px] font-mono text-[#888882]">
+              Protected by sub-5ms Redis Lua pre-flight capacity reservations & AES-256-GCM encryption.
             </span>
-            <div className="inline-flex items-center gap-2 bg-[#FAF8F5] border border-[#E5E0D8] px-3 py-1 rounded-full text-[11px] font-mono text-[#141413]">
-              <span>sarah.chen@apexai.io</span>
-              <span className="text-[#C4BFB8]">/</span>
-              <span>demo-password-123</span>
-            </div>
           </div>
         </div>
 
@@ -182,4 +189,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

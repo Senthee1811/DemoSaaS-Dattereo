@@ -8,8 +8,13 @@ export async function GET(req: NextRequest) {
     const projectId = searchParams.get('projectId');
     const params = projectId ? `?projectId=${projectId}` : '';
 
+    const authHeader = req.headers.get('authorization');
+
     const response = await fetch(`${BACKEND_URL}/api/v1/audit/export${params}`, {
       cache: 'no-store',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+      },
     });
 
     if (!response.ok) {

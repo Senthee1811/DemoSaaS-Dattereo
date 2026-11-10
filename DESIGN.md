@@ -1,5 +1,6 @@
 # SpendGuard AI — Design System & Implementation Guide (Dattreo Studio)
 ## Dual Editorial Architecture: Steep Analytics (Dashboard) & Anthropic Editorial (Marketing)
+*Persistent Master Reference: See `MASTER.md` for complete token dictionary and Genjutsu theses.*
 
 ---
 
@@ -8,7 +9,7 @@
 SpendGuard AI is built around a unified Dattreo brand identity split into two purposeful, high-craft editorial directions:
 
 1. **Authenticated App (Dashboard & Console)**: **Steep Editorial Analytics**  
-   Pure white and light neutral canvas, refined serif display titles, minimalist sans-serif interface elements, 24px content card radii, 16px input radii, pill-shaped buttons (`rounded-full`), and generous whitespace.
+   Pure white and light neutral canvas, refined serif display titles, minimalist sans-serif interface elements, 24px content card radii (`rounded-[24px]`), 16px input radii (`rounded-2xl`), pill-shaped buttons (`rounded-full`), and generous whitespace.
 2. **Public Website (Marketing & Showcase)**: **Anthropic-Inspired Editorial Design**  
    Warm parchment ivory canvas (`#FAF8F5`), oat-toned surfaces (`#EFECE6`), large serif display typography (48–68px), hairline dividers (`#E5E0D8`), selective corner radii on buttons, and a dark inversion footer (`#141413`).
 

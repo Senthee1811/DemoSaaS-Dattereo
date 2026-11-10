@@ -13,6 +13,9 @@ import { AlertsView } from '@/components/alerts/AlertsView';
 import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
 import { BillingView } from '@/components/billing/BillingView';
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
+import { ProductTour } from '@/components/tour/ProductTour';
+import { HelpCenterModal } from '@/components/help/HelpCenterModal';
 
 export default function AppDashboard() {
   const router = useRouter();
@@ -25,15 +28,41 @@ export default function AppDashboard() {
   const [token, setToken] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Modal & Tour States
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
+  const [isTourActive, setIsTourActive] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [userName, setUserName] = useState('there');
+  const [orgName, setOrgName] = useState('your workspace');
+
+  // Key tracking for activation checklist
+  const [hasProviderKeys, setHasProviderKeys] = useState(false);
+  const [hasGatewayKeys, setHasGatewayKeys] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem('spendguard_token');
       if (!storedToken) {
-        // Redirect unauthenticated visitors to login
         router.push('/login');
         return;
       }
       setToken(storedToken);
+
+      const storedUser = localStorage.getItem('spendguard_user');
+      if (storedUser) {
+        try {
+          const u = JSON.parse(storedUser);
+          if (u.name) setUserName(u.name.split(' ')[0]);
+          if (u.orgName) setOrgName(u.orgName);
+        } catch {}
+      }
+
+      // Check if user just registered
+      const justRegistered = sessionStorage.getItem('spendguard_just_registered');
+      if (justRegistered === 'true') {
+        sessionStorage.removeItem('spendguard_just_registered');
+        setIsWelcomeOpen(true);
+      }
     }
   }, [router]);
 
@@ -48,6 +77,21 @@ export default function AppDashboard() {
       setProjects(data.projects || []);
     } catch (err) {
       console.error('Failed to fetch projects:', err);
+    }
+  }, []);
+
+  // Fetch Keys state for checklist
+  const fetchKeys = useCallback(async () => {
+    try {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
+      const res = await fetch('/api/v1/keys', {
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+      });
+      const data = await res.json();
+      setHasProviderKeys(Boolean(data.providerKeys && data.providerKeys.length > 0));
+      setHasGatewayKeys(Boolean(data.gatewayKeys && data.gatewayKeys.length > 0));
+    } catch (err) {
+      console.error('Failed to fetch keys:', err);
     }
   }, []);
 
@@ -83,9 +127,9 @@ export default function AppDashboard() {
 
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchProjects(), fetchAnalytics(), fetchUnreadAlerts()]);
+    await Promise.all([fetchProjects(), fetchKeys(), fetchAnalytics(), fetchUnreadAlerts()]);
     setIsRefreshing(false);
-  }, [fetchProjects, fetchAnalytics, fetchUnreadAlerts]);
+  }, [fetchProjects, fetchKeys, fetchAnalytics, fetchUnreadAlerts]);
 
   useEffect(() => {
     refreshAll();
@@ -105,6 +149,8 @@ export default function AppDashboard() {
         unreadAlertsCount={unreadAlertsCount}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+        onStartTour={() => setIsTourActive(true)}
       />
 
       {/* Main Content Area */}
@@ -120,6 +166,8 @@ export default function AppDashboard() {
           isRefreshing={isRefreshing}
           unreadAlertsCount={unreadAlertsCount}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onOpenHelp={() => setIsHelpOpen(true)}
+          onStartTour={() => setIsTourActive(true)}
         />
 
         {/* Dynamic Viewport Container */}
@@ -128,9 +176,13 @@ export default function AppDashboard() {
             {currentTab === 'overview' && (
               <OverviewView
                 analyticsData={analyticsData}
+                projectsCount={projects.length}
+                hasProviderKeys={hasProviderKeys}
+                hasGatewayKeys={hasGatewayKeys}
                 onNavigateToProjects={() => setCurrentTab('projects')}
                 onNavigateToPlayground={() => setCurrentTab('playground')}
                 onNavigateToAudit={() => setCurrentTab('audit')}
+                onNavigateToKeys={() => setCurrentTab('keys')}
               />
             )}
 
@@ -185,6 +237,31 @@ export default function AppDashboard() {
           </div>
         </main>
       </div>
+
+      {/* Post-Signup Welcome Modal */}
+      <WelcomeModal
+        isOpen={isWelcomeOpen}
+        onClose={() => setIsWelcomeOpen(false)}
+        onStartOnboarding={() => router.push('/onboarding')}
+        onStartTour={() => setIsTourActive(true)}
+        userName={userName}
+        orgName={orgName}
+      />
+
+      {/* Interactive 9-Step Product Tour */}
+      <ProductTour
+        isActive={isTourActive}
+        onClose={() => setIsTourActive(false)}
+        onNavigateTab={(tab) => setCurrentTab(tab)}
+      />
+
+      {/* In-Product Knowledge Base & Help Center */}
+      <HelpCenterModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        onRestartTour={() => setIsTourActive(true)}
+        onNavigateToSdk={() => setCurrentTab('sdk')}
+      />
     </div>
   );
 }

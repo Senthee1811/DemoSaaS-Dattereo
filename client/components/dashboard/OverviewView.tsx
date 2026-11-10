@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -10,39 +11,51 @@ import {
   Clock, 
   CheckCircle2, 
   ArrowRight, 
-  PieChart as PieIcon, 
-  BarChart3, 
-  Layers 
+  Layers,
+  Calendar
 } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid, 
-  PieChart, 
-  Pie, 
-  Cell 
-} from 'recharts';
 import { MODEL_CHART_COLORS } from '@/lib/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton, ChartSkeleton } from '@/components/ui/LoadingSkeleton';
+import { OnboardingChecklist } from './OnboardingChecklist';
+
+// Lazy load heavy Recharts bundle dynamically
+const OverviewCharts = dynamic(
+  () => import('./OverviewCharts').then((mod) => mod.OverviewCharts),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-8"><ChartSkeleton /></div>
+        <div className="lg:col-span-4"><ChartSkeleton /></div>
+      </div>
+    ),
+  }
+);
 
 interface OverviewViewProps {
   analyticsData: any;
+  projectsCount?: number;
+  hasProviderKeys?: boolean;
+  hasGatewayKeys?: boolean;
   onNavigateToProjects: () => void;
   onNavigateToPlayground: () => void;
   onNavigateToAudit: () => void;
+  onNavigateToKeys?: () => void;
 }
 
 export function OverviewView({
   analyticsData,
+  projectsCount = 0,
+  hasProviderKeys = false,
+  hasGatewayKeys = false,
   onNavigateToProjects,
   onNavigateToPlayground,
-  onNavigateToAudit
+  onNavigateToAudit,
+  onNavigateToKeys,
 }: OverviewViewProps) {
+  const [dateFilter, setDateFilter] = useState<'24h' | '7d' | '30d' | 'mtd'>('mtd');
+
   if (!analyticsData || !analyticsData.summary) {
     return (
       <div className="space-y-5 pb-10">
@@ -106,6 +119,52 @@ export function OverviewView({
           </button>
         </div>
       )}
+
+      {/* Persistent FinOps Activation Checklist */}
+      <OnboardingChecklist
+        projectsCount={projectsCount}
+        hasProviderKeys={hasProviderKeys}
+        hasGatewayKeys={hasGatewayKeys}
+        totalRequests={summary.totalRequests || 0}
+        onNavigateToProjects={onNavigateToProjects}
+        onNavigateToKeys={onNavigateToKeys || onNavigateToProjects}
+        onNavigateToPlayground={onNavigateToPlayground}
+      />
+
+      {/* Date Filter & View Title Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+            Financial & Operational Telemetry
+          </h2>
+          <p className="text-xs text-[#5F6368] mt-0.5">
+            Real-time multi-model spend monitoring, capacity reservations, and 3-sigma anomaly flags.
+          </p>
+        </div>
+
+        {/* Date Filter Pills */}
+        <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] self-start sm:self-auto shadow-2xs">
+          <Calendar className="w-3.5 h-3.5 text-[#888882] ml-2 mr-1" />
+          {[
+            { id: '24h', label: '24H' },
+            { id: '7d', label: '7D' },
+            { id: '30d', label: '30D' },
+            { id: 'mtd', label: 'Month-to-Date' },
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setDateFilter(f.id as any)}
+              className={`px-3 py-1 rounded-full text-xs font-mono transition-colors ${
+                dateFilter === f.id
+                  ? 'bg-white text-[#141413] font-bold shadow-2xs'
+                  : 'text-[#5F6368] hover:text-[#141413]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Primary FinOps KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -200,236 +259,90 @@ export function OverviewView({
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Spend Velocity Chart (8 cols) */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
+      {/* Lazy-Loaded Overview Charts */}
+      <OverviewCharts
+        dailySpend={dailySpend}
+        pieData={pieData}
+        totalSpend={totalSpend}
+        onNavigateToPlayground={onNavigateToPlayground}
+      />
+
+      {/* Recent Ledger Activity Table */}
+      <div className="bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
-                  Spend Velocity (Past 7 Days)
-                </h3>
-                <p className="text-xs text-[#5F6368] mt-0.5">
-                  Aggregated USD cost across OpenAI, Anthropic, and Gemini
-                </p>
-              </div>
-              <span className="px-2.5 py-0.5 text-[10px] font-semibold text-[#0D9488] bg-[#F0FDF4] border border-[#BBF7D0] rounded-full">
-                Live Telemetry
-              </span>
-            </div>
-
-            {dailySpend.length < 1 ? (
-              <EmptyState
-                icon={BarChart3}
-                title="No spend recorded yet"
-                description="Inference requests via the gateway will display daily cost velocity here."
-                actionText="Open Test Bench"
-                onAction={onNavigateToPlayground}
-                compact
-              />
-            ) : (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dailySpend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#FF6B35" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ECECE8" vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#80868B"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={{ stroke: '#E4E4E0' }}
-                    />
-                    <YAxis
-                      stroke="#80868B"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v) => `$${v}`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        borderColor: '#E4E4E0',
-                        borderRadius: '16px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                        fontSize: '11px',
-                        color: '#141413'
-                      }}
-                      formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="spend"
-                      stroke="#FF6B35"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#spendGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Spend by Model (4 cols) */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Cost by Model</h3>
-                <p className="text-xs text-[#5F6368] mt-0.5">Relative expenditure</p>
-              </div>
-            </div>
-
-            {pieData.length === 0 || totalSpend === 0 ? (
-              <EmptyState
-                icon={PieIcon}
-                title="No spend recorded yet"
-                description="Model distribution updates automatically with gateway usage."
-                compact
-              />
-            ) : (
-              <div className="space-y-4">
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={48}
-                        outerRadius={72}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#FFFFFF',
-                          borderColor: '#E4E4E0',
-                          borderRadius: '16px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                          fontSize: '11px',
-                        }}
-                        formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Model Legend */}
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {modelBreakdown.map((m: any, idx: number) => {
-                    const modelSpend = Number(m.spend || 0);
-                    const pct = totalSpend > 0 ? Math.round((modelSpend / totalSpend) * 100) : 0;
-                    return (
-                      <div key={idx} className="flex items-center justify-between text-xs py-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: MODEL_CHART_COLORS[m.model] || MODEL_CHART_COLORS.default }}
-                          />
-                          <span className="font-mono text-xs text-[#141413] truncate max-w-[130px]">
-                            {m.model}
-                          </span>
-                        </div>
-                        <span className="font-mono tabular-nums text-xs text-[#5F6368]">
-                          ${modelSpend.toFixed(3)} ({pct}%)
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Live Request Telemetry Table */}
-      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-[#E4E4E0] flex items-center justify-between">
-          <div>
-            <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Live Inference Telemetry</h3>
-            <p className="text-xs text-[#5F6368] mt-0.5">Recent gateway transactions with exact cost attribution</p>
+            <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Recent Governance Ledger</h3>
+            <p className="text-xs text-[#5F6368] mt-0.5">Real-time inference requests audited across all models</p>
           </div>
           <button
             type="button"
             onClick={onNavigateToAudit}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-[#FF6B35] hover:bg-[#FFF7F2] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FF6B35] hover:text-[#E55A25] transition-colors"
           >
-            <span>Audit Ledger</span>
+            <span>View Complete Ledger</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {recentRequests.length === 0 ? (
-          <div className="p-8">
-            <EmptyState
-              icon={Layers}
-              title="No recent requests"
-              description="Requests sent through the proxy endpoint appear here in real time."
-              compact
-            />
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="No activity recorded yet"
+            description="Requests routed through your gateway will appear here with cryptographic timestamps."
+            actionText="Test in Playground"
+            onAction={onNavigateToPlayground}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
-                <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Timestamp</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Model</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Tokens</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Cost (USD)</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Latency</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-center">Status</th>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[#E4E4E0] text-[11px] font-mono text-[#5F6368] uppercase tracking-wider">
+                  <th className="py-3 px-3">Request ID</th>
+                  <th className="py-3 px-3">Model</th>
+                  <th className="py-3 px-3">Tokens</th>
+                  <th className="py-3 px-3">Cost</th>
+                  <th className="py-3 px-3">Latency</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3 text-right">Timestamp</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
-                {recentRequests.slice(0, 6).map((req: any, i: number) => (
-                  <tr key={i} className="hover:bg-[#FAF8F5] transition-colors">
-                    <td className="py-3 px-4 font-mono text-[11px] text-[#5F6368]">
-                      {new Date(req.created_at || req.timestamp).toLocaleTimeString()}
+              <tbody className="divide-y divide-[#ECECE8]">
+                {recentRequests.slice(0, 5).map((req: any) => (
+                  <tr key={req.id} className="hover:bg-[#FAF8F5] transition-colors">
+                    <td className="py-3 px-3 font-mono text-[#5F6368]">
+                      {req.id.slice(0, 14)}...
                     </td>
-                    <td className="py-3 px-4 font-medium">
-                      {req.project_name || req.projectName || req.project_id}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]">
+                    <td className="py-3 px-3">
+                      <span className="font-mono font-medium text-[#141413] bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#E4E4E0]">
                         {req.model}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono tabular-nums text-right text-[#5F6368]">
-                      {(req.total_tokens || req.totalTokens || 0).toLocaleString()}
+                    <td className="py-3 px-3 font-mono tabular-nums text-[#141413]">
+                      {(req.totalTokens || req.tokensIn + req.tokensOut || 0).toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 font-mono tabular-nums text-right font-semibold text-[#0D9488]">
-                      ${Number(req.cost_estimate || req.costEstimate || 0).toFixed(5)}
+                    <td className="py-3 px-3 font-mono tabular-nums font-semibold text-[#141413]">
+                      ${Number(req.costEstimate || 0).toFixed(4)}
                     </td>
-                    <td className="py-3 px-4 font-mono tabular-nums text-right text-[#5F6368]">
-                      {req.latency_ms || req.latencyMs || 0}ms
+                    <td className="py-3 px-3 font-mono tabular-nums text-[#5F6368]">
+                      {req.latencyMs}ms
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      {req.is_blocked || req.isBlocked ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                          Blocked (429)
+                    <td className="py-3 px-3">
+                      {req.isBlocked ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                          429 BLOCKED
+                        </span>
+                      ) : req.isAnomaly ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
+                          FLAGGED SPIKE
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                           200 OK
                         </span>
                       )}
+                    </td>
+                    <td className="py-3 px-3 text-right text-[#80868B] font-mono text-[11px]">
+                      {new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </td>
                   </tr>
                 ))}

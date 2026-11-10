@@ -6,13 +6,17 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get('projectId');
-    const params = projectId ? `?projectId=${projectId}` : '';
+    const orgId = searchParams.get('orgId');
+    const params = new URLSearchParams();
+    if (projectId) params.set('projectId', projectId);
+    if (orgId) params.set('orgId', orgId);
+    const qs = params.toString();
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const auth = req.headers.get('authorization');
     if (auth) headers['Authorization'] = auth;
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/analytics${params}`, {
+    const response = await fetch(`${BACKEND_URL}/api/v1/analytics${qs ? '?' + qs : ''}`, {
       headers,
       cache: 'no-store',
     });

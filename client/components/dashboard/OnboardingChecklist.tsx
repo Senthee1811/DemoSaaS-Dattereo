@@ -2,17 +2,17 @@
 
 import React, { useState } from 'react';
 import { 
-  CheckCircle2, 
+  CircleCheck, 
   Circle, 
   ArrowRight, 
   ChevronDown, 
   ChevronUp, 
-  Sparkles, 
-  Key, 
-  FolderPlus, 
-  DollarSign, 
   ShieldCheck, 
-  Terminal 
+  KeyRound, 
+  FolderKanban, 
+  DollarSign, 
+  Network, 
+  FlaskConical 
 } from 'lucide-react';
 
 interface OnboardingChecklistProps {
@@ -44,7 +44,7 @@ export function OnboardingChecklist({
       isComplete: hasProviderKeys,
       action: onNavigateToKeys,
       actionLabel: 'Connect Provider',
-      icon: Key,
+      icon: KeyRound,
     },
     {
       id: 'project',
@@ -52,7 +52,7 @@ export function OnboardingChecklist({
       isComplete: projectsCount > 0,
       action: onNavigateToProjects,
       actionLabel: 'Create Project',
-      icon: FolderPlus,
+      icon: FolderKanban,
     },
     {
       id: 'budget',
@@ -68,7 +68,7 @@ export function OnboardingChecklist({
       isComplete: hasGatewayKeys,
       action: onNavigateToKeys,
       actionLabel: 'Issue Token',
-      icon: ShieldCheck,
+      icon: Network,
     },
     {
       id: 'request',
@@ -76,7 +76,7 @@ export function OnboardingChecklist({
       isComplete: totalRequests > 0,
       action: onNavigateToPlayground,
       actionLabel: 'Open Test Bench',
-      icon: Terminal,
+      icon: FlaskConical,
     },
   ];
 
@@ -94,7 +94,7 @@ export function OnboardingChecklist({
       <div className="p-5 flex items-center justify-between border-b border-[#E4E4E0]/60">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] flex items-center justify-center text-[#FF6B35]">
-            <Sparkles className="w-4 h-4" />
+            <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export function OnboardingChecklist({
               >
                 <div className="flex items-center gap-3">
                   {task.isComplete ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-[#C4BFB8] shrink-0" />
                   )}

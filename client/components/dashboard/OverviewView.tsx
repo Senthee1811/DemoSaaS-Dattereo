@@ -6,12 +6,12 @@ import {
   DollarSign, 
   TrendingUp, 
   Activity, 
-  ShieldAlert, 
+  TriangleAlert, 
   Zap, 
   Clock, 
-  CheckCircle2, 
+  CircleCheck, 
   ArrowRight, 
-  Layers,
+  FolderKanban,
   Calendar
 } from 'lucide-react';
 import { MODEL_CHART_COLORS } from '@/lib/tokens';
@@ -102,7 +102,7 @@ export function OverviewView({
       {summary.blockedCount > 0 && (
         <div className="p-4 rounded-2xl bg-[#FEF2F2] border border-[#FECACA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3">
-            <ShieldAlert className="w-5 h-5 text-[#DC2626] shrink-0" />
+            <TriangleAlert className="w-5 h-5 text-[#DC2626] shrink-0" />
             <div>
               <p className="text-xs font-bold text-[#991B1B]">Active Budget Hard-Block Enforced</p>
               <p className="text-xs text-[#B91C1C]">

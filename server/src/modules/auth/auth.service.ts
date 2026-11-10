@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -164,6 +164,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Check if account has been deactivated
+    const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${user.id}`);
+    if (isDeactivated) {
+      throw new UnauthorizedException('This account has been deactivated. Please contact your organization administrator or support to request reactivation.');
+    }
+
     const isValid = await this.verifyPassword(dto.password, user.passwordHash);
     if (!isValid) {
       throw new UnauthorizedException('Invalid email or password');
@@ -210,6 +216,12 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
+      // Check if account has been deactivated
+      const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${payload.sub}`);
+      if (isDeactivated) {
+        throw new UnauthorizedException('Account has been deactivated. Refresh token revoked.');
+      }
+
       const newPayload: TokenPayload = {
         sub: user.id,
         email: user.email,
@@ -227,6 +239,12 @@ export class AuthService {
    * Validate JWT payload (used by JwtStrategy)
    */
   async validateUser(payload: TokenPayload) {
+    // Check if account has been deactivated
+    const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${payload.sub}`);
+    if (isDeactivated) {
+      throw new UnauthorizedException('Account has been deactivated. Access revoked.');
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
@@ -308,6 +326,150 @@ export class AuthService {
     return {
       success: true,
       message: 'Your password has been reset successfully. Please log in with your new credentials.',
+    };
+  }
+
+  /**
+   * Get current account status, workspace membership and deactivation eligibility
+   */
+  async getAccountStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { organization: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const deactivationRecord = await this.redisService.getCache(`spendguard:account_deactivated:${userId}`);
+    const isDeactivated = Boolean(deactivationRecord);
+    let parsedDeactivation: any = null;
+    if (deactivationRecord) {
+      try {
+        parsedDeactivation = JSON.parse(deactivationRecord);
+      } catch {}
+    }
+
+    // Retrieve organization member counts to verify ownership constraints
+    const orgMembers = await this.prisma.user.findMany({
+      where: { orgId: user.orgId },
+      select: { id: true, role: true },
+    });
+
+    const otherMembers = orgMembers.filter((m) => m.id !== user.id);
+    const otherOwners = otherMembers.filter((m) => m.role === 'OWNER');
+    const isSoleOwnerOfMultiUserOrg = user.role === 'OWNER' && otherMembers.length > 0 && otherOwners.length === 0;
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+      organization: {
+        id: user.organization?.id,
+        name: user.organization?.name,
+        slug: user.organization?.slug,
+        memberCount: orgMembers.length,
+      },
+      accountStatus: isDeactivated ? 'DEACTIVATED' : 'ACTIVE',
+      deactivationDetails: parsedDeactivation,
+      ownershipConstraint: {
+        canDeactivate: !isSoleOwnerOfMultiUserOrg,
+        isSoleOwner: user.role === 'OWNER',
+        reason: isSoleOwnerOfMultiUserOrg
+          ? 'You are the only OWNER of a multi-member workspace. You must transfer ownership to another team member before deactivating your account.'
+          : null,
+      },
+    };
+  }
+
+  /**
+   * Secure account deactivation with password verification, ownership safety rules, and session invalidation
+   */
+  async deactivateAccount(userId: string, dto: { password: string; reason?: string; confirmPhrase: string }) {
+    if (dto.confirmPhrase !== 'DEACTIVATE') {
+      throw new BadRequestException('Please confirm deactivation by typing DEACTIVATE.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { organization: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // 1. Password identity challenge
+    const isValid = await this.verifyPassword(dto.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Incorrect password. Identity confirmation failed.');
+    }
+
+    // 2. Organization ownership constraints check
+    if (user.role === 'OWNER') {
+      const allMembers = await this.prisma.user.findMany({
+        where: { orgId: user.orgId },
+        select: { id: true, role: true },
+      });
+      const otherMembers = allMembers.filter((m) => m.id !== user.id);
+      const otherOwners = otherMembers.filter((m) => m.role === 'OWNER');
+
+      // If there are other members in the organization, require an active OWNER to remain
+      if (otherMembers.length > 0 && otherOwners.length === 0) {
+        throw new BadRequestException(
+          'As the sole OWNER of this workspace, you must transfer ownership to another team member before deactivating your account to prevent leaving the workspace unmanaged.'
+        );
+      }
+    }
+
+    // 3. Mark account as deactivated in Redis with 30-day recovery grace period
+    const deactivationRecord = {
+      userId: user.id,
+      email: user.email,
+      orgId: user.orgId,
+      reason: dto.reason || 'User requested deactivation',
+      deactivatedAt: new Date().toISOString(),
+      recoveryAllowedUntil: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+    };
+
+    await this.redisService.setCache(
+      `spendguard:account_deactivated:${user.id}`,
+      JSON.stringify(deactivationRecord),
+      30 * 24 * 3600 // 30-day retention
+    );
+
+    // 4. Invalidate sessions in Redis
+    await this.redisService.delCache(`spendguard:session:${user.id}`);
+
+    // 5. Record immutable security audit log event
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          actor: user.email,
+          action: 'USER_ACCOUNT_DEACTIVATED',
+          metadata: JSON.stringify({
+            userId: user.id,
+            orgId: user.orgId,
+            reason: dto.reason || 'User self-deactivation',
+            timestamp: new Date().toISOString(),
+          }),
+        },
+      });
+    } catch (err: any) {
+      this.logger.error(`Failed to record audit log for deactivation: ${err.message}`);
+    }
+
+    this.logger.warn(`User account deactivated: ${user.email} (${user.id}) in org ${user.orgId}`);
+
+    return {
+      success: true,
+      message: 'Your account has been deactivated and all active sessions have been invalidated. Organization data and other members remain unaffected.',
+      recoveryPeriodDays: 30,
     };
   }
 }

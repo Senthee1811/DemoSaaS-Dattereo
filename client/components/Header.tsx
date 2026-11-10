@@ -5,10 +5,10 @@ import {
   Building2, 
   Bell, 
   RefreshCw, 
-  Terminal, 
+  FlaskConical, 
   LogOut,
   Menu,
-  HelpCircle
+  CircleHelp
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -124,7 +124,7 @@ export function Header({
           onClick={onOpenPlayground}
           className="flex items-center space-x-2 px-4 py-1.5 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs rounded-full shadow-2xs transition-colors"
         >
-          <Terminal className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
           <span>Test Bench</span>
         </button>
 
@@ -136,7 +136,7 @@ export function Header({
             className="p-2 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full border border-[#E4E4E0] transition-colors"
             title="Open Help Center & Documentation"
           >
-            <HelpCircle className="w-4 h-4" />
+            <CircleHelp className="w-4 h-4" />
           </button>
         )}
 

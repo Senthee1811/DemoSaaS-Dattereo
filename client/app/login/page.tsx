@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowRight, Lock, Mail, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Lock, Mail, TriangleAlert, CircleCheck, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [deactivatedNotice, setDeactivatedNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('deactivated=true')) {
+      setDeactivatedNotice(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,9 +84,22 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 rounded-[24px] sm:px-8 border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          {deactivatedNotice && (
+            <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
+              <CircleCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <p className="text-xs text-amber-900 font-semibold">Account Deactivated</p>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Your account has been deactivated and all active sessions have been invalidated. 
+                  Workspace data and team members remain unaffected.
+                </p>
+              </div>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <p className="text-xs text-red-800 font-medium leading-relaxed">
                 {errorMessage}
               </p>

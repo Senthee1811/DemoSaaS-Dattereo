@@ -1,7 +1,9 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decorator';
 
 export class RegisterDto {
   @IsEmail()
@@ -51,6 +53,19 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
+export class DeactivateAccountDto {
+  @IsString()
+  @MinLength(1)
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsString()
+  confirmPhrase: string;
+}
+
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -97,5 +112,29 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Get('account-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user account status and organization membership' })
+  @ApiResponse({ status: 200, description: 'Account status details' })
+  async getAccountStatus(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getAccountStatus(user.id);
+  }
+
+  @Post('deactivate')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate user account after password verification and ownership check' })
+  @ApiResponse({ status: 200, description: 'Account deactivated successfully' })
+  @ApiResponse({ status: 400, description: 'Ownership constraint violation' })
+  @ApiResponse({ status: 401, description: 'Password verification failed' })
+  async deactivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DeactivateAccountDto,
+  ) {
+    return this.authService.deactivateAccount(user.id, dto);
   }
 }

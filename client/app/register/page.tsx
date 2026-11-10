@@ -8,15 +8,15 @@ import {
   ArrowRight, 
   Lock, 
   Mail, 
-  User, 
-  Building, 
-  AlertCircle, 
+  UserRound, 
+  Building2, 
+  TriangleAlert, 
   Loader2, 
-  CheckCircle2, 
+  CircleCheck, 
   Eye, 
-  EyeOff,
-  Check,
-  X
+  EyeOff, 
+  Check, 
+  X 
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -97,12 +97,13 @@ export default function RegisterPage() {
         localStorage.setItem('spendguard_token', data.accessToken);
         localStorage.setItem('spendguard_refresh_token', data.refreshToken);
         localStorage.setItem('spendguard_user', JSON.stringify(data.user));
-        // Flag for the post-signup welcome experience
+        // Flag for the post-signup welcome experience & product tour
         sessionStorage.setItem('spendguard_just_registered', 'true');
+        localStorage.setItem('spendguard_onboarding_state', 'ACCOUNT_READY');
       }
 
-      // Route to guided activation journey
-      router.push('/onboarding');
+      // Route immediately to the dashboard for the Welcome Experience & Product Tour
+      router.push('/dashboard');
     } catch (err: any) {
       setErrorMessage(err.message || 'An error occurred during registration.');
     } finally {
@@ -138,7 +139,7 @@ export default function RegisterPage() {
         <div className="bg-white py-8 px-6 rounded-[24px] sm:px-8 border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <p className="text-xs text-red-800 font-medium leading-relaxed">
                 {errorMessage}
               </p>
@@ -153,7 +154,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
-                  <User className="h-4 w-4" />
+                  <UserRound className="h-4 w-4" />
                 </div>
                 <input
                   type="text"
@@ -195,7 +196,7 @@ export default function RegisterPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
-                  <Building className="h-4 w-4" />
+                  <Building2 className="h-4 w-4" />
                 </div>
                 <input
                   type="text"
@@ -331,11 +332,11 @@ export default function RegisterPage() {
           {/* Guarantees */}
           <div className="mt-6 pt-4 border-t border-[#E5E0D8] space-y-2">
             <div className="flex items-center gap-2 text-xs text-[#555550]">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Fail-closed protection on all upstream inference calls</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-[#555550]">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>AES-256-GCM envelope encryption for all provider keys</span>
             </div>
           </div>

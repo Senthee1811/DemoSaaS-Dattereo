@@ -13,6 +13,7 @@ import { AlertsView } from '@/components/alerts/AlertsView';
 import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
 import { BillingView } from '@/components/billing/BillingView';
+import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
@@ -57,9 +58,12 @@ export default function AppDashboard() {
         } catch {}
       }
 
-      // Check if user just registered
+      // Check if user just registered or onboarding is at initial stage
       const justRegistered = sessionStorage.getItem('spendguard_just_registered');
-      if (justRegistered === 'true') {
+      const tourCompleted = localStorage.getItem('spendguard_tour_completed');
+      const onboardingState = localStorage.getItem('spendguard_onboarding_state');
+
+      if (justRegistered === 'true' || (onboardingState === 'ACCOUNT_READY' && !tourCompleted)) {
         sessionStorage.removeItem('spendguard_just_registered');
         setIsWelcomeOpen(true);
       }
@@ -234,6 +238,13 @@ export default function AppDashboard() {
             {currentTab === 'billing' && (
               <BillingView />
             )}
+
+            {currentTab === 'settings' && (
+              <SettingsView
+                onStartTour={() => setIsTourActive(true)}
+                onNavigateToTeam={() => setCurrentTab('team')}
+              />
+            )}
           </div>
         </main>
       </div>
@@ -243,7 +254,10 @@ export default function AppDashboard() {
         isOpen={isWelcomeOpen}
         onClose={() => setIsWelcomeOpen(false)}
         onStartOnboarding={() => router.push('/onboarding')}
-        onStartTour={() => setIsTourActive(true)}
+        onStartTour={() => {
+          setIsWelcomeOpen(false);
+          setIsTourActive(true);
+        }}
         userName={userName}
         orgName={orgName}
       />
@@ -253,6 +267,7 @@ export default function AppDashboard() {
         isActive={isTourActive}
         onClose={() => setIsTourActive(false)}
         onNavigateTab={(tab) => setCurrentTab(tab)}
+        onStartWorkspaceSetup={() => router.push('/onboarding')}
       />
 
       {/* In-Product Knowledge Base & Help Center */}

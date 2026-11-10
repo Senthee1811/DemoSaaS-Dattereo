@@ -7,19 +7,19 @@ import {
   ShieldCheck, 
   ArrowRight, 
   ArrowLeft,
-  Key, 
-  CheckCircle2, 
-  Building, 
+  KeyRound, 
+  CircleCheck, 
+  Building2, 
   DollarSign, 
   Copy, 
   Check, 
-  Terminal, 
+  FlaskConical, 
   Loader2, 
-  AlertCircle,
-  Cpu,
-  Lock,
-  Zap,
-  Activity
+  TriangleAlert, 
+  Cpu, 
+  Lock, 
+  Zap, 
+  Activity 
 } from 'lucide-react';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -353,7 +353,7 @@ console.log(response.choices[0].message.content);`;
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
-                    <Building className="h-4 w-4" />
+                    <Building2 className="h-4 w-4" />
                   </div>
                   <input
                     type="text"
@@ -428,7 +428,7 @@ console.log(response.choices[0].message.content);`;
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
-                    <Key className="h-4 w-4" />
+                    <KeyRound className="h-4 w-4" />
                   </div>
                   <input
                     type="password"
@@ -462,7 +462,7 @@ console.log(response.choices[0].message.content);`;
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                       : 'bg-red-50 border-red-200 text-red-800'
                   }`}>
-                    {testResult.valid ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />}
+                    {testResult.valid ? <CircleCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <TriangleAlert className="w-3.5 h-3.5 text-red-600 shrink-0" />}
                     <span>{testResult.message}</span>
                   </div>
                 )}
@@ -588,7 +588,7 @@ console.log(response.choices[0].message.content);`;
             <div className="space-y-5">
               <div className="text-center pb-2">
                 <div className="w-12 h-12 rounded-2xl bg-[#141413] text-white flex items-center justify-center mx-auto mb-3 border border-[#E5E0D8] shadow-xs">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 stroke-[2.5]" />
+                  <CircleCheck className="w-6 h-6 text-emerald-400 stroke-[2.5]" />
                 </div>
                 <h3 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
                   Virtual Gateway Token Issued
@@ -706,9 +706,9 @@ console.log(response.choices[0].message.content);`;
                       : 'bg-red-50 border-red-200 text-red-800'
                   }`}>
                     {verificationOutcome.verified ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                     ) : (
-                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     )}
                     <span>{verificationOutcome.message}</span>
                   </div>
@@ -742,7 +742,7 @@ console.log(response.choices[0].message.content);`;
             <div className="space-y-6">
               <div className="text-center pb-2">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto mb-3 shadow-xs">
-                  <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
+                  <CircleCheck className="w-7 h-7 stroke-[2.5]" />
                 </div>
                 <h3 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
                   Workspace Ready for Production
@@ -757,7 +757,7 @@ console.log(response.choices[0].message.content);`;
                 <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Connected Provider</span>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-[#141413]">{provider}</span>
                     <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">AES-256-GCM Sealed</span>
                   </div>
@@ -766,7 +766,7 @@ console.log(response.choices[0].message.content);`;
                 <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Provisioned Project</span>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-[#141413] truncate">{projectName}</span>
                   </div>
                 </div>
@@ -774,7 +774,7 @@ console.log(response.choices[0].message.content);`;
                 <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Monthly Budget Cap</span>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-[#141413] font-mono tabular-nums">${budgetMonthly.toLocaleString()}/mo</span>
                     <span className="text-[10px] font-mono text-[#FF6B35] bg-[#FFF7F2] px-2 py-0.5 rounded-full border border-[#FFD2C0]">Hard Block Enforced</span>
                   </div>
@@ -783,7 +783,7 @@ console.log(response.choices[0].message.content);`;
                 <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Virtual Gateway Token</span>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-mono text-[#141413]">{gatewayKey.substring(0, 11)}••••••••</span>
                     <span className="text-[10px] font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">SHA-256 Hashed</span>
                   </div>
@@ -805,7 +805,12 @@ console.log(response.choices[0].message.content);`;
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => router.push('/dashboard')}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('spendguard_onboarding_state', 'ONBOARDING_COMPLETED');
+                    }
+                    router.push('/dashboard');
+                  }}
                   className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors"
                 >
                   <span>Launch FinOps Console</span>

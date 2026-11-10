@@ -5,9 +5,9 @@ import {
   ShieldCheck, 
   ArrowRight, 
   Compass, 
-  Wrench, 
+  FolderKanban, 
   X, 
-  CheckCircle2, 
+  CircleCheck, 
   Lock, 
   Zap, 
   Cpu 
@@ -96,41 +96,46 @@ export function WelcomeModal({
 
         {/* Action Pathways */}
         <div className="space-y-2.5 pt-2">
-          {/* Primary Action: Configure Workspace */}
-          <button
-            onClick={() => {
-              onClose();
-              onStartOnboarding();
-            }}
-            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#FF6B35] hover:bg-[#E55A25] text-white font-medium transition-colors shadow-2xs group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs sm:text-sm font-semibold">Configure My Workspace</p>
-                <p className="text-[11px] text-white/80">Connect provider keys, create project, and issue first token</p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 mr-1 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-
-          {/* Secondary Action: Explore Product Tour */}
+          {/* Primary Action: Interactive Product Tour */}
           <button
             onClick={() => {
               onClose();
               onStartTour();
             }}
+            className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#FF6B35] hover:bg-[#E55A25] text-white font-medium transition-colors shadow-2xs group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                <Compass className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs sm:text-sm font-semibold">Start Interactive Product Tour</p>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white text-[#FF6B35] font-mono font-bold uppercase tracking-wider">
+                    Recommended
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/80">9-step walkthrough of spend telemetry, budget caps, and virtual gateway</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 mr-1 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+
+          {/* Secondary Action: Direct Workspace Onboarding */}
+          <button
+            onClick={() => {
+              onClose();
+              onStartOnboarding();
+            }}
             className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-[#E4E4E0] text-[#141413] transition-colors group"
           >
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-center text-[#555550]">
-                <Compass className="w-4 h-4" />
+                <FolderKanban className="w-4 h-4 text-[#555550]" />
               </div>
               <div className="text-left">
-                <p className="text-xs sm:text-sm font-semibold text-[#141413]">Explore the Product Tour</p>
-                <p className="text-[11px] text-[#888882]">Guided 9-step walkthrough of all FinOps governance modules</p>
+                <p className="text-xs sm:text-sm font-semibold text-[#141413]">Skip Tour & Configure Workspace</p>
+                <p className="text-[11px] text-[#888882]">Jump straight into Key Vault setup, project budgets, and gateway tokens</p>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 mr-1 text-[#888882] group-hover:text-[#141413] group-hover:translate-x-0.5 transition-transform" />

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Mail, AlertCircle, CheckCircle2, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Mail, TriangleAlert, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
         <div className="bg-white py-8 px-6 rounded-[24px] sm:px-8 border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               <p className="text-xs text-red-800 font-medium leading-relaxed">
                 {errorMessage}
               </p>
@@ -134,7 +134,7 @@ export default function ForgotPasswordPage() {
           {resetSuccess ? (
             <div className="text-center py-4 space-y-4">
               <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 mx-auto flex items-center justify-center text-emerald-600">
-                <CheckCircle2 className="w-6 h-6" />
+                <CircleCheck className="w-6 h-6" />
               </div>
               <h3 className="font-serif text-lg font-normal text-[#141413]">
                 Password Reset Successfully
@@ -155,7 +155,7 @@ export default function ForgotPasswordPage() {
           ) : message ? (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-[#FFF7F2] border border-[#FFD2C0] flex items-start gap-3">
-                <CheckCircle2 className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5" />
+                <CircleCheck className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5" />
                 <div className="text-xs text-[#141413] space-y-1">
                   <p className="font-semibold text-[#FF6B35]">Request Received</p>
                   <p className="text-[#555550]">{message}</p>

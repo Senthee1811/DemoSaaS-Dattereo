@@ -4,21 +4,21 @@ import React from 'react';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
-  Layers, 
+  FolderKanban, 
   KeyRound, 
-  TerminalSquare, 
-  FileText, 
-  Bell, 
-  Code2, 
+  FlaskConical, 
+  ScrollText, 
+  BellRing, 
+  Network, 
   Users, 
   ShieldCheck,
   CreditCard,
   ExternalLink,
   Cpu,
   X,
-  HelpCircle,
+  CircleHelp,
   Compass,
-  Settings
+  Settings2
 } from 'lucide-react';
 
 export type NavTab = 
@@ -30,7 +30,8 @@ export type NavTab =
   | 'alerts' 
   | 'sdk' 
   | 'team'
-  | 'billing';
+  | 'billing'
+  | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -81,8 +82,8 @@ export function Sidebar({
       title: 'WORKSPACE',
       items: [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-        { id: 'projects', label: 'Projects & Budgets', icon: Layers },
-        { id: 'playground', label: 'Test Bench', icon: TerminalSquare, badge: 'Live' },
+        { id: 'projects', label: 'Projects & Budgets', icon: FolderKanban },
+        { id: 'playground', label: 'Test Bench', icon: FlaskConical, badge: 'Live' },
       ],
     },
     {
@@ -92,10 +93,10 @@ export function Sidebar({
         { 
           id: 'alerts', 
           label: 'Alerts & Anomalies', 
-          icon: Bell, 
+          icon: BellRing, 
           count: unreadAlertsCount > 0 ? unreadAlertsCount : undefined 
         },
-        { id: 'audit', label: 'Audit Ledger', icon: FileText },
+        { id: 'audit', label: 'Audit Ledger', icon: ScrollText },
       ],
     },
     {
@@ -103,12 +104,13 @@ export function Sidebar({
       items: [
         { id: 'team', label: 'Team & Access', icon: Users },
         { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
+        { id: 'settings', label: 'Settings & Account', icon: Settings2 },
       ],
     },
     {
       title: 'GLOBAL',
       items: [
-        { id: 'sdk', label: 'Documentation & SDK', icon: Code2 },
+        { id: 'sdk', label: 'Gateway SDK & Docs', icon: Network },
       ],
     },
   ];
@@ -228,7 +230,7 @@ export function Sidebar({
               }}
               className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] font-medium transition-colors"
             >
-              <HelpCircle className="w-4 h-4 text-[#80868B] shrink-0" />
+              <CircleHelp className="w-4 h-4 text-[#80868B] shrink-0" />
               <span>Help Center & FAQ</span>
             </button>
             <button

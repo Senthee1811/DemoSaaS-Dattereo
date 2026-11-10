@@ -3,18 +3,18 @@
 import React, { useState } from 'react';
 import { 
   X, 
-  HelpCircle, 
+  CircleHelp, 
   BookOpen, 
   Compass, 
   ShieldCheck, 
-  Terminal, 
-  Key, 
+  Network, 
+  KeyRound, 
   DollarSign, 
-  AlertTriangle, 
+  TriangleAlert, 
   CreditCard, 
   Search,
   ExternalLink,
-  CheckCircle2,
+  CircleCheck,
   Lock,
   ChevronRight
 } from 'lucide-react';
@@ -50,14 +50,14 @@ export function HelpCenterModal({
 
   const categories = [
     { id: 'getting-started' as HelpCategory, label: 'Getting Started', icon: BookOpen },
-    { id: 'gateway' as HelpCategory, label: 'AI Gateway Architecture', icon: Terminal },
-    { id: 'python-sdk' as HelpCategory, label: 'Python SDK Integration', icon: Terminal },
-    { id: 'node-sdk' as HelpCategory, label: 'Node.js SDK Integration', icon: Terminal },
-    { id: 'provider-config' as HelpCategory, label: 'Provider Vault Setup', icon: Key },
+    { id: 'gateway' as HelpCategory, label: 'AI Gateway Architecture', icon: Network },
+    { id: 'python-sdk' as HelpCategory, label: 'Python SDK Integration', icon: Network },
+    { id: 'node-sdk' as HelpCategory, label: 'Node.js SDK Integration', icon: Network },
+    { id: 'provider-config' as HelpCategory, label: 'Provider Vault Setup', icon: KeyRound },
     { id: 'budget-enforcement' as HelpCategory, label: 'Budget Caps & Hard-Blocks', icon: DollarSign },
     { id: 'key-security' as HelpCategory, label: 'AES-256-GCM Encryption', icon: Lock },
     { id: 'billing' as HelpCategory, label: 'Plans & Stripe Billing', icon: CreditCard },
-    { id: 'troubleshooting' as HelpCategory, label: 'Troubleshooting FAQ', icon: AlertTriangle },
+    { id: 'troubleshooting' as HelpCategory, label: 'Troubleshooting FAQ', icon: TriangleAlert },
   ];
 
   return (
@@ -72,7 +72,7 @@ export function HelpCenterModal({
         <div className="p-5 border-b border-[#E4E4E0] flex items-center justify-between shrink-0 bg-[#FAF8F5]">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-[#FF6B35] text-white flex items-center justify-center shadow-xs">
-              <HelpCircle className="w-4 h-4" />
+              <CircleHelp className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">

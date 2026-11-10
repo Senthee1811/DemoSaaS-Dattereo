@@ -7,13 +7,13 @@ import {
   ArrowRight, 
   Check, 
   Compass, 
-  DollarSign, 
+  LayoutDashboard, 
   FolderKanban, 
-  Key, 
-  Zap, 
-  Play, 
-  AlertTriangle, 
-  FileText, 
+  KeyRound, 
+  Network, 
+  FlaskConical, 
+  BellRing, 
+  ScrollText, 
   Users, 
   CreditCard 
 } from 'lucide-react';
@@ -32,72 +32,72 @@ const TOUR_STEPS: TourStep[] = [
   {
     step: 1,
     tab: 'overview',
-    title: 'Executive FinOps Telemetry',
-    description: 'Track Month-to-Date (MTD) expenditure, projected month-end burn rate, and real-time token volume aggregated across all your projects.',
+    title: '1. Executive FinOps Telemetry',
+    description: 'Understand AI expenditure, Month-to-Date (MTD) burn rates, active budget ceilings, and real-time token telemetry across all workloads.',
     badge: 'Workspace',
-    icon: DollarSign,
+    icon: LayoutDashboard,
   },
   {
     step: 2,
     tab: 'projects',
-    title: 'Projects & Hard-Block Limits',
-    description: 'Isolate budgets by application or team. When a project hits 100% of its budget, our atomic Redis Lua script enforces instant HTTP 429 hard blocks.',
+    title: '2. Projects & Budget Limits',
+    description: 'Organize AI workloads by project or squad. Set monthly budgets; our fail-closed Redis Lua reservation engine executes sub-5ms checks to enforce spending limits.',
     badge: 'Workspace',
     icon: FolderKanban,
   },
   {
     step: 3,
     tab: 'keys',
-    title: 'Cryptographic Key Vault',
-    description: 'Connect OpenAI, Anthropic, and Gemini keys securely sealed with AES-256-GCM envelope encryption. Plaintext keys are never logged or stored on disk.',
+    title: '3. Key Vault & Credentials',
+    description: 'Securely manage upstream provider keys (OpenAI, Anthropic, Gemini) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.',
     badge: 'Governance',
-    icon: Key,
+    icon: KeyRound,
   },
   {
     step: 4,
     tab: 'sdk',
-    title: 'Drop-In Virtual Gateway Tokens',
-    description: 'Issue scoped sg_live_* tokens. Integrate with Python, Node.js, or cURL by changing just one line: baseURL: "https://api.spendguard.dev/v1".',
+    title: '4. Virtual Gateway Tokens',
+    description: 'Understand virtual tokens (sg_live_*) and request routing. Drop-in OpenAI-compatible proxy forwards traffic with automatic model translation and zero refactoring.',
     badge: 'Governance',
-    icon: Zap,
+    icon: Network,
   },
   {
     step: 5,
     tab: 'playground',
-    title: 'Interactive Model Test Bench',
-    description: 'Test prompts across GPT-4o, Claude 3.5 Sonnet, and Gemini 1.5 Pro. Inspect pre-flight capacity reservations, actual token usage, and sub-5ms proxy latency.',
+    title: '5. Model Test Bench',
+    description: 'Test prompts across GPT-4o, Claude 3.5 Sonnet, and Gemini 1.5 Pro. Verify capacity reservations, response latency, and settled cost estimates in real time.',
     badge: 'Workspace',
-    icon: Play,
+    icon: FlaskConical,
   },
   {
     step: 6,
     tab: 'alerts',
-    title: 'Statistical 3-Sigma Anomaly Detection',
-    description: 'Automated Z-score outlier modeling detects abnormal cost and token spikes. Receive instant multi-channel alerts in Slack (BlockKit) and Email.',
+    title: '6. Alerts & Anomaly Detection',
+    description: 'Identify unusual spending patterns and budget thresholds. Automated Z-score outlier detection flags 3-Sigma cost spikes with instant Slack and Email alerts.',
     badge: 'Governance',
-    icon: AlertTriangle,
+    icon: BellRing,
   },
   {
     step: 7,
     tab: 'audit',
-    title: 'Cryptographic Audit Ledger',
-    description: 'Immutable, cryptographically verifiable record of every inference call. Download SOC2-ready CSV exports for compliance and financial reconciliation.',
+    title: '7. Audit Ledger & Compliance',
+    description: 'Inspect cryptographic request history, token consumption, and latency metrics. Export RFC-4180 CSV ledgers for financial compliance and cost attribution.',
     badge: 'Governance',
-    icon: FileText,
+    icon: ScrollText,
   },
   {
     step: 8,
     tab: 'team',
-    title: 'Team RBAC & Access Control',
-    description: 'Manage permissions across OWNER, ADMIN, and MEMBER roles. Prevent unauthorized project modifications while enabling developers to run tests safely.',
+    title: '8. Team & Access Control',
+    description: 'Understand workspace roles and permissions (OWNER, ADMIN, MEMBER). Enforce strict tenant isolation and safeguard key access across teams.',
     badge: 'Organization',
     icon: Users,
   },
   {
     step: 9,
     tab: 'billing',
-    title: 'Stripe Subscription & Quotas',
-    description: 'Monitor token quotas and manage your subscription tier (Starter, Growth, Enterprise) with automated Stripe Checkout and customer portal billing.',
+    title: '9. Billing & Subscription Limits',
+    description: 'Monitor token quotas and manage subscription plans (Starter, Growth, Enterprise) with automated Stripe Checkout integration.',
     badge: 'Organization',
     icon: CreditCard,
   },
@@ -107,12 +107,14 @@ interface ProductTourProps {
   isActive: boolean;
   onClose: () => void;
   onNavigateTab: (tab: NavTab) => void;
+  onStartWorkspaceSetup?: () => void;
 }
 
 export function ProductTour({
   isActive,
   onClose,
   onNavigateTab,
+  onStartWorkspaceSetup,
 }: ProductTourProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -162,8 +164,10 @@ export function ProductTour({
   const handleFinish = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('spendguard_tour_completed', 'true');
+      localStorage.setItem('spendguard_onboarding_state', 'TOUR_COMPLETED');
     }
     onClose();
+    onStartWorkspaceSetup?.();
   };
 
   const Icon = currentStep.icon;
@@ -241,7 +245,7 @@ export function ProductTour({
             onClick={handleNext}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white text-xs font-semibold transition-colors shadow-2xs"
           >
-            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish Tour' : 'Next'}</span>
+            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish & Configure' : 'Next'}</span>
             {currentStepIndex === TOUR_STEPS.length - 1 ? (
               <Check className="w-3.5 h-3.5" />
             ) : (

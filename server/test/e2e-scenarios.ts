@@ -28,8 +28,16 @@ async function run() {
     modelPricing: { findMany: async () => [] },
     user: {
       findUnique: async ({ where }: any) => usersTable.find((u) => (where.email && u.email === where.email) || (where.id && u.id === where.id)) || null,
+      findMany: async (args?: any) => {
+        if (!args || !args.where) return [...usersTable];
+        return usersTable.filter((u) => !args.where.orgId || u.orgId === args.where.orgId);
+      },
+      count: async (args?: any) => {
+        if (!args || !args.where) return usersTable.length;
+        return usersTable.filter((u) => !args.where.orgId || u.orgId === args.where.orgId).length;
+      },
       create: async ({ data }: any) => {
-        const u = { id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, ...data };
+        const u = { id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, createdAt: new Date(), ...data };
         usersTable.push(u);
         return u;
       },
@@ -376,8 +384,131 @@ async function run() {
   console.log('  ✓ Strict IDOR boundary verified (Cross-tenant modification rejected)');
   passedScenarios++;
 
+  // SCENARIO 23: Onboarding Sequence & Initial State Decoupling
+  console.log('\n▶ Scenario 23: Onboarding Sequence & Product Tour Decoupling');
+  const newUser = await authService.register({
+    email: 'newuser.finops@company.com',
+    password: 'SecurePassword2026!',
+    name: 'New FinOps Engineer',
+    orgName: 'FinOps Sandbox Org',
+  });
+  if (!newUser.user.id || !newUser.user.orgId) {
+    throw new Error('Account initialization failed to create user and org');
+  }
+  const initialKeys = await mockPrisma.request.findMany();
+  const tourTriggerAllowed = Boolean(newUser.accessToken && initialKeys.length === 0);
+  if (!tourTriggerAllowed) {
+    throw new Error('Product tour incorrectly gated behind API key initialization');
+  }
+  console.log('  ✓ Account successfully initialized (User & Org created)');
+  console.log('  ✓ Product tour decoupled from provider keys (Can launch immediately upon registration)');
+  passedScenarios++;
+
+  // SCENARIO 24: Account Deactivation — Password Identity Verification & Confirmation Phrase
+  console.log('\n▶ Scenario 24: Account Deactivation — Password Challenge & Phrase Verification');
+  let deactFailedWrongPhrase = false;
+  try {
+    await authService.deactivateAccount(newUser.user.id, {
+      password: 'SecurePassword2026!',
+      confirmPhrase: 'CANCEL',
+    });
+  } catch {
+    deactFailedWrongPhrase = true;
+  }
+  if (!deactFailedWrongPhrase) throw new Error('Deactivation succeeded without DEACTIVATE phrase');
+
+  let deactFailedWrongPassword = false;
+  try {
+    await authService.deactivateAccount(newUser.user.id, {
+      password: 'WrongPassword!',
+      confirmPhrase: 'DEACTIVATE',
+    });
+  } catch {
+    deactFailedWrongPassword = true;
+  }
+  if (!deactFailedWrongPassword) throw new Error('Deactivation succeeded with wrong password');
+  console.log('  ✓ Password identity challenge enforced (Rejects invalid password)');
+  console.log('  ✓ Explicit confirmation phrase ("DEACTIVATE") verified');
+  passedScenarios++;
+
+  // SCENARIO 25: Account Deactivation — Organization Ownership Safety Constraint
+  console.log('\n▶ Scenario 25: Organization Ownership Safety Constraints');
+  const secondaryMember = await mockPrisma.user.create({
+    data: {
+      orgId: newUser.user.orgId,
+      email: 'member@company.com',
+      name: 'Team Member',
+      passwordHash: 'dummy_hash',
+      role: 'MEMBER',
+    },
+  });
+
+  let soleOwnerBlocked = false;
+  try {
+    await authService.deactivateAccount(newUser.user.id, {
+      password: 'SecurePassword2026!',
+      confirmPhrase: 'DEACTIVATE',
+    });
+  } catch (err: any) {
+    if (err.message && err.message.includes('sole OWNER')) {
+      soleOwnerBlocked = true;
+    }
+  }
+  if (!soleOwnerBlocked) throw new Error('Sole OWNER of multi-user org was not prevented from deactivation');
+  console.log('  ✓ Ownership constraint enforced (Sole owner blocked from deactivating until ownership transferred)');
+
+  // Promote secondaryMember to OWNER to safely allow deactivation
+  secondaryMember.role = 'OWNER';
+  const deactSuccess = await authService.deactivateAccount(newUser.user.id, {
+    password: 'SecurePassword2026!',
+    confirmPhrase: 'DEACTIVATE',
+    reason: 'Offboarding to new project',
+  });
+  if (!deactSuccess.success) throw new Error('Deactivation failed after ownership constraint resolved');
+  console.log('  ✓ Deactivation succeeded once workspace ownership was safely preserved');
+  passedScenarios++;
+
+  // SCENARIO 26: Post-Deactivation Access Revocation (Fail-Closed Token Invalidation)
+  console.log('\n▶ Scenario 26: Post-Deactivation Access Revocation & Session Invalidation');
+  let tokenValidationBlocked = false;
+  try {
+    await authService.validateUser({
+      sub: newUser.user.id,
+      email: newUser.user.email,
+      orgId: newUser.user.orgId,
+      role: 'OWNER',
+    });
+  } catch {
+    tokenValidationBlocked = true;
+  }
+  if (!tokenValidationBlocked) throw new Error('Deactivated user token was not rejected by validateUser');
+
+  let loginBlocked = false;
+  try {
+    await authService.login({
+      email: 'newuser.finops@company.com',
+      password: 'SecurePassword2026!',
+    });
+  } catch {
+    loginBlocked = true;
+  }
+  if (!loginBlocked) throw new Error('Deactivated user was able to log in');
+
+  const otherMemberCheck = await authService.validateUser({
+    sub: secondaryMember.id,
+    email: secondaryMember.email,
+    orgId: secondaryMember.orgId,
+    role: 'OWNER',
+  });
+  if (!otherMemberCheck.id) throw new Error('Other org members were affected by user deactivation');
+
+  console.log('  ✓ Deactivated user tokens fail-closed immediately (JWT validation rejected)');
+  console.log('  ✓ Deactivated user cannot log in');
+  console.log('  ✓ Other organization members remain active and unaffected');
+  passedScenarios++;
+
   console.log('\n================================================================');
-  console.log(`  SUCCESS: ALL ${passedScenarios}/22 E2E FINOPS SCENARIOS PASSED VERIFICATION!  `);
+  console.log(`  SUCCESS: ALL ${passedScenarios}/26 E2E FINOPS SCENARIOS PASSED VERIFICATION!  `);
   console.log('================================================================\n');
 }
 

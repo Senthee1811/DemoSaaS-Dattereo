@@ -37,7 +37,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: 'How does statistical spike anomaly detection work?',
-    a: 'The anomaly engine computes rolling hourly and daily expenditure baselines using a 3-sigma (Z-score > 3.0) deviation threshold. If an unexpected batch job or runaway agent loop causes spend velocity to surge abnormally compared to historical project norms, an immediate alert is dispatched to your configured Slack or Email webhooks.',
+    a: 'The anomaly engine computes rolling hourly and daily expenditure baselines using a 3-sigma (Z-score > 3.0) deviation threshold. If an unexpected batch job or runaway agent loop causes spend velocity to surge abnormally compared to historical project norms, an alert appears immediately in your in-app Alerts feed (Slack and email delivery are coming soon).',
     tag: 'ANOMALY ENGINE',
   },
 ];

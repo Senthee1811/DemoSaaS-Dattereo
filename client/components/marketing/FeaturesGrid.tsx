@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: Key,
     badge: 'Envelope Key Vault',
-    title: 'Hardware-Level Key Protection (AES-256-GCM)',
+    title: 'Encrypted Key Vault (AES-256-GCM)',
     description: 'Store master provider credentials encrypted at rest with two-tier envelope encryption. Issue virtual scoped keys without exposing upstream credentials.',
     highlight: 'Zero plaintext provider keys stored or leaked',
   },
@@ -37,7 +37,7 @@ const FEATURES = [
     badge: 'Compliance Audit',
     title: 'Cryptographic Request Ledger',
     description: 'Every inference request is immutably recorded with project identity, model version, exact token counts, and verified dollar cost. Instant CSV export.',
-    highlight: 'SOC2 Type II & internal audit ready',
+    highlight: 'CSV export for internal audits',
   },
   {
     icon: Activity,

@@ -82,10 +82,6 @@ export function Footer() {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono text-[#888882]">
           <p>© {new Date().getFullYear()} SpendGuard AI · A Dattreo Studio Company. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <span className="inline-flex items-center gap-1.5 text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Gateway Status: Operational (99.99%)
-            </span>
             <span className="hover:text-white cursor-pointer">Privacy Policy</span>
             <span className="hover:text-white cursor-pointer">Terms of Service</span>
           </div>

@@ -333,7 +333,13 @@ async function run() {
   const ent = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'enterprise' } });
   check('enterprise is not sold via self-serve checkout (400)', ent.status === 400, ent.status);
   const starter = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'starter' } });
-  check('starter checkout returns a well-formed URL', starter.status === 201 && (starter.body.checkoutUrl?.match(/\?/g) || []).length === 1, starter.body);
+  if (process.env.E2E_STRIPE_CONFIGURED === 'true') {
+    check('starter checkout returns a well-formed URL', starter.status === 201 && (starter.body.checkoutUrl?.match(/\?/g) || []).length === 1, starter.body);
+  } else {
+    // Phase 1: without Stripe, checkout must say so instead of faking a success redirect.
+    // (The well-formed success_url guarantee is unit-tested with a mocked Stripe.)
+    check('starter checkout without Stripe → 503 billing_not_configured (no fake success)', starter.status === 503 && starter.body.error?.code === 'billing_not_configured', starter.body);
+  }
   const sub = await api('GET', '/api/v1/billing/subscription?orgId=someone-else', { token: B });
   check('subscription is always for the caller\'s own org', sub.body.orgId === bob.body.user.orgId, sub.body);
   const pricingWrite = await api('POST', '/api/v1/pricing', {
@@ -559,6 +565,10 @@ async function phase1(A: string) {
     const perIp429 = codes.filter((c) => c === 'rate_limit_exceeded').length;
     check('key at 1,200 RPM: 70 requests in a minute from one IP → 0 per-IP 429s', perIp429 === 0 && statuses.every((s) => s === 200), { perIp429, statuses: statuses.join(',') });
 
+    // ── P1-9. Test alerts are honest about delivery ─────────────────────────
+    const fake = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: proj.id, thresholdType: 'ANOMALY_DETECTED', channel: 'SLACK' } });
+    const fa = fake.body.alert;
+    check('test alert is recorded IN_APP/RECORDED (nothing was delivered), no invented spike stats', fake.status === 201 && fa?.channel === 'IN_APP' && fa?.status === 'RECORDED' && !/3\.4x|7-day/.test(fa?.message || ''), fa);
     check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
   }
 }

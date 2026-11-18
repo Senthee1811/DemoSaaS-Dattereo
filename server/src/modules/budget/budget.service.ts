@@ -402,11 +402,12 @@ export class BudgetService {
           message: params.message,
           channel: params.channel || 'IN_APP',
           isRead: false,
-          status: 'SENT',
+          // No external delivery exists yet: the alert is recorded in-app only
+          status: 'RECORDED',
         },
       });
 
-      this.logger.log(`[ALERT DISPATCHED] ${params.title}: ${params.message}`);
+      this.logger.log(`[ALERT RECORDED in-app] ${params.title}`);
     } catch (err: any) {
       this.logger.error(`Failed to record alert: ${err.message}`);
     }

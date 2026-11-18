@@ -407,7 +407,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               Notifications & Alerts
             </h2>
             <p className="text-xs text-[#555550]">
-              Dispatch channels for 80% budget warnings and 3-Sigma cost spikes.
+              Budget warnings, hard blocks and cost spikes currently appear in the in-app Alerts feed only.
+              External delivery channels are not available yet.
             </p>
           </div>
 
@@ -415,17 +416,17 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-[#141413]">Slack Webhook Notifications</p>
-                <p className="text-[11px] text-[#888882]">Formatted with Slack BlockKit for executive triage</p>
+                <p className="text-[11px] text-[#888882]">Post budget alerts to a Slack channel</p>
               </div>
-              <span className="text-[11px] text-[#0D9488] font-semibold">Active</span>
+              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-[#141413]">Email Dispatch</p>
-                <p className="text-[11px] text-[#888882]">Daily FinOps digests & critical hard-block notifications</p>
+                <p className="text-[11px] text-[#888882]">Email budget warnings and hard-block notifications</p>
               </div>
-              <span className="text-[11px] text-[#0D9488] font-semibold">Active</span>
+              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
             </div>
           </div>
         </div>

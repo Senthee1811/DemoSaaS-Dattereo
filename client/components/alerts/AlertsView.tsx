@@ -27,7 +27,6 @@ interface AlertItem {
   triggeredAt: string;
 }
 
-type TestChannel = 'SLACK' | 'EMAIL' | 'IN_APP';
 type TestThreshold = 'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
 
 interface AlertsViewProps {
@@ -40,11 +39,8 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   const [isLoading, setIsLoading] = useState(true);
   // Test alerts go to the first project (derived each render: projects load after mount)
   const testProjectId = projects[0]?.id;
-  const [testChannel, setTestChannel] = useState<TestChannel>('SLACK');
   const [testThreshold, setTestThreshold] = useState<TestThreshold>('PERCENT_80');
   const [isSendingTest, setIsSendingTest] = useState(false);
-  const [slackWebhook, setSlackWebhook] = useState('https://hooks.slack.com/services/spendguard/alerts');
-  const [emailList, setEmailList] = useState('eng-leads@company.com');
   const [showConfig, setShowConfig] = useState(false);
 
   const fetchAlerts = useCallback(
@@ -83,9 +79,6 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
         body: JSON.stringify({
           projectId: testProjectId,
           thresholdType: testThreshold,
-          channel: testChannel,
-          slackWebhookUrl: slackWebhook,
-          emailRecipients: emailList.split(',').map(s => s.trim())
         })
       });
       if (res.ok) {
@@ -112,7 +105,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             Alerts & Anomaly Notifications
           </h2>
           <p className="text-xs text-[#5F6368] mt-1">
-            Automated threshold notifications, statistical Z-score spike detections, and incident dispatching.
+            Budget threshold warnings, hard blocks and spend-spike detections, shown in-app.
           </p>
         </div>
 
@@ -133,7 +126,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF8F5] hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] text-xs font-semibold shadow-2xs transition-colors"
           >
             <Sliders className="w-3.5 h-3.5 text-[#5F6368]" />
-            <span>Webhook Config</span>
+            <span>Test Alert</span>
           </button>
         </div>
       </div>
@@ -159,8 +152,8 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
           </p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Dispatch Latency</span>
-          <p className="font-serif text-2xl font-normal text-[#0D9488] tabular-nums mt-1">&lt; 100ms</p>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Delivery</span>
+          <p className="font-serif text-2xl font-normal text-[#141413] mt-1">In-app only</p>
         </div>
       </div>
 
@@ -168,30 +161,14 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
       {showConfig && (
         <div className="bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-            <h3 className="font-serif text-lg font-normal text-[#141413]">Notification Channel & Webhook Dispatch</h3>
-            <span className="text-xs text-[#5F6368]">Slack BlockKit, Email, and PagerDuty endpoints</span>
+            <h3 className="font-serif text-lg font-normal text-[#141413]">Test Alert</h3>
+            <span className="text-xs text-[#5F6368]">In-app only</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="font-semibold text-[#141413] block mb-1.5">Slack Incoming Webhook URL</label>
-              <input
-                type="text"
-                value={slackWebhook}
-                onChange={(e) => setSlackWebhook(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-[#141413] block mb-1.5">Email Alert Recipients (comma-separated)</label>
-              <input
-                type="text"
-                value={emailList}
-                onChange={(e) => setEmailList(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
-              />
-            </div>
-          </div>
+          <p className="text-xs text-[#5F6368]">
+            Alerts are currently shown in this feed only. Slack and email delivery are not configured — coming soon.
+            A test alert creates an in-app entry; nothing is sent outside SpendGuard.
+          </p>
 
           {/* Test Dispatch Bar */}
           <div className="pt-3 border-t border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -207,15 +184,6 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                 <option value="ANOMALY_DETECTED">Statistical Spike Anomaly</option>
               </select>
 
-              <select
-                value={testChannel}
-                onChange={(e) => setTestChannel(e.target.value as TestChannel)}
-                className="px-3 py-1.5 rounded-full border border-[#E4E4E0] text-xs bg-[#FAF8F5] cursor-pointer"
-              >
-                <option value="SLACK">Slack</option>
-                <option value="EMAIL">Email</option>
-                <option value="IN_APP">In-App</option>
-              </select>
             </div>
 
             <button
@@ -226,7 +194,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
               className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSendingTest ? 'Dispatching...' : 'Dispatch Test Alert'}</span>
+              <span>{isSendingTest ? 'Creating...' : 'Create In-App Test Alert'}</span>
             </button>
           </div>
         </div>

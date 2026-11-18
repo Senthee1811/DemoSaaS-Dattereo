@@ -3,7 +3,6 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { assertProjectInOrg } from '@/common/tenant';
 
 const THRESHOLD_TYPES = ['PERCENT_80', 'HARD_BLOCK', 'ANOMALY_DETECTED'] as const;
-const CHANNELS = ['SLACK', 'EMAIL', 'IN_APP'] as const;
 
 @Injectable()
 export class AlertsService {
@@ -68,7 +67,9 @@ export class AlertsService {
     const project = await assertProjectInOrg(this.prisma, dto?.projectId, orgId);
 
     const thresholdType = THRESHOLD_TYPES.includes(dto.thresholdType) ? dto.thresholdType : 'PERCENT_80';
-    const channel = dto.channel && CHANNELS.includes(dto.channel) ? dto.channel : 'IN_APP';
+    // Slack/email delivery does not exist yet: a test alert is an in-app record only,
+    // whatever channel the caller asked for.
+    const channel = 'IN_APP' as const;
     const projectName = project.name;
     const budget = Number(project.budgetMonthly);
 
@@ -80,7 +81,7 @@ export class AlertsService {
       message = `Monthly budget cap of $${budget.toFixed(2)} reached. Future AI requests will fail closed with HTTP 429.`;
     } else if (thresholdType === 'ANOMALY_DETECTED') {
       title = `⚡ Spend Anomaly Spike: ${projectName}`;
-      message = `Statistical usage surge detected: 3.4x above 7-day rolling average spend.`;
+      message = `Test alert: this is what a spend-spike notification looks like. No spike was detected; real alerts describe the observed spend.`;
     }
 
     const alert = await this.prisma.budgetAlert.create({
@@ -92,7 +93,8 @@ export class AlertsService {
         title: `[TEST] ${title}`,
         message,
         isRead: false,
-        status: 'SENT',
+        // Nothing was delivered anywhere; the alert only exists in the in-app feed
+        status: 'RECORDED',
       },
     });
 

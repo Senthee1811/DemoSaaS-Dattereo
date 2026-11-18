@@ -10,6 +10,8 @@ import {
   SETTLE_HOLD_LUA,
   RELEASE_HOLD_LUA,
   PRUNE_HOLDS_LUA,
+  RECONCILE_SPEND_LUA,
+  LEDGER_PENDING_TTL_MS,
 } from './budget-holds.lua';
 
 export type { BudgetBucket, HoldReservation } from './budget-holds.lua';
@@ -283,6 +285,90 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       holdsExpKey: `spendguard:holds-exp:${projectId}:${month}`,
       cap,
       keyTtlSec: this.monthTtlSec(at),
+    };
+  }
+
+  // ── Ledger persistence tracking (settled in Redis, row not yet in Postgres) ──
+
+  /** Mark a request as settled-but-not-persisted. Call BEFORE settling the hold. */
+  async markPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    const { pendingKey, seqKey, ttl } = this.ledgerKeys(projectId, at);
+    try {
+      const nowMs = Date.now();
+      await client
+        .multi()
+        .zadd(pendingKey, nowMs + LEDGER_PENDING_TTL_MS, requestId)
+        .incr(seqKey)
+        .expire(pendingKey, ttl)
+        .expire(seqKey, ttl)
+        .exec();
+    } catch (err: any) {
+      this.logger.warn(`Failed to mark request ${requestId} pending persist: ${err.message}`);
+    }
+  }
+
+  /** The request's ledger row is in Postgres. */
+  async clearPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    const { pendingKey, seqKey } = this.ledgerKeys(projectId, at);
+    try {
+      await client.multi().zrem(pendingKey, requestId).incr(seqKey).exec();
+    } catch (err: any) {
+      this.logger.warn(`Failed to clear pending persist for ${requestId}: ${err.message}`);
+    }
+  }
+
+  /** Ledger activity counter; read it BEFORE aggregating the DB and pass it to reconcileProjectSpend. */
+  async getLedgerSeq(projectId: string, at: Date): Promise<string | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      return (await client.get(this.ledgerKeys(projectId, at).seqKey)) ?? '0';
+    } catch {
+      return null;
+    }
+  }
+
+  /** See RECONCILE_SPEND_LUA. Returns null if Redis is unavailable. */
+  async reconcileProjectSpend(
+    projectId: string,
+    dbSum: number,
+    seqBeforeDbRead: string,
+    at: Date,
+  ): Promise<{ spend: number; lowered: boolean } | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    const bucket = this.projectMonthBucket(projectId, null, at);
+    const { pendingKey, seqKey } = this.ledgerKeys(projectId, at);
+    try {
+      const res: any = await client.eval(
+        RECONCILE_SPEND_LUA,
+        5,
+        bucket.spendKey,
+        bucket.holdsKey,
+        bucket.holdsExpKey,
+        pendingKey,
+        seqKey,
+        String(dbSum),
+        seqBeforeDbRead,
+        String(bucket.keyTtlSec),
+      );
+      return { spend: parseFloat(res[0]), lowered: Number(res[1]) === 1 };
+    } catch (err: any) {
+      this.logger.warn(`Spend reconciliation failed for project ${projectId}: ${err.message}`);
+      return null;
+    }
+  }
+
+  private ledgerKeys(projectId: string, at: Date) {
+    const month = this.monthKey(at);
+    return {
+      pendingKey: `spendguard:ledger-pending:${projectId}:${month}`,
+      seqKey: `spendguard:ledger-seq:${projectId}:${month}`,
+      ttl: this.monthTtlSec(at),
     };
   }
 

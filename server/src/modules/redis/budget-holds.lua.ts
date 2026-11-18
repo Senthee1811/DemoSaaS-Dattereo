@@ -139,3 +139,38 @@ ${PRUNE_FN}
 prune(KEYS[1], KEYS[2], now)
 return redis.call('HLEN', KEYS[1])
 `;
+
+/** How long a "settled but ledger row not yet written" marker lives (covers the retry queue's backoff). */
+export const LEDGER_PENDING_TTL_MS = 24 * 3600 * 1000;
+
+/**
+ * Atomically re-derive a project's spend counter from the ledger.
+ * KEYS: spendKey, holdsKey, holdsExpKey, pendingKey (ZSET id->expiry), seqKey
+ * ARGV: dbSum, seqSeenBeforeDbRead, spendKeyTtlSec
+ *
+ * Lowers the counter to dbSum ONLY when nothing could be missing from the DB
+ * read: no active holds, no settled-but-unpersisted requests, and no ledger
+ * activity since the DB was read (seq unchanged). Otherwise it only raises
+ * (max), so a Redis flush is repaired but in-flight spend is never dropped.
+ * Returns {finalSpend, lowered (1/0)}.
+ */
+export const RECONCILE_SPEND_LUA = `
+${NOW_MS}
+${PRUNE_FN}
+prune(KEYS[2], KEYS[3], now)
+redis.call('ZREMRANGEBYSCORE', KEYS[4], '-inf', now)
+local dbSum = tonumber(ARGV[1])
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+local seq = redis.call('GET', KEYS[5]) or '0'
+local idle = redis.call('HLEN', KEYS[2]) == 0 and redis.call('ZCARD', KEYS[4]) == 0 and seq == ARGV[2]
+local final = current
+local lowered = 0
+if idle then
+  final = dbSum
+  if dbSum < current then lowered = 1 end
+elseif dbSum > current then
+  final = dbSum
+end
+redis.call('SET', KEYS[1], tostring(final), 'EX', tonumber(ARGV[3]))
+return {tostring(final), lowered}
+`;

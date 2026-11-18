@@ -473,6 +473,39 @@ async function phase1(A: string) {
     check('double settle of one request ID charges once', s1?.applied === true && s2?.applied === false && Math.abs(spend - 0.007) < 1e-9, { s1, s2, spend });
     const holdsLeft = await redis.pruneExpiredHolds(b2);
     check('settle removes the hold', holdsLeft === 0, holdsLeft);
+
+    // ── P1-5. Ledger row is written before the response ────────────────────
+    console.log('\n▶ Phase 1 · ledger: written before the response');
+    const proj = await newProject(A, 'Ledger Parity', 50);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const N = 12;
+    const res = await Promise.all(
+      Array.from({ length: N }, (_, i) => api('POST', '/v1/chat/completions', { token: key.secret, body: chat(`ledger ${i}`) })),
+    );
+    // No sleep: once every response is back, every row must already be in Postgres.
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}&limit=100`, { token: A });
+    const dbSum = (audit.body.logs || []).reduce((s: number, l: any) => s + Number(l.costEstimate), 0);
+    const redisSpend = Number(await redis.getClient()!.get(redis.projectMonthBucket(proj.id, null).spendKey));
+    check(`after ${N} gateway requests every ledger row exists on response`, res.every((r) => r.status === 200) && audit.body.total === N, { statuses: res.map((r) => r.status), rows: audit.body.total });
+    check('DB sum of costEstimate equals the Redis spend counter', Math.abs(dbSum - redisSpend) < 1e-9 && dbSum > 0, { dbSum, redisSpend });
+
+    // Reconciliation must never lower Redis spend while a request is in flight.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { BudgetService } = require('../src/modules/budget/budget.service');
+    const pid = `e2e-recon-${RUN}`;
+    const ledgerSaysOnly = { request: { aggregate: async () => ({ _sum: { costEstimate: 0.1 } }) }, project: { findUnique: async () => null } };
+    const budget = new BudgetService(ledgerSaysOnly, redis);
+    const rb = redis.projectMonthBucket(pid, 10);
+    await redis.getClient()!.set(rb.spendKey, '0.5');
+    await redis.reserveHold(`recon-${RUN}`, 0.01, [rb]);
+    await budget.reconcileProjectSpend(pid);
+    const whileHeld = Number(await redis.getClient()!.get(rb.spendKey));
+    await redis.releaseHold(`recon-${RUN}`, [rb]);
+    await budget.reconcileProjectSpend(pid);
+    const afterIdle = Number(await redis.getClient()!.get(rb.spendKey));
+    check('reconciliation does not lower Redis spend while holds are active', whileHeld === 0.5, whileHeld);
+    check('reconciliation re-derives spend from the ledger once idle', afterIdle === 0.1, afterIdle);
   } finally {
     await redis.onModuleDestroy();
   }

@@ -1,5 +1,13 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import {
+  REQUEST_LEDGER_QUEUE,
+  PERSIST_REQUEST_JOB,
+  PERSIST_REQUEST_JOB_OPTS,
+  LedgerRowJob,
+} from './request-ledger.queue';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
@@ -25,10 +33,12 @@ export class GatewayService {
     private readonly openAIAdapter: OpenAIAdapter,
     private readonly anthropicAdapter: AnthropicAdapter,
     private readonly geminiAdapter: GeminiAdapter,
+    @InjectQueue(REQUEST_LEDGER_QUEUE) private readonly ledgerQueue: Queue,
   ) {}
 
   async processChatCompletion(req: GatewayChatRequest) {
     const startTime = Date.now();
+    const startedAt = new Date(startTime);
     // One ID for the whole request: budget hold, ledger row and response id.
     const reqId = `req_${randomUUID()}`;
     const provider = this.pricingService.resolveProvider(req.model);
@@ -117,6 +127,9 @@ export class GatewayService {
     );
 
     // 4. Reconcile atomic reservation with verified actual usage
+    // Marked pending BEFORE settling, so reconciliation can never lower spend
+    // below this charge while its ledger row is still being written.
+    await this.budgetService.markPendingPersist(req.projectId, reqId, startedAt);
     const settled = await this.budgetService.settleHold(hold, costEstimate);
     if (!settled) {
       // Redis lost mid-request: the hold expires on its own and the scheduled
@@ -151,10 +164,8 @@ export class GatewayService {
       });
     }
 
-    // 6. Append-only Immutable Request Logging (async — don't block response)
-
-    this.logSuccessfulRequest(reqId, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText)
-      .catch(err => this.logger.warn(`Failed to log request: ${err.message}`));
+    // 6. Append-only ledger row — written BEFORE the response is returned
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText);
 
     // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;
@@ -227,6 +238,7 @@ export class GatewayService {
 
   private async logSuccessfulRequest(
     reqId: string,
+    startedAt: Date,
     req: GatewayChatRequest,
     provider: string,
     adapterResult: any,
@@ -235,9 +247,10 @@ export class GatewayService {
     anomalyResult: any,
     promptText: string,
   ) {
-    await this.prisma.request.create({
-      data: {
+    const data = {
         id: reqId,
+        // Same instant as the budget bucket, so ledger month == Redis month
+        createdAt: startedAt,
         projectId: req.projectId,
         userId: req.userId || null,
         provider: provider as any,
@@ -258,7 +271,22 @@ export class GatewayService {
           clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',
           isSimulated: adapterResult.isSimulated,
         }),
-      },
-    });
+    };
+
+    try {
+      await this.prisma.request.create({ data });
+      await this.budgetService.clearPendingPersist(req.projectId, reqId, startedAt);
+    } catch (err: any) {
+      // The provider call succeeded and Redis is charged: the row must not be
+      // dropped. Queue a retry; reconciliation keeps the charge while it is pending.
+      // Log codes only — Prisma messages can echo the row (prompt text).
+      this.logger.error(`Ledger write failed for request ${reqId} (${err?.code ?? err?.name}); queued for retry`);
+      const job: LedgerRowJob = { ...data, createdAt: startedAt.toISOString() };
+      try {
+        await this.ledgerQueue.add(PERSIST_REQUEST_JOB, job, { ...PERSIST_REQUEST_JOB_OPTS, jobId: reqId });
+      } catch (queueErr: any) {
+        this.logger.error(`CRITICAL: could not queue ledger retry for request ${reqId}: ${queueErr?.message}`);
+      }
+    }
   }
 }

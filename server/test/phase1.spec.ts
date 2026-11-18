@@ -90,3 +90,68 @@ describe('3. Unpriced models are rejected (no gpt-4o-mini fallback)', () => {
     expect(errorCode(() => pricing.estimateMaxCost('o1-pro-imaginary', 1200, 400))).toBe('model_not_priced');
   });
 });
+
+describe('5. Ledger row is written before the response', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { GatewayService } = require('../src/modules/gateway/gateway.service');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { PricingService } = require('../src/modules/pricing/pricing.service');
+
+  function build(create: jest.Mock) {
+    const pricing = new PricingService({ modelPricing: { findMany: async () => [] } }, { isConnected: false, getClient: () => null });
+    const budget = {
+      reserveCapacity: jest.fn(async (_p: string, requestId: string, amount: number) => ({
+        canProceed: true, isHardBlocked: false, budgetMonthly: 10, currentMonthlySpend: 0, utilizationPct: 0,
+        reservedAmount: amount, hold: { requestId, amount, buckets: [] },
+      })),
+      settleHold: jest.fn(async () => ({ applied: true, spend: 0.001 })),
+      releaseHold: jest.fn(async () => undefined),
+      markPendingPersist: jest.fn(async () => undefined),
+      clearPendingPersist: jest.fn(async () => undefined),
+      recordAlert: jest.fn(async () => undefined),
+      evaluatePostRequestThresholds: jest.fn(async () => undefined),
+    };
+    const prisma = {
+      providerApiKey: { findFirst: jest.fn(async () => ({ id: 'pk', encryptedKey: 'enc' })), update: jest.fn(async () => ({})) },
+      project: { findUnique: jest.fn(async () => ({ id: 'p1', logRequestContent: false })) },
+      request: { findMany: jest.fn(async () => []), create },
+    };
+    const adapter = { execute: jest.fn(async () => ({ responseText: 'hi', promptTokens: 1200, completionTokens: 400, totalTokens: 1600, isSimulated: false })) };
+    const queue = { add: jest.fn(async () => ({})) };
+    const anomaly = { detectSpike: () => ({ isAnomaly: false, score: 0 }) };
+    const encryption = { decryptApiKey: () => 'sk-tenant' };
+    const svc = new GatewayService(prisma, {}, budget, pricing, anomaly, encryption, adapter, adapter, adapter, queue);
+    return { svc, budget, queue };
+  }
+  const request = { projectId: 'p1', model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'secret prompt' }], maxTokens: 50 };
+
+  it('does not return until the request row insert has completed', async () => {
+    let finishInsert!: () => void;
+    const create: jest.Mock = jest.fn((_args: any) => new Promise<void>((r) => (finishInsert = r)));
+    const { svc } = build(create);
+    let done = false;
+    const p = svc.processChatCompletion(request).then((r: unknown) => ((done = true), r));
+    for (let i = 0; i < 20 && create.mock.calls.length === 0; i++) await new Promise((r) => setImmediate(r));
+    expect(create).toHaveBeenCalledTimes(1);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(done).toBe(false);
+    finishInsert();
+    const res = await p;
+    expect(done).toBe(true);
+    // ledger row id == hold id == response id
+    expect(res.id).toBe(`chatcmpl-${(create.mock.calls[0] as any[])[0].data.id}`);
+  });
+
+  it('a failed insert is queued for retry with its request ID (not dropped)', async () => {
+    const create: jest.Mock = jest.fn(async (_args: any) => {
+      throw Object.assign(new Error('db down'), { code: 'P1001' });
+    });
+    const { svc, queue } = build(create);
+    const res = await svc.processChatCompletion(request);
+    expect(res.object).toBe('chat.completion');
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    const [, data, opts] = queue.add.mock.calls[0] as any[];
+    expect(data.id).toBe(res.id.replace('chatcmpl-', ''));
+    expect(opts.jobId).toBe(data.id);
+  });
+});

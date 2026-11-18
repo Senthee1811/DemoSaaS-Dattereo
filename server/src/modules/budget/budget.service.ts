@@ -288,6 +288,16 @@ export class BudgetService {
     return this.redisService.settleHold(hold.requestId, actualCost, hold.buckets);
   }
 
+  /** Mark a request as settled in Redis but not yet in the ledger (call before settleHold). */
+  async markPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    await this.redisService.markPendingPersist(projectId, requestId, at);
+  }
+
+  /** The request's ledger row has been written. */
+  async clearPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    await this.redisService.clearPendingPersist(projectId, requestId, at);
+  }
+
   /** Release a request's hold without charging (upstream failure). Idempotent per request ID. */
   async releaseHold(hold: BudgetHold): Promise<void> {
     await this.redisService.releaseHold(hold.requestId, hold.buckets);
@@ -377,6 +387,14 @@ export class BudgetService {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Read the ledger activity counter BEFORE the DB, so any request that settles
+    // or persists while we aggregate is detected and spend is not lowered.
+    const seqBefore = await this.redisService.getLedgerSeq(projectId, now);
+    if (seqBefore === null) {
+      this.logger.warn(`Skipping reconciliation for project ${projectId}: Redis unavailable`);
+      return;
+    }
+
     const aggregate = await this.prisma.request.aggregate({
       where: {
         projectId,
@@ -386,10 +404,12 @@ export class BudgetService {
       _sum: { costEstimate: true },
     });
 
-    const trueSpend = Number(aggregate._sum.costEstimate || 0);
-    // Holds leaked by crashed requests expire on their own; drop them here too.
-    await this.redisService.pruneExpiredHolds(this.redisService.projectMonthBucket(projectId, null));
-    await this.redisService.setProjectSpend(projectId, trueSpend);
+    const ledgerSpend = Number(aggregate._sum.costEstimate || 0);
+    // Atomically: drop expired holds, then set spend to the ledger sum only if
+    // nothing is in flight; otherwise only ever raise it (repairs a Redis flush).
+    const reconciled = await this.redisService.reconcileProjectSpend(projectId, ledgerSpend, seqBefore, now);
+    if (!reconciled) return;
+    const trueSpend = reconciled.spend;
 
     // Lift automatic budget blocks once spend is back under the cap
     // (new billing month, or an admin raised the budget). Manual freezes are untouched.

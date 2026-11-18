@@ -6,9 +6,26 @@ import { AnthropicAdapter } from './adapters/anthropic.adapter';
 import { GeminiAdapter } from './adapters/gemini.adapter';
 import { RateLimitMiddleware } from '@/common/middleware/rate-limit.middleware';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { BullModule } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
+import { RequestLedgerProcessor } from './request-ledger.processor';
+import { REQUEST_LEDGER_QUEUE } from './request-ledger.queue';
 
 @Module({
-  imports: [AuthModule],
+  imports: [
+    AuthModule,
+    BullModule.registerQueueAsync({
+      name: REQUEST_LEDGER_QUEUE,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('redis.host') || 'localhost',
+          port: configService.get<number>('redis.port') || 6379,
+          password: configService.get<string>('redis.password') || undefined,
+        },
+      }),
+    }),
+  ],
   controllers: [GatewayController],
   providers: [
     GatewayService,
@@ -16,6 +33,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
     AnthropicAdapter,
     GeminiAdapter,
     RateLimitMiddleware,
+    RequestLedgerProcessor,
   ],
   exports: [GatewayService],
 })

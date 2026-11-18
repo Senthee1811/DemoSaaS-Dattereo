@@ -9,7 +9,10 @@ export class AnalyticsController {
 
   @Get()
   @ApiOperation({ summary: 'Get aggregated spend analytics, 7-day velocity, and model breakdowns' })
-  async getAnalytics(@Query('projectId') projectId?: string) {
-    return this.analyticsService.getDashboardAnalytics(projectId);
+  async getAnalytics(
+    @Query('projectId') projectId?: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    return this.analyticsService.getDashboardAnalytics(projectId, orgId);
   }
 }

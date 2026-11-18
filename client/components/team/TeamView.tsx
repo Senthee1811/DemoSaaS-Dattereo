@@ -5,15 +5,15 @@ import {
   Users, 
   UserPlus, 
   ShieldCheck, 
-  ShieldAlert, 
+  Shield, 
   Mail, 
   Check, 
   X,
   Lock,
-  Sparkles,
-  Shield
+  Building2
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
 
 interface UserItem {
   id: string;
@@ -31,10 +31,26 @@ export function TeamView() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orgName, setOrgName] = useState('My Organization');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteNotice, setInviteNotice] = useState<{ email: string; link: string | null } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('spendguard_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.orgName) setOrgName(u.orgName);
+        } catch {}
+      }
+    }
+  }, []);
 
   const fetchTeam = async () => {
     try {
-      const res = await fetch('/api/v1/team');
+      const res = await authFetch('/api/v1/team');
+      if (!res.ok) return;
       const data = await res.json();
       setUsers(data.users || []);
     } catch (err) {
@@ -49,213 +65,217 @@ export function TeamView() {
   const handleInvite = async () => {
     if (!name || !email) return;
     setIsSubmitting(true);
+    setInviteError('');
     try {
-      const res = await fetch('/api/v1/team', {
+      const res = await authFetch('/api/v1/team', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, role })
       });
-      if (res.ok) {
-        setShowInviteModal(false);
-        setName('');
-        setEmail('');
-        fetchTeam();
+      if (!res.ok) {
+        setInviteError(await readApiError(res, 'Could not invite this member.'));
+        return;
       }
+      const data = await res.json();
+      const inviteToken: string | undefined = data?.invite?.token;
+      setInviteNotice({
+        email: data?.user?.email || email,
+        // Email delivery is not wired up yet; share this link with the invitee directly.
+        link: inviteToken ? `${window.location.origin}/forgot-password?token=${inviteToken}` : null,
+      });
+      setShowInviteModal(false);
+      setName('');
+      setEmail('');
+      fetchTeam();
     } catch (err) {
       console.error('Failed to invite team member:', err);
+      setInviteError('Could not reach the server. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 pb-12">
+      {inviteNotice && (
+        <div role="status" className="p-3.5 rounded-2xl border border-sg-border bg-white text-xs space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-semibold text-inversion-dark">{inviteNotice.email} was added to {orgName}.</p>
+            <button type="button" onClick={() => setInviteNotice(null)} aria-label="Dismiss" className="text-sg-text-secondary hover:text-inversion-dark">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {inviteNotice.link ? (
+            <>
+              <p className="text-sg-text-secondary">Email delivery isn&apos;t configured yet. Send them this one-time link to set their password (valid 7 days):</p>
+              <code className="block break-all bg-parchment-ivory border border-parchment-border rounded-lg p-2 font-mono text-[11px] select-all">{inviteNotice.link}</code>
+            </>
+          ) : (
+            <p className="text-sg-text-secondary">They can set a password with &ldquo;Forgot password&rdquo; on the sign-in page.</p>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
             Team & Role-Based Access Control
           </h2>
-          <p className="text-xs sm:text-sm text-[#666666] mt-0.5">
-            Manage organization members, assign FinOps administrator privileges, and configure project permissions.
+          <p className="text-xs text-[#5F6368] mt-1">
+            Manage organization members, assign FinOps administrator privileges, and scope project permissions.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowInviteModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus className="w-3.5 h-3.5" />
           <span>Invite Member</span>
         </button>
       </div>
 
-      {/* Team Members List */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#E8E8E8] shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#F0ECE7]">
-          <h3 className="text-base font-bold text-[#111111]">
+      {/* Team Members Table */}
+      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-[#E4E4E0] flex items-center justify-between">
+          <h3 className="font-serif text-lg font-normal text-[#141413]">
             Organization Members ({users.length})
           </h3>
-          <span className="text-xs text-[#777777] font-medium">Apex Innovations Inc.</span>
+          <span className="text-xs text-[#5F6368] font-medium flex items-center gap-1.5 bg-[#FAF8F5] px-3 py-1 rounded-full border border-[#E4E4E0]">
+            <Building2 className="w-3.5 h-3.5" />
+            {orgName}
+          </span>
         </div>
 
         {users.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No team members loaded"
-            description="Invite teammates to assign project access and collaborate on spend guardrails."
-            actionText="Invite Teammate"
-            onAction={() => setShowInviteModal(true)}
-            compact
-          />
+          <div className="p-8">
+            <EmptyState
+              icon={Users}
+              title="No team members loaded"
+              description="Invite colleagues to collaborate on AI FinOps budgets and governance."
+              compact
+            />
+          </div>
         ) : (
-          <div className="divide-y divide-[#F2EFEA]">
-            {users.map((user) => (
-              <div key={user.id} className="py-3.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] flex items-center justify-center font-bold text-xs text-[#FF6B35]">
-                    {user.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
-                  </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+                <tr>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Member</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Email</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Role</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Organization Scope</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Joined</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+                {users.map((u) => {
+                  const initials = u.name
+                    ? u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+                    : 'U';
 
-                  <div>
-                    <div className="font-bold text-xs sm:text-sm text-[#111111]">
-                      {user.name}
-                    </div>
-                    <div className="text-[11px] text-[#777777] font-mono">
-                      {user.email}
-                    </div>
-                  </div>
-                </div>
+                  return (
+                    <tr key={u.id} className="hover:bg-[#FAF8F5] transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] flex items-center justify-center font-bold text-xs text-[#141413]">
+                            {initials}
+                          </div>
+                          <span className="font-semibold text-xs text-[#141413]">{u.name}</span>
+                        </div>
+                      </td>
 
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
-                      user.role === 'OWNER'
-                        ? 'bg-[#111111] text-white'
-                        : user.role === 'ADMIN'
-                        ? 'bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7]'
-                        : 'bg-[#F4F4F4] text-[#666666]'
-                    }`}
-                  >
-                    {user.role}
-                  </span>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#5F6368]">{u.email}</td>
 
-                  <span className="text-[11px] text-[#999999] hidden sm:inline">
-                    Joined {new Date(user.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                          u.role === 'OWNER'
+                            ? 'bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]'
+                            : u.role === 'ADMIN'
+                            ? 'bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]'
+                            : 'bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-[#5F6368]">{orgName}</td>
+
+                      <td className="py-3.5 px-4 text-right text-[#80868B] text-[11px]">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Role Permission Matrix Card */}
-      <div className="bg-[#FFF8F5] rounded-3xl p-6 sm:p-7 border border-[#FFE2D6] space-y-4">
-        <h4 className="text-sm font-bold text-[#111111] flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#FF6B35]" />
-          <span>Role Permissions Breakdown</span>
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-[#555555]">
-          <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
-            <strong className="text-[#111111] block mb-1">Owner</strong>
-            Full organization control, billing configuration, provider key management, emergency project freezes.
-          </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
-            <strong className="text-[#111111] block mb-1">Admin (FinOps)</strong>
-            Create and edit project budgets, trigger alert webhooks, manage scoped gateway tokens, export audit ledgers.
-          </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#E8E8E8]">
-            <strong className="text-[#111111] block mb-1">Member (Engineer)</strong>
-            Access test bench playground, view scoped project analytics, execute requests through gateway proxy.
-          </div>
-        </div>
-      </div>
-
-      {/* Modal: Invite Team Member */}
+      {/* Modal: Invite Member */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-[#E8E8E8] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
-              <h3 className="text-lg font-bold text-[#111111]">
-                Invite Organization Member
-              </h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+              <h3 className="font-serif text-lg font-normal text-[#141413]">Invite Organization Member</h3>
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
-                className="p-1 text-[#888888] hover:text-[#111111] rounded-lg"
+                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Full Name *
-                </label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Alex Rivera"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Email Address *
-                </label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Email Address *</label>
                 <input
                   type="email"
                   placeholder="alex.rivera@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Role Assignment *
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRole('MEMBER')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      role === 'MEMBER'
-                        ? 'bg-[#FFF1EA] text-[#FF6B35] border-[#FF6B35]'
-                        : 'bg-white text-[#666666] border-[#E8E8E8]'
-                    }`}
-                  >
-                    Member (Developer)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('ADMIN')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      role === 'ADMIN'
-                        ? 'bg-[#FFF1EA] text-[#FF6B35] border-[#FF6B35]'
-                        : 'bg-white text-[#666666] border-[#E8E8E8]'
-                    }`}
-                  >
-                    Admin (FinOps)
-                  </button>
-                </div>
+                <label className="font-semibold text-[#141413] block mb-1.5">Access Role *</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] bg-[#FAF8F5] focus:outline-none focus:border-[#FF6B35]"
+                >
+                  <option value="MEMBER">Member — Read-only analytics & self-service tokens</option>
+                  <option value="ADMIN">FinOps Admin — Configure project budgets & key vault</option>
+                </select>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E8E8E8] flex items-center justify-end gap-2">
+            {inviteError && (
+              <p role="alert" className="text-xs text-[#B91C1C] bg-sg-critical-bg border border-sg-critical-border rounded-xl p-2.5">
+                {inviteError}
+              </p>
+            )}
+
+            <div className="pt-3 border-t border-sg-border flex justify-end gap-2.5">
               <button
                 type="button"
-                onClick={() => setShowInviteModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#666666] hover:bg-[#F5F5F5]"
+                onClick={() => { setShowInviteModal(false); setInviteError(''); }}
+                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>
@@ -263,9 +283,9 @@ export function TeamView() {
                 type="button"
                 onClick={handleInvite}
                 disabled={isSubmitting || !name || !email}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-sm disabled:opacity-50"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
               >
-                {isSubmitting ? 'Inviting...' : 'Send Invitation'}
+                {isSubmitting ? 'Sending Invite...' : 'Send Invitation'}
               </button>
             </div>
           </div>

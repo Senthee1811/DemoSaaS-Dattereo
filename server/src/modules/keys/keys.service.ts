@@ -172,4 +172,62 @@ export class KeysService {
     }
     return { success: true };
   }
+
+  /**
+   * Test live upstream connection with provider credentials before storing
+   */
+  async testProviderConnection(provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI', plainKey: string) {
+    if (!plainKey) {
+      throw new BadRequestException('API key is required for testing connection');
+    }
+
+    try {
+      if (provider === 'OPENAI') {
+        const resp = await fetch('https://api.openai.com/v1/models', {
+          headers: { Authorization: `Bearer ${plainKey}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          return { valid: true, message: 'OpenAI connection verified successfully.', modelsCount: data.data?.length || 0 };
+        }
+        const err = await resp.text();
+        return { valid: false, message: `OpenAI rejected key (HTTP ${resp.status}): ${err}` };
+      }
+
+      if (provider === 'ANTHROPIC') {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': plainKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-haiku-20241022',
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: 1,
+          }),
+        });
+        if (resp.ok || resp.status === 400) {
+          return { valid: true, message: 'Anthropic Claude connection verified successfully.' };
+        }
+        const err = await resp.text();
+        return { valid: false, message: `Anthropic rejected key (HTTP ${resp.status}): ${err}` };
+      }
+
+      if (provider === 'GEMINI') {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${plainKey}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          return { valid: true, message: 'Google Gemini connection verified successfully.', modelsCount: data.models?.length || 0 };
+        }
+        const err = await resp.text();
+        return { valid: false, message: `Gemini rejected key (HTTP ${resp.status}): ${err}` };
+      }
+
+      return { valid: false, message: `Unsupported provider: ${provider}` };
+    } catch (err: any) {
+      return { valid: false, message: `Network error verifying provider: ${err.message}` };
+    }
+  }
 }

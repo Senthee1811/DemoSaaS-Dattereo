@@ -27,7 +27,11 @@ export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listProjects(orgId?: string) {
+    const where: any = {};
+    if (orgId) where.orgId = orgId;
+
     const projects = await this.prisma.project.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -87,13 +91,17 @@ export class OrganizationsService {
     return { projects: enriched };
   }
 
-  async createProject(dto: CreateProjectDto) {
-    // Get default org or create one
-    let org = await this.prisma.organization.findFirst();
-    if (!org) {
-      org = await this.prisma.organization.create({
-        data: { name: 'Apex Innovations Inc.', slug: 'apex-innovations' },
-      });
+  async createProject(dto: CreateProjectDto, orgId?: string) {
+    let targetOrgId = orgId;
+    if (!targetOrgId) {
+      // Fallback for initial demo seed or unauthenticated local test
+      let org = await this.prisma.organization.findFirst();
+      if (!org) {
+        org = await this.prisma.organization.create({
+          data: { name: 'Apex Innovations Inc.', slug: 'apex-innovations' },
+        });
+      }
+      targetOrgId = org.id;
     }
 
     const slug = dto.slug || dto.name.toLowerCase().replace(/\s+/g, '-');
@@ -102,7 +110,7 @@ export class OrganizationsService {
 
     const project = await this.prisma.project.create({
       data: {
-        orgId: org.id,
+        orgId: targetOrgId,
         name: dto.name,
         slug,
         description: dto.description,
@@ -115,13 +123,13 @@ export class OrganizationsService {
     return { project };
   }
 
-  async updateProject(dto: UpdateProjectDto) {
+  async updateProject(dto: UpdateProjectDto, orgId?: string) {
     const existing = await this.prisma.project.findUnique({
       where: { id: dto.id },
     });
 
-    if (!existing) {
-      throw new NotFoundException(`Project ${dto.id} not found`);
+    if (!existing || (orgId && existing.orgId !== orgId)) {
+      throw new NotFoundException(`Project ${dto.id} not found in this organization`);
     }
 
     const dataToUpdate: any = {};

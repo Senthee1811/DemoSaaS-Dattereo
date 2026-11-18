@@ -2,69 +2,78 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Zap, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Terminal, Shield, CheckCircle2 } from 'lucide-react';
 
 export function CtaBanner() {
   return (
     <section className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      <div className="relative rounded-[36px] sm:rounded-[42px] bg-gradient-to-br from-[#111111] via-[#1A1A1A] to-[#111111] text-white p-8 sm:p-14 lg:p-20 overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.08)]">
-        
-        {/* Glow Effects */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#FF6B35]/30 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-[#FF8A4C]/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-3xl mx-auto text-center space-y-7">
-          
+      <div className="rounded-3xl bg-[#141413] border border-[#2A2A28] text-white p-8 sm:p-14 lg:p-16 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+        <div className="max-w-3xl mx-auto text-center space-y-6">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold text-[#FFA06E]">
-            <Sparkles className="w-3.5 h-3.5 text-[#FF6B35]" />
-            <span>Start Eliminating AI Overspend Today</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#242422] border border-[#333330] text-xs font-mono text-[#D6D6D0]">
+            <Terminal className="w-3.5 h-3.5 text-[#FF6B35]" />
+            <span>npm install @spendguard/sdk · by Dattreo</span>
           </div>
 
-          {/* Heading */}
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-            Take full control of your AI costs across every team
+          {/* Heading — Refined Serif */}
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-white leading-tight">
+            Take deterministic control over your AI spend
           </h2>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-white/70 max-w-xl mx-auto leading-relaxed">
-            Join thousands of engineering and FinOps teams using SpendGuard to set hard budget limits, route multi-provider models, and maintain immutable audit trails.
+          <p className="text-sm sm:text-base text-[#A0A09B] max-w-xl mx-auto leading-relaxed font-sans font-normal">
+            Eliminate runaway LLM billing before it starts. Enforce sub-5ms Redis budget reservations, fail-closed thresholds, and centralized key rotation across all teams.
           </p>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+          {/* Architecture Guarantees Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
+            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+              <span className="text-[10px] font-mono text-[#888882] block uppercase">Verification Latency</span>
+              <span className="text-sm font-mono font-bold text-white tabular-nums">&lt; 5.0ms (Redis Lua)</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+              <span className="text-[10px] font-mono text-[#888882] block uppercase">Over-Budget Mode</span>
+              <span className="text-sm font-mono font-bold text-[#FF6B35]">Fail-Closed HTTP 429</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+              <span className="text-[10px] font-mono text-[#888882] block uppercase">Key Storage</span>
+              <span className="text-sm font-mono font-bold text-white">AES-256-GCM Envelope</span>
+            </div>
+          </div>
+
+          {/* Pill CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
             <Link
-              href="/dashboard"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-base font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-[0_8px_25px_rgba(255,107,53,0.4)] hover:shadow-[0_12px_32px_rgba(255,107,53,0.5)] hover:scale-105 active:scale-95 transition-all"
+              href="/register"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full text-sm font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] transition-colors shadow-2xs"
             >
-              <span>Get Started Free</span>
-              <ArrowRight className="w-5 h-5" />
+              <span>Create Organization</span>
+              <ArrowRight className="w-4 h-4" />
             </Link>
 
-            <a
-              href="#how-it-works"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-full text-base font-semibold text-white/90 bg-white/5 border border-white/15 hover:bg-white/10 transition-all"
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-7 py-3 rounded-full text-sm font-semibold text-[#D6D6D0] bg-[#242422] border border-[#333330] hover:bg-[#2A2A28] hover:text-white transition-colors"
             >
-              <span>Explore Interactive Demo</span>
-            </a>
+              <span>Explore Live Console</span>
+            </Link>
           </div>
 
-          {/* Guarantee Badges */}
-          <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-white/60">
+          {/* Operational Guarantees */}
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-[#888882] font-sans">
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-[#FF6B35]" />
-              14-day free trial
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B35]" />
+              Zero prompt retention
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-[#FF6B35]" />
-              No credit card required
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B35]" />
+              Drop-in OpenAI SDK compatible
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-[#FF6B35]" />
-              5-minute drop-in setup
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B35]" />
+              14-day full feature trial
             </span>
           </div>
-
         </div>
       </div>
     </section>

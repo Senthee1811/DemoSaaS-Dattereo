@@ -42,11 +42,11 @@ export class BillingController {
   @ApiOperation({ summary: 'Handle Stripe webhook events for subscription lifecycle' })
   @ApiResponse({ status: 200, description: 'Webhook processed' })
   async handleWebhook(
-    @Req() req: Request,
+    @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
     @Res() res: Response,
   ) {
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : ((req as any).rawBody || JSON.stringify(req.body));
     const result = await this.billingService.handleWebhook(rawBody, signature);
     return res.status(HttpStatus.OK).json(result);
   }

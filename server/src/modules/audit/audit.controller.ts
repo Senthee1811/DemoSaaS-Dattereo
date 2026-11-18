@@ -13,6 +13,11 @@ export class AuditController {
   async getLogs(
     @Query('projectId') projectId?: string,
     @Query('model') model?: string,
+    @Query('provider') provider?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('anomalyOnly') anomalyOnly?: string,
     @Query('blockedOnly') blockedOnly?: string,
     @Query('limit') limit?: string,
@@ -21,6 +26,11 @@ export class AuditController {
     return this.auditService.listLogs({
       projectId,
       model,
+      provider,
+      search,
+      status: status ? parseInt(status, 10) : undefined,
+      startDate,
+      endDate,
       anomalyOnly: anomalyOnly === 'true',
       blockedOnly: blockedOnly === 'true',
       limit: limit ? parseInt(limit, 10) : 50,

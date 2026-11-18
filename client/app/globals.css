@@ -1,208 +1,164 @@
 @import "tailwindcss";
 
 /*
- * SpendGuard Design System — Centralized Palette (Rule 7)
+ * SpendGuard AI — Dual Editorial Design System (Dattreo Studio)
  * 
- * Orange + White Identity. All colors defined as Tailwind v4 theme tokens.
- * Components use `text-sg-primary`, `bg-sg-light`, `border-sg-border`, etc.
- * Chart colors read CSS variables: var(--color-sg-primary), etc.
- * 
- * NO hardcoded hex values in components — reference these tokens only.
+ * 1. Steep Editorial Analytics (Dashboard): Refined serif display titles, minimalist sans-serif
+ *    interface elements, 24px card radii, 16px input radii, pill-shaped buttons (rounded-full).
+ * 2. Anthropic Editorial (Marketing): Warm parchment canvas (#FAF8F5), oat secondary surfaces,
+ *    refined serif headlines (48-68px), hairline dividers (#E5E0D8), near-black footer (#141413).
  */
 
 @theme {
-  /* === Core Brand Palette === */
+  /* === Typography === */
+  --font-serif: "Source Serif 4", Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Monaco, Menlo, Consolas, monospace;
+
+  /* === Core Dattreo Brand Palette === */
+  --color-dattreo-orange: #FF6B35;
+  --color-dattreo-orange-hover: #E55A25;
+  --color-dattreo-orange-subtle: #FFF7F2;
+  --color-dattreo-orange-border: #FFD2C0;
+
+  /* === Backward-compatible sg tokens === */
   --color-sg-primary: #FF6B35;
-  --color-sg-secondary: #FF8A4C;
-  --color-sg-light: #FFF1EA;
-  --color-sg-soft-bg: #FFF8F5;
-  --color-sg-warm-bg: #FFF9F6;
-  --color-sg-background: #FFFFFF;
-  --color-sg-page-bg: #FAFAFA;
+  --color-sg-primary-hover: #E55A25;
+  --color-sg-primary-subtle: #FFF7F2;
+  --color-sg-primary-border: #FFD2C0;
 
-  /* === Text Colors === */
-  --color-sg-text-primary: #111111;
-  --color-sg-text-secondary: #666666;
-  --color-sg-text-muted: #777777;
-  --color-sg-text-subtle: #888888;
-  --color-sg-text-dim: #555555;
-  --color-sg-text-body: #444444;
-  --color-sg-text-dark: #333333;
-
-  /* === Border Colors === */
-  --color-sg-border: #E8E8E8;
-  --color-sg-border-light: #F0ECE7;
-  --color-sg-border-warm: #FFD9C7;
-  --color-sg-border-accent: #FFD4C2;
-  --color-sg-border-hover: #FFC7B0;
-
-  /* === Surface / Card Colors === */
+  /* === Surfaces & Backgrounds === */
+  --color-sg-canvas: #FFFFFF;
   --color-sg-surface: #FFFFFF;
-  --color-sg-surface-muted: #F4F1ED;
-  --color-sg-surface-hover: #F5F5F5;
-  --color-sg-surface-code: #F6F6F6;
+  --color-sg-surface-muted: #F4F4F3;
+  --color-sg-surface-hover: #F8F8F7;
 
-  /* === Dark Elements === */
-  --color-sg-dark: #111111;
-  --color-sg-dark-secondary: #222222;
-  --color-sg-dark-muted: #555555;
-  --color-sg-dark-subtle: #888888;
+  /* === Anthropic Parchment Palette === */
+  --color-parchment-ivory: #FAF8F5;
+  --color-parchment-card: #FFFFFF;
+  --color-parchment-oat: #EFECE6;
+  --color-parchment-manilla: #F5EFEB;
+  --color-parchment-border: #E5E0D8;
+  --color-inversion-dark: #141413;
 
-  /* === Status Colors === */
-  --color-sg-success: #10B981;
-  --color-sg-success-bg: #ECFDF5;
-  --color-sg-warning: #F59E0B;
+  /* === High-Contrast Text === */
+  --color-sg-text-primary: #18191B;
+  --color-sg-text-secondary: #5F6368;
+  --color-sg-text-muted: #80868B;
+  --color-sg-text-subtle: #9AA0A6;
+
+  /* === Restrained Borders === */
+  --color-sg-border: #E4E4E0;
+  --color-sg-border-light: #ECECE8;
+  --color-sg-border-focus: #FF6B35;
+
+  /* === Accessible Semantic Statuses === */
+  --color-sg-success: #0D9488;
+  --color-sg-success-bg: #F0FDF4;
+  --color-sg-success-border: #BBF7D0;
+
+  --color-sg-warning: #D97706;
   --color-sg-warning-bg: #FFFBEB;
-  --color-sg-error: #EF4444;
-  --color-sg-error-bg: #FEF2F2;
+  --color-sg-warning-border: #FDE68A;
 
-  /* === Chart Palette (read via CSS vars for Recharts) === */
+  --color-sg-critical: #DC2626;
+  --color-sg-critical-bg: #FEF2F2;
+  --color-sg-critical-border: #FECACA;
+
+  /* === Multi-Provider FinOps Charts === */
   --color-sg-chart-primary: #FF6B35;
-  --color-sg-chart-secondary: #FF8A4C;
-  --color-sg-chart-tertiary: #FFA06E;
-  --color-sg-chart-quaternary: #FFD4C2;
-  --color-sg-chart-dark: #111111;
-  --color-sg-chart-gray: #A3A3A3;
-  --color-sg-chart-grid: #F0ECE7;
-
-  /* === Provider Brand Colors === */
-  --color-sg-provider-openai: #10A37F;
-  --color-sg-provider-anthropic: #D97706;
-  --color-sg-provider-google: #4285F4;
+  --color-sg-chart-secondary: #2563EB;
+  --color-sg-chart-tertiary: #0D9488;
+  --color-sg-chart-quaternary: #7C3AED;
+  --color-sg-chart-grid: #ECECE8;
 }
 
 @layer base {
   :root {
-    /* Legacy CSS variable aliases (for components not yet migrated to Tailwind tokens) */
     --primary-orange: #FF6B35;
-    --secondary-orange: #FF8A4C;
-    --light-orange: #FFF1EA;
-    --soft-bg: #FFF8F5;
-    --text-primary: #111111;
-    --text-secondary: #666666;
-    --border-color: #E8E8E8;
+    --text-primary: #18191B;
+    --text-secondary: #5F6368;
+    --border-color: #E4E4E0;
   }
 
   body {
-    background-color: #FAFAFA;
-    color: #111111;
-    font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "Inter", "Segoe UI", Roboto, sans-serif;
+    background-color: #FAF8F5;
+    color: #18191B;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
-}
 
-/* Custom animations for floating cards and hero section */
-@keyframes floatSlow {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+  /* Refined Serif Display Utility */
+  .font-serif {
+    font-family: var(--font-serif);
   }
-  50% {
-    transform: translateY(-8px) rotate(0.5deg);
-  }
-}
 
-@keyframes floatDelayed {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+  .font-sans {
+    font-family: var(--font-sans);
   }
-  50% {
-    transform: translateY(10px) rotate(-0.5deg);
-  }
-}
 
-@keyframes floatSubtle {
-  0%, 100% {
-    transform: translate(0px, 0px);
+  .font-mono {
+    font-family: var(--font-mono);
   }
-  50% {
-    transform: translate(-4px, -6px);
+
+  /* Accessible Focus Rings */
+  *:focus-visible {
+    outline: 2px solid #FF6B35;
+    outline-offset: 2px;
+  }
+
+  /* Precision Tabular Numerals for FinOps Metrics */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-@keyframes waveOscillate {
-  0%, 100% {
-    height: 6px;
-  }
-  50% {
-    height: 28px;
-  }
+/* Steep Editorial Analytics Card (24px radius, hairline border, subtle elevation) */
+.steep-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E4E4E0;
+  border-radius: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-@keyframes beaconPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.6);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
-  }
+.steep-card:hover {
+  border-color: #D2D2CC;
 }
 
-.animate-float-slow {
-  animation: floatSlow 6s ease-in-out infinite;
+/* Anthropic Editorial Surface */
+.anthropic-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E0D8;
+  border-radius: 20px;
 }
 
-.animate-float-delayed {
-  animation: floatDelayed 7s ease-in-out infinite 1.5s;
-}
-
-.animate-float-subtle {
-  animation: floatSubtle 5s ease-in-out infinite 0.8s;
-}
-
-.animate-beacon {
-  animation: beaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Orange gradients (use CSS vars from theme) */
-.bg-orange-gradient {
-  background: linear-gradient(135deg, var(--color-sg-primary) 0%, var(--color-sg-secondary) 50%, #FF9A62 100%);
-}
-
-.bg-orange-gradient-hover:hover {
-  background: linear-gradient(135deg, #F55D25 0%, #FF7B38 50%, #FF8C50 100%);
-}
-
-.text-orange-gradient {
-  background: linear-gradient(135deg, var(--color-sg-primary) 0%, var(--color-sg-secondary) 45%, #FF9E68 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-orange-gradient-bright {
-  background: linear-gradient(135deg, #FF5519 0%, var(--color-sg-primary) 50%, #FFA06E 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Glassmorphism & Card Shadows */
-.saas-container-shadow {
-  box-shadow: 0 24px 64px -12px rgba(255, 107, 53, 0.08), 0 8px 32px -8px rgba(0, 0, 0, 0.04);
-}
-
-.floating-card-shadow {
-  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.12), 0 4px 16px -4px rgba(255, 107, 53, 0.08);
-}
-
-.dark-card-shadow {
-  box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 30px -5px rgba(255, 107, 53, 0.15);
-}
-
-/* Custom Scrollbar */
+/* Precision Clean Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--color-sg-soft-bg);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--color-sg-border-accent);
-  border-radius: 4px;
+  background-color: #D8D8D4;
+  border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #FFAB88;
+  background-color: #B5B5B0;
+}
+
+/* WCAG 2.1 Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

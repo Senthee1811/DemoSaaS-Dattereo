@@ -10,15 +10,14 @@ import {
   Lock, 
   Unlock, 
   DollarSign, 
-  TrendingUp, 
   AlertTriangle,
   X,
   Check,
-  Zap,
-  Activity,
-  ArrowRight
+  Building2,
+  FolderKanban
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { authFetch } from '@/lib/auth-fetch';
 
 export interface ProjectItem {
   id: string;
@@ -46,18 +45,23 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // New Project State
+  // New Project Form State
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
-  const [budgetMonthly, setBudgetMonthly] = useState('800');
+  const [budgetMonthly, setBudgetMonthly] = useState('1000');
   const [budgetHardBlockEnabled, setBudgetHardBlockEnabled] = useState(true);
+
+  // Aggregate Metrics
+  const totalAllocation = projects.reduce((acc, p) => acc + Number(p.budgetMonthly || 0), 0);
+  const totalSpend = projects.reduce((acc, p) => acc + Number(p.currentMonthlySpend || 0), 0);
+  const blockedCount = projects.filter((p) => p.isBlocked).length;
 
   // Toggle Hard Block / Emergency Freeze
   const handleToggleBlock = async (project: ProjectItem) => {
     try {
       const newBlockedState = !project.isBlocked;
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +83,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
     if (!name) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -110,7 +114,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
     if (!editingProject) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,258 +140,254 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-[#111111] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
             Projects & Budget Guardrails
           </h2>
-          <p className="text-xs sm:text-sm text-[#666666] mt-0.5">
-            Configure monthly spend limits, soft warning triggers, and fail-closed blocking per squad.
+          <p className="text-xs text-[#5F6368] mt-1">
+            Assign monthly limits, soft-warning thresholds, and fail-closed blocking rules per team.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-xs shadow-sm shadow-[#FF6B35]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           <span>New Project</span>
         </button>
       </div>
 
-      {/* Projects Grid */}
+      {/* Aggregate FinOps Summary Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
+        <div>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Active Projects</span>
+          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">{projects.length}</p>
+        </div>
+        <div>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
+          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">${totalAllocation.toLocaleString()}</p>
+        </div>
+        <div>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
+          <p className="font-serif text-2xl font-normal text-[#0D9488] tabular-nums mt-1">${totalSpend.toFixed(2)}</p>
+        </div>
+        <div>
+          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${blockedCount > 0 ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>
+            {blockedCount}
+          </p>
+        </div>
+      </div>
+
+      {/* Projects Table */}
       {projects.length === 0 ? (
         <EmptyState
-          icon={Layers}
+          icon={FolderKanban}
           title="No projects configured"
-          description="Create your first project to start scoping AI API keys and enforcing team budgets."
+          description="Create your first project to scope API keys, assign budget limits, and monitor expenditures."
           actionText="Create First Project"
           onAction={() => setShowCreateModal(true)}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-          {projects.map((proj) => {
-            const currentSpend = Number(proj.currentMonthlySpend || 0);
-            const budget = Number(proj.budgetMonthly || 1000);
-            const utilization = budget > 0 ? Math.min(100, Math.round((currentSpend / budget) * 100)) : 0;
-            const isExceeded = currentSpend >= budget;
-            const isWarning = utilization >= 80 && !isExceeded;
+        <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+                <tr>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project Name & ID</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">MTD Spend vs Budget</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Utilization</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Enforcement</th>
+                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+                {projects.map((proj) => {
+                  const currentSpend = Number(proj.currentMonthlySpend || 0);
+                  const budget = Number(proj.budgetMonthly || 1000);
+                  const utilization = budget > 0 ? Math.min(100, Math.round((currentSpend / budget) * 100)) : 0;
+                  const isExceeded = currentSpend >= budget;
+                  const isWarning = utilization >= 80 && !isExceeded;
 
-            return (
-              <div
-                key={proj.id}
-                className={`bg-white rounded-3xl border p-6 sm:p-7 transition-all flex flex-col justify-between shadow-sm hover:shadow-md ${
-                  proj.isBlocked
-                    ? 'border-red-300 ring-1 ring-red-400 bg-red-50/20'
-                    : isWarning
-                    ? 'border-amber-300'
-                    : 'border-[#E8E8E8] hover:border-[#FFD4C2]'
-                }`}
-              >
-                <div>
-                  {/* Top Row: Name + Badges */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-[#111111]">
-                          {proj.name}
-                        </h3>
+                  return (
+                    <tr key={proj.id} className="hover:bg-[#FAF8F5] transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-xs text-[#141413]">{proj.name}</div>
+                        <div className="text-[11px] font-mono text-[#80868B]">id: {proj.id}</div>
+                        {proj.description && (
+                          <div className="text-[11px] text-[#5F6368] mt-0.5 line-clamp-1">{proj.description}</div>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 font-bold text-[10.5px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                             <ShieldAlert className="w-3 h-3" />
-                            <span>HARD-BLOCKED</span>
+                            <span>BLOCKED</span>
                           </span>
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10.5px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                             <AlertTriangle className="w-3 h-3" />
-                            <span>80% WARNING</span>
+                            <span>WARNING (80%)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10.5px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                             <ShieldCheck className="w-3 h-3" />
-                            <span>ACTIVE</span>
+                            <span>HEALTHY</span>
                           </span>
                         )}
-                      </div>
-                      <p className="text-xs text-[#777777] mt-1 font-mono">
-                        ID: {proj.id}
-                      </p>
-                    </div>
+                      </td>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingProject(proj);
-                        setBudgetMonthly(String(proj.budgetMonthly));
-                        setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
-                      }}
-                      className="p-2 text-[#777777] hover:text-[#111111] hover:bg-[#FFF8F5] rounded-xl border border-transparent hover:border-[#E8E8E8] transition-all"
-                      title="Edit Budget Limits"
-                    >
-                      <Settings2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                      <td className="py-3.5 px-4 min-w-[200px]">
+                        <div className="flex items-center justify-between text-[11px] font-mono tabular-nums mb-1.5">
+                          <span className="font-semibold text-[#141413]">${currentSpend.toFixed(2)}</span>
+                          <span className="text-[#80868B]">/ ${budget.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full overflow-hidden">
+                          <div
+                            style={{ width: `${utilization}%` }}
+                            className={`h-full transition-all duration-300 ${
+                              proj.isBlocked ? 'bg-[#DC2626]' : isWarning ? 'bg-[#D97706]' : 'bg-[#FF6B35]'
+                            }`}
+                          />
+                        </div>
+                      </td>
 
-                  {/* Description */}
-                  {proj.description && (
-                    <p className="text-xs text-[#666666] mt-2.5 leading-relaxed">
-                      {proj.description}
-                    </p>
-                  )}
-
-                  {/* Budget Usage Meter */}
-                  <div className="mt-5 p-4 rounded-2xl bg-[#FFF8F5]/60 border border-[#F0ECE7]">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-bold text-[#111111]">
-                        ${currentSpend.toFixed(2)}{' '}
-                        <span className="text-[#777777] font-normal">
-                          / ${budget.toLocaleString()} monthly
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-xs font-semibold">
+                        <span className={isExceeded ? 'text-[#DC2626]' : isWarning ? 'text-[#D97706]' : 'text-[#141413]'}>
+                          {utilization}%
                         </span>
-                      </span>
-                      <span className={`font-bold ${isExceeded ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-[#FF6B35]'}`}>
-                        {utilization}%
-                      </span>
-                    </div>
+                      </td>
 
-                    <div className="w-full h-2.5 bg-[#EAE5DF] rounded-full overflow-hidden">
-                      <div
-                        style={{ width: `${utilization}%` }}
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          proj.isBlocked || isExceeded
-                            ? 'bg-red-500'
-                            : isWarning
-                            ? 'bg-amber-500'
-                            : 'bg-gradient-to-r from-[#FF8A4C] to-[#FF6B35]'
-                        }`}
-                      />
-                    </div>
+                      <td className="py-3.5 px-4">
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                          proj.budgetHardBlockEnabled
+                            ? 'bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]'
+                            : 'bg-transparent text-[#80868B]'
+                        }`}>
+                          {proj.budgetHardBlockEnabled ? 'Fail-Closed (429)' : 'Soft Warning Only'}
+                        </span>
+                      </td>
 
-                    <div className="flex items-center justify-between mt-2 text-[11px] text-[#666666]">
-                      <span>Weekly Run-rate: ${(currentSpend / 4).toFixed(2)}</span>
-                      <span>Remaining: ${Math.max(0, budget - currentSpend).toFixed(2)}</span>
-                    </div>
-                  </div>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingProject(proj);
+                              setBudgetMonthly(String(proj.budgetMonthly));
+                              setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
+                            }}
+                            className="p-1.5 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full transition-colors"
+                            title="Edit budget allocation"
+                          >
+                            <Settings2 className="w-3.5 h-3.5" />
+                          </button>
 
-                  {/* Block Reason banner if blocked */}
-                  {proj.isBlocked && proj.blockReason && (
-                    <div className="mt-3 p-3 rounded-xl bg-red-100/70 border border-red-200 text-xs text-red-800 font-medium flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-red-600 flex-shrink-0" />
-                      <span className="truncate">{proj.blockReason}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="mt-6 pt-4 border-t border-[#F0ECE7] flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-[#666666]">
-                    <Activity className="w-3.5 h-3.5 text-[#FF6B35]" />
-                    <span>{proj.requestCount || 0} routed requests</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleToggleBlock(proj)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      proj.isBlocked
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
-                        : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
-                    }`}
-                  >
-                    {proj.isBlocked ? (
-                      <>
-                        <Unlock className="w-3.5 h-3.5" />
-                        <span>Unblock Project</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Emergency Freeze</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBlock(proj)}
+                            className={`p-1.5 rounded-full transition-colors ${
+                              proj.isBlocked
+                                ? 'text-[#0D9488] hover:bg-[#F0FDF4]'
+                                : 'text-[#80868B] hover:text-[#DC2626] hover:bg-[#FEF2F2]'
+                            }`}
+                            title={proj.isBlocked ? 'Lift hard-block' : 'Emergency freeze project traffic'}
+                          >
+                            {proj.isBlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Modal: Create Project */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-[#E8E8E8] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
-              <h3 className="text-lg font-bold text-[#111111]">
-                Create New Project
-              </h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+              <h3 className="font-serif text-lg font-normal text-[#141413]">Create FinOps Project</h3>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-[#888888] hover:text-[#111111] rounded-lg"
+                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Project Name *
-                </label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Project Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Payments Gateway Copilot"
+                  placeholder="e.g. Production Copilot"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'));
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Project Slug / Identifier
-                </label>
+                <label className="font-semibold text-[#141413] block mb-1.5">Slug Identifier</label>
                 <input
                   type="text"
-                  placeholder="e.g. proj_payments_copilot"
+                  placeholder="production-copilot"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Monthly Budget Cap ($ USD) *
-                </label>
-                <input
-                  type="number"
-                  min="50"
-                  step="50"
-                  value={budgetMonthly}
-                  onChange={(e) => setBudgetMonthly(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-1 focus:ring-[#FF6B35]"
-                />
+                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Budget Limit (USD) *</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
+                  <input
+                    type="number"
+                    min="10"
+                    step="10"
+                    value={budgetMonthly}
+                    onChange={(e) => setBudgetMonthly(e.target.value)}
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  />
+                </div>
               </div>
 
-              <div className="p-3 bg-[#FFF8F5] rounded-xl border border-[#FFE2D6] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[#111111]">Fail-Closed Hard Block</div>
-                  <div className="text-[11px] text-[#666666]">Automatically reject inference upon 100% budget</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={budgetHardBlockEnabled}
-                  onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
-                  className="w-4 h-4 accent-[#FF6B35] cursor-pointer"
-                />
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={budgetHardBlockEnabled}
+                    onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
+                    className="rounded text-[#FF6B35] mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-[#141413] block">Enforce Atomic Hard-Block (Fail-Closed)</span>
+                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                      Rejects proxy requests with HTTP 429 once allocation is exhausted.
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E8E8E8] flex items-center justify-end gap-2">
+            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#666666] hover:bg-[#F5F5F5]"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>
@@ -395,7 +395,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                 type="button"
                 onClick={handleCreateProject}
                 disabled={isSubmitting || !name}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-sm shadow-[#FF6B35]/30 hover:scale-[1.02] disabled:opacity-50"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
               </button>
@@ -404,61 +404,60 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         </div>
       )}
 
-      {/* Modal: Edit Project Budget */}
+      {/* Modal: Edit Budget */}
       {editingProject && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-[#E8E8E8] shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
-              <h3 className="text-lg font-bold text-[#111111]">
-                Configure Budget Guardrails
-              </h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+              <h3 className="font-serif text-lg font-normal text-[#141413]">Edit Budget — {editingProject.name}</h3>
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="p-1 text-[#888888] hover:text-[#111111] rounded-lg"
+                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="text-xs text-[#666666]">
-                Editing guardrails for <strong className="text-[#111111]">{editingProject.name}</strong> ({editingProject.id})
-              </div>
-
+            <div className="space-y-4 text-xs">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#666666] block mb-1">
-                  Monthly Spend Limit ($ USD)
-                </label>
-                <input
-                  type="number"
-                  min="50"
-                  step="50"
-                  value={budgetMonthly}
-                  onChange={(e) => setBudgetMonthly(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8E8E8] text-xs font-medium text-[#111111] focus:outline-none focus:border-[#FF6B35]"
-                />
+                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Allocation (USD) *</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
+                  <input
+                    type="number"
+                    min="10"
+                    step="10"
+                    value={budgetMonthly}
+                    onChange={(e) => setBudgetMonthly(e.target.value)}
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  />
+                </div>
               </div>
 
-              <div className="p-3 bg-[#FFF8F5] rounded-xl border border-[#FFE2D6] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[#111111]">Enforce Hard-Block</div>
-                  <div className="text-[11px] text-[#666666]">Fail-closed pre-flight rejection (429)</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={budgetHardBlockEnabled}
-                  onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
-                  className="w-4 h-4 accent-[#FF6B35] cursor-pointer"
-                />
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={budgetHardBlockEnabled}
+                    onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
+                    className="rounded text-[#FF6B35] mt-0.5"
+                  />
+                  <div>
+                    <span className="font-semibold text-[#141413] block">Fail-Closed Hard Limit</span>
+                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                      Enforces sub-5ms Redis reservation checks to block overspend immediately.
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E8E8E8] flex items-center justify-end gap-2">
+            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#666666] hover:bg-[#F5F5F5]"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>
@@ -466,9 +465,9 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                 type="button"
                 onClick={handleUpdateProject}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] shadow-sm shadow-[#FF6B35]/30 hover:scale-[1.02]"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
               >
-                {isSubmitting ? 'Saving...' : 'Update Guardrails'}
+                {isSubmitting ? 'Saving...' : 'Save Allocation'}
               </button>
             </div>
           </div>

@@ -8,114 +8,100 @@ import {
   FileText, 
   Activity, 
   Users, 
-  Bell, 
-  ArrowUpRight,
-  TrendingDown,
   Lock,
-  Cpu,
-  Eye
+  Cpu
 } from 'lucide-react';
 
 const FEATURES = [
   {
     icon: ShieldCheck,
-    badge: 'Hard Budget Guardrails',
+    badge: 'Atomic Pre-Flight Guardrails',
     title: 'Fail-Closed Budget Protection',
-    description: 'Set monthly or weekly spending limits per project. Trigger Slack/email warnings at 80% and automatically hard-block requests before overages happen.',
-    highlight: 'Zero surprise bills at month-end',
+    description: 'Enforce monthly or weekly spending limits per project using atomic Redis Lua scripts. Triggers warnings at 80% and blocks requests before overages happen.',
+    highlight: 'Deterministic overage prevention under concurrent load',
   },
   {
     icon: Layers,
     badge: 'Unified Gateway',
-    title: 'One Endpoint for All LLMs',
-    description: 'Route traffic across OpenAI, Google Gemini, and Anthropic Claude via a single high-performance proxy with sub-100ms overhead.',
-    highlight: 'Drop-in SDK & OpenAI API compatibility',
+    title: 'One Endpoint for OpenAI, Claude & Gemini',
+    description: 'Route traffic across OpenAI, Google Gemini, and Anthropic Claude via a single high-performance proxy with sub-5ms latency overhead.',
+    highlight: '100% drop-in OpenAI SDK compatibility',
   },
   {
     icon: Key,
-    badge: 'Encrypted Key Vault',
-    title: 'Scoped Provider Key Rotation',
-    description: 'Never distribute master provider API keys to developers. Store keys encrypted at rest with AES-256 and scope access per project and team.',
-    highlight: 'Role-based key access governance',
+    badge: 'Envelope Key Vault',
+    title: 'Hardware-Level Key Protection (AES-256-GCM)',
+    description: 'Store master provider credentials encrypted at rest with two-tier envelope encryption. Issue virtual scoped keys without exposing upstream credentials.',
+    highlight: 'Zero plaintext provider keys stored or leaked',
   },
   {
     icon: FileText,
     badge: 'Compliance Audit',
-    title: 'Immutable Request Ledger',
-    description: 'Every inference request is immutably logged with user identity, project ID, token counts, model version, and exact dollar cost. Exportable to CSV.',
-    highlight: 'SOC2 & internal compliance ready',
+    title: 'Cryptographic Request Ledger',
+    description: 'Every inference request is immutably recorded with project identity, model version, exact token counts, and verified dollar cost. Instant CSV export.',
+    highlight: 'SOC2 Type II & internal audit ready',
   },
   {
     icon: Activity,
-    badge: 'Anomaly Detection',
-    title: 'Statistical Spike Alerts',
-    description: 'Detect abnormal token spikes, runaway loops, or unoptimized prompts before they drain thousands of dollars in minutes.',
-    highlight: 'Continuous statistical pattern analysis',
+    badge: 'Statistical Anomaly (FR-9)',
+    title: 'Z-Score Outlier Spike Detection',
+    description: 'Detect abnormal token spikes, runaway agent loops, and malformed prompts using mathematical standard deviation algorithms before budget depletion.',
+    highlight: 'Continuous moving-average baseline analysis',
   },
   {
     icon: Users,
-    badge: 'Org Hierarchy',
-    title: 'Multi-Team Cost Allocation',
-    description: 'Create organizations, departments, and project workgroups. Give engineering leads and FinOps managers exact line-item spend attribution.',
-    highlight: 'Granular chargeback & showback',
+    badge: 'FinOps Attribution',
+    title: 'Multi-Tenant Workgroup Allocation',
+    description: 'Scope budgets per team, project, or microservice. Give engineering managers and FinOps teams exact line-item spend accountability.',
+    highlight: 'Granular chargeback & showback attribution',
   },
 ];
 
 export function FeaturesGrid() {
   return (
-    <section id="features" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Section Header */}
-      <div className="text-center max-w-3xl mx-auto mb-16">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] text-xs font-semibold text-[#FF6B35] mb-4">
-          <Eye className="w-3.5 h-3.5" />
-          <span>Governance Infrastructure</span>
-        </div>
-        <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#111111]">
-          Everything you need to govern enterprise AI spend
+    <section id="features" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+      {/* Section Header — Editorial */}
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          Platform Architecture
+        </span>
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+          Infrastructure Built for FinOps Rigor
         </h2>
-        <p className="mt-4 text-base sm:text-lg text-[#666666]">
-          Multi-provider flexibility shouldn't mean financial chaos. SpendGuard gives you complete visibility, real-time control, and cryptographic accountability.
+        <p className="mt-2 text-sm text-[#555550] font-sans">
+          Multi-provider flexibility with mathematical budget guarantees and complete cryptographic accountability.
         </p>
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {FEATURES.map((feat, idx) => {
           const Icon = feat.icon;
           return (
             <div
               key={idx}
-              className="group bg-white rounded-3xl p-7 sm:p-8 border border-[#E8E8E8] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_36px_rgba(255,107,53,0.1)] hover:border-[#FFD4C2] transition-all duration-300 flex flex-col justify-between"
+              className="bg-white rounded-2xl p-6 border border-[#E5E0D8] shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
             >
-              <div>
-                {/* Top Row: Icon + Badge */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FFF1EA] text-[#FF6B35] flex items-center justify-center group-hover:scale-110 group-hover:bg-[#FF6B35] group-hover:text-white transition-all duration-300 shadow-sm">
-                    <Icon className="w-6 h-6" />
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] text-[#141413] border border-[#E5E0D8] flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                   </div>
-                  <span className="text-[11px] font-bold text-[#FF6B35] bg-[#FFF8F5] px-2.5 py-1 rounded-full border border-[#FFE2D6]">
+                  <span className="text-[10px] font-mono text-[#666660] bg-[#FAF8F5] px-2.5 py-0.5 rounded-full border border-[#E5E0D8]">
                     {feat.badge}
                   </span>
                 </div>
 
-                {/* Title */}
-                <h3 className="text-xl font-bold text-[#111111] mb-2.5 group-hover:text-[#FF6B35] transition-colors">
-                  {feat.title}
-                </h3>
+                <h3 className="font-serif text-base font-normal text-[#141413]">{feat.title}</h3>
 
-                {/* Description */}
-                <p className="text-sm text-[#666666] leading-relaxed">
+                <p className="text-xs text-[#555550] leading-relaxed font-sans">
                   {feat.description}
                 </p>
               </div>
 
-              {/* Bottom Highlight */}
-              <div className="mt-6 pt-4 border-t border-[#F2EFEA] flex items-center justify-between text-xs">
-                <span className="font-semibold text-[#333333] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" />
-                  {feat.highlight}
-                </span>
-                <ArrowUpRight className="w-4 h-4 text-[#999999] group-hover:text-[#FF6B35] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              <div className="mt-4 pt-3.5 border-t border-[#F0ECE6] text-[11px] font-mono text-[#0D9488] flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0D9488]" />
+                <span>{feat.highlight}</span>
               </div>
             </div>
           );

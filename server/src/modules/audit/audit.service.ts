@@ -35,6 +35,11 @@ export class AuditService {
   async listLogs(params: {
     projectId?: string;
     model?: string;
+    provider?: string;
+    search?: string;
+    status?: number;
+    startDate?: string;
+    endDate?: string;
     anomalyOnly?: boolean;
     blockedOnly?: boolean;
     limit?: number;
@@ -43,8 +48,24 @@ export class AuditService {
     const where: any = {};
     if (params.projectId) where.projectId = params.projectId;
     if (params.model) where.model = params.model;
+    if (params.provider) where.provider = params.provider.toUpperCase();
+    if (params.status) where.statusCode = Number(params.status);
     if (params.anomalyOnly) where.isAnomaly = true;
     if (params.blockedOnly) where.isBlocked = true;
+
+    if (params.startDate || params.endDate) {
+      where.createdAt = {};
+      if (params.startDate) where.createdAt.gte = new Date(params.startDate);
+      if (params.endDate) where.createdAt.lte = new Date(params.endDate);
+    }
+
+    if (params.search) {
+      where.OR = [
+        { id: { contains: params.search, mode: 'insensitive' } },
+        { model: { contains: params.search, mode: 'insensitive' } },
+        { anomalyReason: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [logs, total] = await Promise.all([
       this.prisma.request.findMany({

@@ -4,19 +4,21 @@ import React from 'react';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
-  Layers, 
+  FolderKanban, 
   KeyRound, 
-  TerminalSquare, 
-  FileText, 
-  Bell, 
-  Code2, 
+  FlaskConical, 
+  ScrollText, 
+  BellRing, 
+  Network, 
   Users, 
   ShieldCheck,
-  ShieldAlert,
-  Flame,
-  Globe,
-  Lock,
-  ChevronRight
+  CreditCard,
+  ExternalLink,
+  Cpu,
+  X,
+  CircleHelp,
+  Compass,
+  Settings2
 } from 'lucide-react';
 
 export type NavTab = 
@@ -27,131 +29,253 @@ export type NavTab =
   | 'audit' 
   | 'alerts' 
   | 'sdk' 
-  | 'team';
+  | 'team'
+  | 'billing'
+  | 'settings';
 
 interface SidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   unreadAlertsCount: number;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
+  onOpenHelp?: () => void;
+  onStartTour?: () => void;
 }
 
-export function Sidebar({ currentTab, onSelectTab, unreadAlertsCount }: SidebarProps) {
-  const navItems = [
-    { id: 'overview' as NavTab, label: 'Spend Analytics', icon: LayoutDashboard },
-    { id: 'projects' as NavTab, label: 'Projects & Budgets', icon: Layers },
-    { id: 'keys' as NavTab, label: 'Key Vault & Gateway', icon: KeyRound },
-    { id: 'playground' as NavTab, label: 'Gateway Test Bench', icon: TerminalSquare, badge: 'Live' },
-    { id: 'audit' as NavTab, label: 'Audit Trail & Ledger', icon: FileText },
-    { 
-      id: 'alerts' as NavTab, 
-      label: 'Alerts & Anomalies', 
-      icon: Bell, 
-      count: unreadAlertsCount > 0 ? unreadAlertsCount : undefined 
+interface NavSection {
+  title: string;
+  items: {
+    id: NavTab;
+    label: string;
+    icon: React.ElementType;
+    badge?: string;
+    count?: number;
+  }[];
+}
+
+export function Sidebar({ 
+  currentTab, 
+  onSelectTab, 
+  unreadAlertsCount, 
+  isOpenMobile = false, 
+  onCloseMobile,
+  onOpenHelp,
+  onStartTour
+}: SidebarProps) {
+  const [orgName, setOrgName] = React.useState('Apex Innovations');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('spendguard_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.orgName) setOrgName(u.orgName);
+        } catch {}
+      }
+    }
+  }, []);
+
+  const sections: NavSection[] = [
+    {
+      title: 'WORKSPACE',
+      items: [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'projects', label: 'Projects & Budgets', icon: FolderKanban },
+        { id: 'playground', label: 'Test Bench', icon: FlaskConical, badge: 'Live' },
+      ],
     },
-    { id: 'sdk' as NavTab, label: 'Integration & SDK', icon: Code2 },
-    { id: 'team' as NavTab, label: 'Team & RBAC', icon: Users },
+    {
+      title: 'GOVERNANCE',
+      items: [
+        { id: 'keys', label: 'Key Vault & Tokens', icon: KeyRound },
+        { 
+          id: 'alerts', 
+          label: 'Alerts & Anomalies', 
+          icon: BellRing, 
+          count: unreadAlertsCount > 0 ? unreadAlertsCount : undefined 
+        },
+        { id: 'audit', label: 'Audit Ledger', icon: ScrollText },
+      ],
+    },
+    {
+      title: 'ORGANIZATION',
+      items: [
+        { id: 'team', label: 'Team & Access', icon: Users },
+        { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
+        { id: 'settings', label: 'Settings & Account', icon: Settings2 },
+      ],
+    },
+    {
+      title: 'GLOBAL',
+      items: [
+        { id: 'sdk', label: 'Gateway SDK & Docs', icon: Network },
+      ],
+    },
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-[#E8E8E8] flex flex-col h-screen shrink-0 select-none overflow-hidden">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between shrink-0">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8A4C] flex items-center justify-center text-white shadow-md shadow-[#FF6B35]/25 transition-transform group-hover:scale-105">
-              <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.4} />
+    <>
+      {/* Mobile Backdrop */}
+      {isOpenMobile && (
+        <div 
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+        />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#E4E4E0] flex flex-col h-screen shrink-0 select-none transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+      }`}>
+        {/* Brand Header */}
+        <div className="h-16 px-4 border-b border-[#E4E4E0] flex items-center justify-between shrink-0">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FF6B35] flex items-center justify-center text-white shadow-xs">
+              <ShieldCheck className="w-4 h-4 text-white" strokeWidth={2.4} />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold tracking-tight text-[#111111] text-base">SpendGuard</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7]">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="font-serif font-medium tracking-tight text-[#141413] text-sm">SpendGuard</span>
+                <span className="text-[9px] uppercase font-mono font-bold tracking-wider px-1 py-0.2 rounded-full bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]">
                   AI
                 </span>
               </div>
-              <p className="text-[11px] text-[#777777] font-medium">Governance & Gateway</p>
+              <span className="text-[10px] text-[#80868B] font-mono mt-0.5">by Dattreo</span>
             </div>
           </Link>
+
+          {/* Close button on mobile */}
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-full hover:bg-[#F3F3F0] text-[#5F6368] lg:hidden"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Organization Badge */}
-        <div className="px-4 py-3 border-b border-[#E8E8E8] bg-[#FFF8F5] shrink-0">
+        <div className="px-4 py-2.5 border-b border-[#E4E4E0] bg-[#FBFBFA] shrink-0">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#444444] font-semibold truncate">Apex Innovations Inc.</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF5] text-emerald-700 border border-emerald-200">
-              Enterprise
-            </span>
-          </div>
-        </div>
-
-        {/* Navigation Items */}
-        <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-[#FFF1EA] text-[#FF6B35] border border-[#FFD9C7] shadow-sm'
-                    : 'text-[#555555] hover:text-[#111111] hover:bg-[#FFF8F5] border border-transparent'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#FF6B35]' : 'text-[#777777]'}`} />
-                  <span>{item.label}</span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  {item.badge && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white font-bold">
-                      {item.badge}
-                    </span>
-                  )}
-
-                  {item.count !== undefined && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold">
-                      {item.count}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </nav>
-
-      {/* Governance Status Footer (clean portal without overlap) */}
-      <div className="p-4 space-y-3 border-t border-[#E8E8E8] bg-[#FFF8F5]/60 shrink-0">
-        <Link
-          href="/"
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl bg-white hover:bg-[#FFF1EA] text-xs font-bold text-[#FF6B35] border border-[#E8E8E8] hover:border-[#FFD9C7] shadow-sm transition-all"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          <span>View Marketing Site</span>
-        </Link>
-
-        <div className="bg-white p-3 rounded-2xl border border-[#E8E8E8] shadow-sm space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-bold text-[#111111]">
-            <div className="flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-[#FF6B35]" />
-              <span>Guardrails</span>
-            </div>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#ECFDF5] text-emerald-700 font-bold border border-emerald-200">
+            <span className="text-[#141413] font-semibold truncate text-[11px]">{orgName}</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
               Active
             </span>
           </div>
-
-          <div className="flex items-center justify-between text-[11px] text-[#666666]">
-            <span>Fail-Closed Enforced</span>
-            <span className="font-semibold text-[#111111]">Sub-5ms</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] text-[#666666]">
-            <span>Key Vault</span>
-            <span className="font-semibold text-[#FF6B35]">AES-256</span>
-          </div>
         </div>
-      </div>
-    </aside>
+
+        {/* Structured Navigation Groups */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-4">
+          {sections.map((section) => (
+            <div key={section.title} className="space-y-1">
+              <span className="px-3 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+                {section.title}
+              </span>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTab(item.id);
+                        onCloseMobile?.();
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-xs transition-colors ${
+                        isActive
+                          ? 'bg-[#FFF7F2] text-[#FF6B35] font-semibold border border-[#FFD2C0] shadow-2xs'
+                          : 'text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] border border-transparent font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#FF6B35]' : 'text-[#80868B]'}`} strokeWidth={1.8} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {item.badge && (
+                          <span className="text-[9px] px-2 py-0.2 rounded-full bg-[#FF6B35] text-white font-mono font-bold uppercase tracking-wider">
+                            {item.badge}
+                          </span>
+                        )}
+
+                        {item.count !== undefined && (
+                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-red-600 text-white font-bold">
+                            {item.count}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Quick Help & Tour triggers in sidebar */}
+          <div className="pt-2 border-t border-[#E4E4E0]/60 space-y-1">
+            <span className="px-3 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              SUPPORT & TOURS
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenHelp?.();
+                onCloseMobile?.();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] font-medium transition-colors"
+            >
+              <CircleHelp className="w-4 h-4 text-[#80868B] shrink-0" />
+              <span>Help Center & FAQ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onStartTour?.();
+                onCloseMobile?.();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] font-medium transition-colors"
+            >
+              <Compass className="w-4 h-4 text-[#FF6B35] shrink-0" />
+              <span>Restart Product Tour</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Operational Health Footer */}
+        <div className="p-3.5 border-t border-[#E4E4E0] bg-[#FBFBFA] space-y-2 shrink-0">
+          <div className="p-2.5 rounded-2xl bg-white border border-[#E4E4E0] space-y-1 text-[11px] shadow-2xs">
+            <div className="flex items-center justify-between font-semibold text-[#141413]">
+              <div className="flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-[#FF6B35]" />
+                <span>Budget Engine</span>
+              </div>
+              <span className="text-[10px] text-[#0D9488] font-bold font-mono">Sub-5ms</span>
+            </div>
+            <div className="flex items-center justify-between text-[#5F6368] text-[10px]">
+              <span>Fail-Closed</span>
+              <span className="font-semibold text-[#141413]">Enforced</span>
+            </div>
+            <div className="flex items-center justify-between text-[#5F6368] text-[10px]">
+              <span>Key Vault</span>
+              <span className="font-semibold text-[#141413] font-mono">AES-256-GCM</span>
+            </div>
+          </div>
+
+          <Link
+            href="/"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-white hover:bg-[#F3F3F0] text-[11px] font-medium text-[#5F6368] hover:text-[#141413] border border-[#E4E4E0] transition-colors shadow-2xs"
+          >
+            <span>Marketing Site</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 }

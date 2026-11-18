@@ -8,6 +8,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 async function bootstrap() {
   const logger = new Logger('SpendGuardBootstrap');
   const app = await NestFactory.create(AppModule, {
+    rawBody: true,
     cors: {
       origin: '*',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

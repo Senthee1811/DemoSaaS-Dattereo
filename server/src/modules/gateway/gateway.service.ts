@@ -29,19 +29,22 @@ export class GatewayService {
   async processChatCompletion(req: GatewayChatRequest) {
     const startTime = Date.now();
     const provider = this.pricingService.resolveProvider(req.model);
+    const promptText = req.messages.map(m => m.content).join(' ');
+    const promptTokens = this.pricingService.estimateTokens(promptText);
+    const maxTokens = req.maxTokens ?? 1000;
+    const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
 
-    // 1. Pre-Flight Fail-Closed Budget Guardrail Check (uses Redis-cached spend)
-    const budgetGuard = await this.budgetService.checkBudgetGuardrail(req.projectId);
+    // 1. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
+    const budgetGuard = await this.budgetService.reserveCapacity(req.projectId, maxEstimatedCost);
 
     if (!budgetGuard.canProceed) {
       const blockedReqId = `req_blk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       
-      // Log blocked attempt into audit ledger (async — don't block response)
+      // Log blocked attempt into audit ledger (async)
       this.logBlockedRequest(blockedReqId, req, provider, budgetGuard).catch(err =>
         this.logger.warn(`Could not log blocked request: ${err.message}`),
       );
 
-      // Distinguish governance_unavailable (infra failure) from budget_exceeded (policy enforcement)
       const isGovernanceUnavailable = budgetGuard.blockReason?.includes('Governance engine unavailable');
       const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : 'budget_exceeded';
       const httpStatus = isGovernanceUnavailable
@@ -87,14 +90,20 @@ export class GatewayService {
       this.logger.warn(`Key lookup warning: ${err.message}`);
     }
 
-    // 3. Dispatch to Provider Adapter
+    // 3. Dispatch to Provider Adapter (Safe execution with reservation rollback on failure)
     let adapterResult;
-    if (provider === 'ANTHROPIC') {
-      adapterResult = await this.anthropicAdapter.execute(req, decryptedKey);
-    } else if (provider === 'GEMINI') {
-      adapterResult = await this.geminiAdapter.execute(req, decryptedKey);
-    } else {
-      adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
+    try {
+      if (provider === 'ANTHROPIC') {
+        adapterResult = await this.anthropicAdapter.execute(req, decryptedKey);
+      } else if (provider === 'GEMINI') {
+        adapterResult = await this.geminiAdapter.execute(req, decryptedKey);
+      } else {
+        adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
+      }
+    } catch (upstreamErr) {
+      // Release reserved budget capacity so failures do not drain the project cap
+      await this.budgetService.releaseReservation(req.projectId, maxEstimatedCost);
+      throw upstreamErr;
     }
 
     const latencyMs = Date.now() - startTime;
@@ -104,7 +113,10 @@ export class GatewayService {
       adapterResult.completionTokens,
     );
 
-    // 4. Anomaly Spike Detection
+    // 4. Reconcile atomic reservation with verified actual usage
+    await this.budgetService.reconcileReservation(req.projectId, maxEstimatedCost, costEstimate);
+
+    // 5. Anomaly Spike Detection
     const recentRequests = await this.prisma.request.findMany({
       where: { projectId: req.projectId, isBlocked: false },
       orderBy: { createdAt: 'desc' },
@@ -131,16 +143,11 @@ export class GatewayService {
       });
     }
 
-    // 5. Append-only Immutable Request Logging (async — don't block response)
+    // 6. Append-only Immutable Request Logging (async — don't block response)
     const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const promptText = req.messages.map(m => m.content).join(' ');
 
     this.logSuccessfulRequest(reqId, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText)
       .catch(err => this.logger.warn(`Failed to log request: ${err.message}`));
-
-    // 6. Increment Redis spend counter (async)
-    this.redisService.incrementProjectSpend(req.projectId, costEstimate)
-      .catch(err => this.logger.warn(`Failed to increment Redis spend: ${err.message}`));
 
     // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;

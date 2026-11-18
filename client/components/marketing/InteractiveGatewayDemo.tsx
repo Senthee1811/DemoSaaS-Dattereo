@@ -6,32 +6,28 @@ import {
   Play, 
   ShieldCheck, 
   ShieldAlert, 
-  Cpu, 
   Layers, 
   Clock, 
   DollarSign, 
-  CheckCircle2, 
-  Sparkles,
-  ArrowRight,
-  Lock,
-  Zap,
-  RefreshCw
+  ArrowRight, 
+  Zap, 
+  RefreshCw,
+  Terminal
 } from 'lucide-react';
 
 interface ModelOption {
   id: string;
   name: string;
   provider: string;
-  providerColor: string;
   inCost: number; // per 1M
   outCost: number; // per 1M
 }
 
 const MODELS: ModelOption[] = [
-  { id: 'gpt-4o', name: 'OpenAI GPT-4o', provider: 'OpenAI', providerColor: '#10A37F', inCost: 2.50, outCost: 10.00 },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', providerColor: '#D97706', inCost: 3.00, outCost: 15.00 },
-  { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', providerColor: '#4285F4', inCost: 1.25, outCost: 5.00 },
-  { id: 'gpt-4o-mini', name: 'OpenAI GPT-4o Mini', provider: 'OpenAI', providerColor: '#10A37F', inCost: 0.15, outCost: 0.60 },
+  { id: 'gpt-4o', name: 'OpenAI GPT-4o', provider: 'OpenAI', inCost: 2.50, outCost: 10.00 },
+  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', inCost: 3.00, outCost: 15.00 },
+  { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', inCost: 1.25, outCost: 5.00 },
+  { id: 'gpt-4o-mini', name: 'OpenAI GPT-4o Mini', provider: 'OpenAI', inCost: 0.15, outCost: 0.60 },
 ];
 
 const PROJECTS = [
@@ -87,39 +83,37 @@ export function InteractiveGatewayDemo() {
           tokensOut,
           cost,
           blocked: false,
-          latencyMs: Math.floor(Math.random() * 40 + 55),
+          latencyMs: Math.floor(Math.random() * 20 + 35),
         });
       }
       setIsExecuting(false);
-    }, 450);
+    }, 350);
   };
 
   return (
-    <section id="how-it-works" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      {/* Section Header */}
+    <section id="demo" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      {/* Section Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] text-xs font-semibold text-[#FF6B35] mb-3">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Interactive Sandbox Simulator</span>
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#111111]">
-          Test Gateway Routing & Guardrails in Action
+        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          Interactive Gateway Test Bench
+        </span>
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+          Test Gateway Routing &amp; Pre-Flight Budgets
         </h2>
-        <p className="mt-3 text-base text-[#666666]">
-          Interactive simulation demonstrating how SpendGuard intercepts every LLM call, calculates live per-token costs across providers, and enforces fail-closed budget caps in milliseconds.
+        <p className="mt-2 text-sm text-[#555550] font-sans">
+          Simulate multi-model execution, sub-5ms Redis capacity reservations, and fail-closed over-budget blocking in real time.
         </p>
       </div>
 
       {/* Sandbox Workspace Card */}
-      <div className="bg-white rounded-[32px] border border-[#E8E8E8] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12">
-          
           {/* Controls Panel (5 cols) */}
-          <div className="lg:col-span-5 p-6 sm:p-8 bg-[#FAFAFA] border-b lg:border-b-0 lg:border-r border-[#E8E8E8] flex flex-col justify-between space-y-6">
-            <div className="space-y-5">
+          <div className="lg:col-span-5 p-6 bg-[#FAF8F5] border-b lg:border-b-0 lg:border-r border-[#E5E0D8] flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#777777] block mb-2">
-                  1. Select LLM Provider & Model
+                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                  1. Upstream Foundation Model
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {MODELS.map((model) => (
@@ -127,15 +121,15 @@ export function InteractiveGatewayDemo() {
                       key={model.id}
                       type="button"
                       onClick={() => setSelectedModel(model)}
-                      className={`p-3 rounded-2xl text-left border text-xs transition-all ${
+                      className={`p-2.5 rounded-xl text-left border text-xs transition-colors ${
                         selectedModel.id === model.id
-                          ? 'bg-white border-[#FF6B35] shadow-[0_4px_12px_rgba(255,107,53,0.15)] ring-1 ring-[#FF6B35]'
-                          : 'bg-white/80 border-[#E8E8E8] hover:border-[#CCCCCC]'
+                          ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-[#141413]'
+                          : 'bg-white border-[#E5E0D8] text-[#555550] hover:bg-[#F3EFE9]'
                       }`}
                     >
-                      <div className="font-bold text-[#111111]">{model.name}</div>
-                      <div className="text-[10px] text-[#777777] mt-0.5">
-                        ${model.inCost} / ${model.outCost} per 1M
+                      <div className="truncate font-sans">{model.name}</div>
+                      <div className="text-[10px] font-mono text-[#888882] mt-0.5">
+                        ${model.inCost} / ${model.outCost} (1M)
                       </div>
                     </button>
                   ))}
@@ -143,8 +137,8 @@ export function InteractiveGatewayDemo() {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-[#777777] block mb-2">
-                  2. Select Team Project & Budget
+                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                  2. Project Allocation &amp; Guardrail
                 </label>
                 <div className="space-y-2">
                   {PROJECTS.map((proj) => {
@@ -154,23 +148,23 @@ export function InteractiveGatewayDemo() {
                         key={proj.id}
                         type="button"
                         onClick={() => setSelectedProject(proj)}
-                        className={`w-full p-3 rounded-2xl text-left border transition-all ${
+                        className={`w-full p-2.5 rounded-xl text-left border transition-colors ${
                           selectedProject.id === proj.id
-                            ? 'bg-white border-[#FF6B35] shadow-sm ring-1 ring-[#FF6B35]'
-                            : 'bg-white/80 border-[#E8E8E8] hover:border-[#CCCCCC]'
+                            ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35]'
+                            : 'bg-white border-[#E5E0D8] hover:bg-[#F3EFE9]'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-[#111111]">{proj.name}</span>
-                          <span className={`text-[11px] font-semibold ${percent >= 100 ? 'text-red-500' : percent >= 80 ? 'text-amber-500' : 'text-emerald-600'}`}>
-                            ${proj.currentSpend.toLocaleString()} / ${proj.budget.toLocaleString()} ({percent}%)
+                          <span className="font-semibold text-[#141413]">{proj.name}</span>
+                          <span className={`text-[11px] font-mono tabular-nums ${percent >= 100 ? 'text-[#DC2626]' : percent >= 80 ? 'text-[#D97706]' : 'text-[#0D9488]'}`}>
+                            ${proj.currentSpend} / ${proj.budget} ({percent}%)
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#EEEEEE] rounded-full mt-2 overflow-hidden">
+                        <div className="w-full h-1.5 bg-[#EFECE6] rounded-full mt-2 overflow-hidden">
                           <div
                             style={{ width: `${percent}%` }}
-                            className={`h-full rounded-full ${
-                              percent >= 100 ? 'bg-red-500' : percent >= 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                            className={`h-full ${
+                              percent >= 100 ? 'bg-[#DC2626]' : percent >= 80 ? 'bg-[#D97706]' : 'bg-[#0D9488]'
                             }`}
                           />
                         </div>
@@ -182,12 +176,8 @@ export function InteractiveGatewayDemo() {
 
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-bold uppercase tracking-wider text-[#777777]">
-                    Simulated Payload Length
-                  </span>
-                  <span className="font-mono text-[#FF6B35] font-semibold">
-                    ~{tokenLength.toLocaleString()} tokens
-                  </span>
+                  <span className="font-mono text-[11px] text-[#555550]">Simulated Prompt + Completion Tokens</span>
+                  <span className="font-mono tabular-nums font-bold text-[#141413]">{tokenLength.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -205,123 +195,98 @@ export function InteractiveGatewayDemo() {
               type="button"
               onClick={handleExecute}
               disabled={isExecuting}
-              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#FF8A4C] text-white font-bold text-sm shadow-[0_6px_18px_rgba(255,107,53,0.3)] hover:shadow-[0_8px_24px_rgba(255,107,53,0.4)] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 px-5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center justify-center gap-2"
             >
               {isExecuting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Intercepting & Auditing...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Evaluating Redis Reservation...</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4 fill-white" />
-                  <span>Send Request Through Gateway</span>
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Execute Gateway Request</span>
                 </>
               )}
             </button>
           </div>
 
           {/* Real-time Response & Audit Stream (7 cols) */}
-          <div className="lg:col-span-7 p-6 sm:p-8 bg-[#111111] text-white flex flex-col justify-between">
+          <div className="lg:col-span-7 p-6 bg-[#141413] text-[#ECECE8] flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                  <span className="ml-2 text-xs font-mono text-white/50">spendguard-proxy:443</span>
+                  <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
+                  <span className="font-mono text-[11px] text-[#A1A1AA]">gateway.spendguard.ai:443</span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-[#FF8A4C]">
-                    Proxy Overhead: {lastResult?.latencyMs || 68}ms
-                  </span>
-                </div>
+                <span className="font-mono tabular-nums text-[11px] text-[#A1A1AA]">
+                  Overhead: {lastResult?.latencyMs || 42}ms
+                </span>
               </div>
 
               {/* Status Header */}
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-4">
                 {lastResult?.blocked ? (
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold font-mono">
-                    <ShieldAlert className="w-4 h-4" />
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FEF2F2]/10 border border-[#DC2626]/40 text-[#EF4444] text-xs font-mono font-semibold">
+                    <ShieldAlert className="w-3.5 h-3.5" />
                     <span>HTTP 429 HARD-BLOCKED (BUDGET EXCEEDED)</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold font-mono">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>HTTP 200 OK (POLICY APPROVED)</span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F0FDF4]/10 border border-[#0D9488]/40 text-[#34D399] text-xs font-mono font-semibold">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>HTTP 200 OK — ATOMIC CAPACITY RESERVED</span>
                   </div>
                 )}
               </div>
 
-              {/* Telemetry Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-                <div className="p-3 rounded-xl bg-white/[0.05] border border-white/10">
-                  <div className="text-[10px] text-white/50 uppercase font-mono">Target Model</div>
-                  <div className="text-xs font-bold text-white mt-1 truncate">{selectedModel.name}</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.05] border border-white/10">
-                  <div className="text-[10px] text-white/50 uppercase font-mono">Total Tokens</div>
-                  <div className="text-xs font-bold text-[#FFA06E] mt-1 font-mono">
-                    {lastResult?.blocked ? '0' : (lastResult?.tokensIn! + lastResult?.tokensOut!).toLocaleString()}
+              {/* Headers breakdown */}
+              <div className="mt-4 space-y-2 font-mono text-xs">
+                <div className="text-[10px] text-[#71717A] uppercase tracking-wider">SpendGuard Headers</div>
+                <div className="p-3 bg-[#232428] rounded border border-white/5 space-y-1.5 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-[#A1A1AA]">x-spendguard-model:</span>
+                    <span className="text-white">{selectedModel.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A1A1AA]">x-spendguard-project:</span>
+                    <span className="text-white">{selectedProject.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A1A1AA]">x-spendguard-cost:</span>
+                    <span className="text-[#34D399] tabular-nums">${lastResult?.cost.toFixed(6) || '0.000000'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A1A1AA]">x-spendguard-tokens:</span>
+                    <span className="text-white tabular-nums">{lastResult?.tokensIn || 0} in / {lastResult?.tokensOut || 0} out</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#A1A1AA]">x-spendguard-blocked:</span>
+                    <span className={lastResult?.blocked ? 'text-[#EF4444]' : 'text-[#34D399]'}>
+                      {String(lastResult?.blocked)}
+                    </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.05] border border-white/10">
-                  <div className="text-[10px] text-white/50 uppercase font-mono">Cost Incurred</div>
-                  <div className="text-xs font-bold text-emerald-400 mt-1 font-mono">
-                    {lastResult?.blocked ? '$0.000000' : `$${lastResult?.cost.toFixed(6)}`}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.05] border border-white/10">
-                  <div className="text-[10px] text-white/50 uppercase font-mono">Audit Record</div>
-                  <div className="text-xs font-bold text-white/90 mt-1 font-mono flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B35]" />
-                    <span>Immutable</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terminal Code Log */}
-              <div className="mt-6 p-4 rounded-xl bg-black/60 border border-white/10 font-mono text-[11.5px] leading-relaxed text-white/80 overflow-x-auto">
-                <div className="text-white/40">// SpendGuard Gateway Intercept Log</div>
-                <div className="text-[#FF8A4C]">POST /v1/chat/completions HTTP/1.1</div>
-                <div>Host: gateway.spendguard.ai</div>
-                <div>X-SpendGuard-Project: {selectedProject.id}</div>
-                <div>X-SpendGuard-Model: {selectedModel.id}</div>
-                <div className="mt-2 text-white/50">// Audit Check Result:</div>
-                {lastResult?.blocked ? (
-                  <div className="text-red-400">
-                    &gt; FAIL-CLOSED ENFORCEMENT: {lastResult.reason}
-                  </div>
-                ) : (
-                  <div className="text-emerald-400">
-                    &gt; Budget check passed. Scoped API key dynamically injected and routed.
-                  </div>
+                {lastResult?.blocked && (
+                  <p className="text-xs text-[#EF4444] pt-1">
+                    {lastResult.reason}
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Bottom info banner */}
-            <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/50">
-              <span className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-[#FF6B35]" />
-                Zero Prompt Stored · AES-256 Key Vault
-              </span>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF8A4C] hover:text-[#FF6B35] transition-colors"
-                >
-                  <span>Launch Live Gateway Test Bench</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+            <div className="pt-4 mt-4 border-t border-white/10 flex items-center justify-between text-xs">
+              <span className="text-[#71717A]">Ready to route production workloads?</span>
+              <Link
+                href="/register"
+                className="text-[#FF6B35] hover:underline font-semibold inline-flex items-center gap-1"
+              >
+                <span>Deploy Gateway Keys</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
-
         </div>
       </div>
     </section>

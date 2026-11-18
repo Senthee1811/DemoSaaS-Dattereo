@@ -1,145 +1,167 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Check, ShieldCheck, Zap } from 'lucide-react';
-import { GatewayMonitorCard } from './GatewayMonitorCard';
-import { TeamMemberCard } from './TeamMemberCard';
-import { BudgetAlertCard } from './BudgetAlertCard';
-import { TrustBadge } from './TrustBadge';
-import { LogoStrip } from './LogoStrip';
+import { ArrowRight, Check, Copy } from 'lucide-react';
 
 export function Hero() {
+  const [activeTab, setActiveTab] = useState<'curl' | 'python' | 'node'>('curl');
+  const [copied, setCopied] = useState(false);
+
+  const snippets = {
+    curl: `curl -X POST https://gateway.spendguard.ai/v1/chat/completions \\
+  -H "Authorization: Bearer sg_live_9bac36..." \\
+  -H "X-SpendGuard-Project-Id: proj_production" \\
+  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello SpendGuard"}]}'`,
+    python: `from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://gateway.spendguard.ai/v1",
+    api_key="sg_live_9bac36...",
+    default_headers={"X-SpendGuard-Project-Id": "proj_production"}
+)
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Analyze inference spend."}]
+)`,
+    node: `import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://gateway.spendguard.ai/v1',
+  apiKey: 'sg_live_9bac36...',
+  defaultHeaders: { 'X-SpendGuard-Project-Id': 'proj_production' }
+});
+const response = await client.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Analyze inference spend.' }]
+});`
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(snippets[activeTab]);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <section className="relative w-full py-4 sm:py-6 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Soft Orange Ambient Background Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[950px] h-[550px] bg-gradient-to-br from-[#FFE3D6]/80 via-[#FFD2C0]/50 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-10 right-10 w-[420px] h-[420px] bg-[#FF8A4C]/15 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-10 left-10 w-[480px] h-[480px] bg-[#FF6B35]/12 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      {/* Main SaaS Rounded Container (max-width ~1200-1250px, rounded ~38px) */}
-      <div className="max-w-[1240px] mx-auto bg-white rounded-[36px] sm:rounded-[42px] border border-[#F0ECE7] saas-container-shadow p-6 sm:p-10 lg:p-12 relative">
-        
-        {/* Decorative Top Accent Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-[#FF6B35]/40 to-transparent rounded-full" />
-
-        {/* Top Grid: Two-Column Hero Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          
-          {/* Left Column: Hero Content & CTA (6 cols) */}
-          <div className="lg:col-span-6 space-y-6 sm:space-y-7 text-left">
-            
-            {/* Eyebrow Badge (small pill, light orange bg) */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFF1EA] border border-[#FFD9C7] text-xs font-semibold text-[#FF6B35]">
-              <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-beacon" />
-              <span>Real-Time AI Spend Control</span>
-            </div>
-
-            {/* Headline (64-78px desktop, tight tracking, 3 lines) */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[68px] font-extrabold tracking-tight leading-[1.06] text-[#111111]">
-              <span className="text-orange-gradient block">AI spend visibility</span>
-              <span className="block">for every team,</span>
-              <span className="block text-[#111111]">provider, and project</span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="text-base sm:text-lg text-[#555555] max-w-lg leading-relaxed font-normal">
-              Track every OpenAI, Gemini, and Claude request in real time — set budgets, catch overspend before it happens, and give every team full accountability for their AI usage.
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-1">
-              {/* Primary CTA: Start for free */}
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-[15.5px] font-semibold text-white bg-gradient-to-r from-[#FF6B35] via-[#FF7B3D] to-[#FF9A62] shadow-[0_6px_20px_rgba(255,107,53,0.35)] hover:shadow-[0_8px_25px_rgba(255,107,53,0.45)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
-              >
-                <span>Start for free</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-
-              {/* Secondary CTA: Contact us */}
-              <a
-                href="#pricing"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-full text-[15.5px] font-medium text-[#222222] bg-white border border-[#E8E8E8] hover:border-[#CCCCCC] hover:bg-[#FAFAFA] transition-all duration-200"
-              >
-                <span>Contact us</span>
-              </a>
-            </div>
-
-            {/* Trust Indicators (small text, dot-separated) */}
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-[13px] text-[#777777] pt-1">
-              <span>14-day free trial</span>
-              <span className="text-[#CCCCCC]">·</span>
-              <span>No credit card required</span>
-              <span className="text-[#CCCCCC]">·</span>
-              <span>Cancel anytime</span>
-            </div>
-          </div>
-
-          {/* Right Column: Hero Visual (6 cols) */}
-          <div className="lg:col-span-6 relative flex items-center justify-center py-6 sm:py-8">
-            
-            {/* Ambient Backlight for Central Card */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#FF6B35]/20 to-[#FF8A4C]/10 rounded-full blur-2xl -z-10 scale-90" />
-
-            {/* Floating Decorative Orange Connection Nodes / Rings */}
-            <div className="absolute -top-4 -right-2 w-3 h-3 rounded-full bg-[#FF6B35] animate-ping opacity-60 hidden sm:block" />
-            <div className="absolute top-1/2 -left-6 w-2.5 h-2.5 rounded-full bg-[#FF8A4C] animate-beacon hidden sm:block" />
-            <div className="absolute -bottom-3 right-1/4 w-2 h-2 rounded-full bg-[#FF6B35] opacity-50 hidden sm:block" />
-
-            {/* Floating Team Member Cards (Top & Left area) */}
-            <div className="absolute -top-6 -left-4 sm:-top-8 sm:-left-6 z-20 animate-float-slow hidden sm:block">
-              <TeamMemberCard
-                name="Elena Vance"
-                role="Eng Lead"
-                statusText="Payments ($1.2k/$3k)"
-                statusColor="green"
-                avatarUrl="/avatars/elena.jpg"
-              />
-            </div>
-
-            <div className="absolute top-20 -left-10 z-20 animate-float-delayed hidden md:block">
-              <TeamMemberCard
-                name="Marcus Thorne"
-                role="Platform Admin"
-                statusText="Gateway v2.4 (Active)"
-                statusColor="green"
-                avatarUrl="/avatars/marcus.jpg"
-              />
-            </div>
-
-            <div className="absolute -bottom-6 -left-2 z-20 animate-float-subtle hidden sm:block">
-              <TeamMemberCard
-                name="Sarah Chen"
-                role="FinOps Lead"
-                statusText="Marketing (82% used)"
-                statusColor="amber"
-                avatarUrl="/avatars/sarah.jpg"
-              />
-            </div>
-
-            {/* Floating AI Insight Card: Budget Alert (Floating above center-right) */}
-            <div className="absolute -top-10 sm:-top-12 -right-2 sm:-right-6 z-30 animate-float-delayed w-full max-w-[280px] sm:max-w-[320px]">
-              <BudgetAlertCard />
-            </div>
-
-            {/* Central Dark Card: Live Gateway Monitor */}
-            <div className="w-full relative z-10 flex justify-center">
-              <GatewayMonitorCard />
-            </div>
-
-            {/* Floating Trust Badge (Bottom-left area) */}
-            <div className="absolute -bottom-8 right-2 sm:right-6 z-20 animate-float-slow">
-              <TrustBadge />
-            </div>
-          </div>
-
+    <section className="relative w-full pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+      {/* Hero Header — Editorial Composition */}
+      <div className="max-w-3xl mx-auto text-center space-y-5">
+        {/* Release Pill */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-xs font-mono text-[#555550] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
+          <span>SpendGuard AI · by Dattreo</span>
+          <span className="text-[#C4BFB8]">|</span>
+          <span className="text-[#666660]">Sub-5ms Pre-Flight Guardrails</span>
         </div>
 
-        {/* Bottom: Trust & Logo Section */}
-        <LogoStrip />
+        {/* Master Headline in Refined Editorial Serif */}
+        <h1 className="font-serif text-4xl sm:text-5xl lg:text-[62px] font-normal tracking-tight text-[#141413] leading-[1.08]">
+          One gateway. Every model. <br className="hidden sm:inline" />
+          <span className="italic font-normal text-[#FF6B35]">Complete cost control.</span>
+        </h1>
 
+        {/* Technical Subheadline */}
+        <p className="text-base sm:text-lg text-[#555550] leading-relaxed max-w-2xl mx-auto font-sans font-normal">
+          Centralize LLM usage across OpenAI, Anthropic, and Google Gemini. Enforce pre-flight atomic budget reservations, halt runaway token loops, and maintain cryptographically verified audit ledgers.
+        </p>
+
+        {/* Primary Pill CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
+          <Link
+            href="/register"
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          >
+            <span>Start Free Trial</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+
+          <Link
+            href="/dashboard"
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-white hover:bg-[#F7F5F0] text-[#141413] border border-[#E5E0D8] font-semibold text-sm transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+          >
+            Explore Live Console
+          </Link>
+        </div>
+
+        {/* Architectural Guarantees */}
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-3 text-xs text-[#666660]">
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
+            <span>Drop-in OpenAI SDK compatible</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
+            <span>Fail-closed Redis Lua capacity check</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-[#0D9488]" strokeWidth={2.5} />
+            <span>Zero prompt retention & AES-256 vault</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Editorial Gateway Console Artefact */}
+      <div className="mt-14 bg-[#141413] rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
+        {/* Terminal Titlebar */}
+        <div className="h-11 px-5 bg-[#1B1B1A] border-b border-[#2A2A28] flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
+            </div>
+            <span className="font-mono text-[11px] text-[#A0A09B] ml-2">
+              https://gateway.spendguard.ai/v1/chat/completions
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 bg-[#242422] p-0.5 rounded-full border border-[#333330]">
+              {(['curl', 'python', 'node'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-0.5 rounded-full text-[11px] font-mono transition-colors ${
+                    activeTab === tab
+                      ? 'bg-[#333330] text-white font-semibold'
+                      : 'text-[#888882] hover:text-white'
+                  }`}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="p-1.5 rounded hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
+              title="Copy snippet"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Code Snippet Box */}
+        <div className="p-5 font-mono text-xs overflow-x-auto leading-relaxed text-[#D6D6D0]">
+          <pre>{snippets[activeTab]}</pre>
+        </div>
+
+        {/* Operational Telemetry Footer */}
+        <div className="px-5 py-3 bg-[#1B1B1A] border-t border-[#2A2A28] flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-[#A0A09B]">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              STATUS: 200 OK
+            </span>
+            <span>PRE-FLIGHT: 3.2ms</span>
+            <span>MODEL: gpt-4o / claude-3-5</span>
+          </div>
+          <span className="text-[#888882]">RESERVATION: ATOMIC_LUA_OK</span>
+        </div>
       </div>
     </section>
   );

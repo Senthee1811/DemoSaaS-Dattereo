@@ -36,24 +36,62 @@ export class BillingService {
     successUrl: string;
     cancelUrl: string;
   }) {
-    if (this.isStubMode) {
-      this.logger.log(`[STUB] Creating checkout session for org ${params.orgId}, tier: ${params.tier}`);
-      return {
-        checkoutUrl: `${params.successUrl}?session_id=stub_session_${Date.now()}`,
-        sessionId: `stub_session_${Date.now()}`,
-        isStub: true,
-      };
+    let StripePackage: any = null;
+    try {
+      StripePackage = require('stripe');
+    } catch {
+      // Package not yet installed in server
     }
 
-    // Real Stripe integration would go here
-    // const stripe = new Stripe(this.stripeKey!);
-    // const session = await stripe.checkout.sessions.create({...});
-    // return { checkoutUrl: session.url, sessionId: session.id };
+    if (StripePackage && !this.isStubMode && this.stripeKey) {
+      try {
+        const stripe = new StripePackage(this.stripeKey);
+        const priceMap: Record<string, number> = {
+          starter: 3900,  // $39.00/mo
+          growth: 19900,  // $199.00/mo
+        };
+        const unitAmount = priceMap[params.tier] || 3900;
 
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          mode: 'subscription',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: `SpendGuard AI ${params.tier.toUpperCase()} Plan`,
+                  description: `SpendGuard AI FinOps Governance Subscription (${params.tier})`,
+                },
+                unit_amount: unitAmount,
+                recurring: { interval: 'month' },
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            orgId: params.orgId,
+            tier: params.tier,
+          },
+          success_url: `${params.successUrl}&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: params.cancelUrl,
+        });
+
+        return {
+          checkoutUrl: session.url || params.successUrl,
+          sessionId: session.id,
+          isStub: false,
+        };
+      } catch (err: any) {
+        this.logger.error(`Stripe checkout creation error: ${err.message}. Using safe stub fallback.`);
+      }
+    }
+
+    this.logger.log(`[STUB] Creating checkout session for org ${params.orgId}, tier: ${params.tier}`);
     return {
-      checkoutUrl: params.successUrl,
-      sessionId: `live_session_${Date.now()}`,
-      isStub: false,
+      checkoutUrl: `${params.successUrl}?session_id=stub_session_${Date.now()}`,
+      sessionId: `stub_session_${Date.now()}`,
+      isStub: true,
     };
   }
 
@@ -61,21 +99,51 @@ export class BillingService {
    * Handle Stripe webhook events for subscription lifecycle.
    */
   async handleWebhook(rawBody: string, signature: string) {
-    if (this.isStubMode) {
-      this.logger.log('[STUB] Webhook received in stub mode — no processing.');
-      return { received: true, isStub: true };
+    let StripePackage: any = null;
+    try {
+      StripePackage = require('stripe');
+    } catch {}
+
+    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET') || process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (StripePackage && !this.isStubMode && webhookSecret && signature) {
+      try {
+        const stripe = new StripePackage(this.stripeKey);
+        const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+        this.logger.log(`Verified Stripe webhook event: ${event.type}`);
+
+        if (event.type === 'checkout.session.completed') {
+          const session = event.data.object as any;
+          const orgId = session.metadata?.orgId;
+          const tier = session.metadata?.tier || 'starter';
+          if (orgId) {
+            await this.prisma.subscription.upsert({
+              where: { orgId },
+              update: {
+                stripeCustomerId: session.customer || `cus_${Date.now()}`,
+                stripeSubscriptionId: session.subscription || `sub_${Date.now()}`,
+                tier,
+                status: 'active',
+              },
+              create: {
+                orgId,
+                stripeCustomerId: session.customer || `cus_${Date.now()}`,
+                stripeSubscriptionId: session.subscription || `sub_${Date.now()}`,
+                tier,
+                status: 'active',
+              },
+            });
+          }
+        }
+        return { received: true, event: event.type, isStub: false };
+      } catch (err: any) {
+        this.logger.error(`Stripe webhook signature verification failed: ${err.message}`);
+        return { received: false, error: err.message, isStub: false };
+      }
     }
 
-    // Real webhook verification and handling:
-    // const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    // switch (event.type) {
-    //   case 'checkout.session.completed': ...
-    //   case 'customer.subscription.updated': ...
-    //   case 'customer.subscription.deleted': ...
-    //   case 'invoice.payment_failed': ...
-    // }
-
-    return { received: true };
+    this.logger.log('[STUB] Webhook received in stub mode — no processing.');
+    return { received: true, isStub: true };
   }
 
   /**
@@ -83,13 +151,9 @@ export class BillingService {
    */
   async getSubscription(orgId: string) {
     try {
-      // Use raw query to avoid type errors when Prisma client hasn't been regenerated
-      const subscriptions = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM subscriptions WHERE org_id = $1 LIMIT 1`,
-        orgId,
-      );
-
-      const subscription = subscriptions?.[0];
+      const subscription = await (this.prisma as any).subscription?.findUnique({
+        where: { orgId },
+      });
 
       if (!subscription) {
         return {
@@ -101,13 +165,13 @@ export class BillingService {
       }
 
       return {
-        orgId: subscription.org_id,
+        orgId: subscription.orgId,
         tier: subscription.tier,
         status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
+        currentPeriodEnd: subscription.currentPeriodEnd,
       };
     } catch {
-      // Table may not exist yet — return default free tier
+      // Table may not exist yet or query failed — return default free tier
       return {
         orgId,
         tier: 'starter',

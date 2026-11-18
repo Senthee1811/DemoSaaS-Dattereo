@@ -1,21 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { proxyToBackend } from '@/lib/backend-proxy';
 
-const BACKEND_URL = process.env.API_URL || 'http://localhost:4000';
-
-export async function GET() {
-  try {
-    const response = await fetch(`${BACKEND_URL}/health`, {
-      cache: 'no-store',
-    });
-
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
-  } catch (err: any) {
-    return NextResponse.json({
-      status: 'backend_offline',
-      service: 'spendguard-frontend-proxy',
-      timestamp: new Date().toISOString(),
-      error: err.message,
-    }, { status: 503 });
-  }
+// Forwards to the NestJS backend (/health); auth headers and status codes pass through.
+export async function GET(req: NextRequest) {
+  return proxyToBackend(req, { path: '/health' });
 }

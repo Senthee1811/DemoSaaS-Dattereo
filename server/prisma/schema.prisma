@@ -92,6 +92,8 @@ model Project {
   budgetMonthly          Decimal           @default(1000.0) @map("budget_monthly") @db.Decimal(12, 4)
   budgetWeekly           Decimal           @default(250.0) @map("budget_weekly") @db.Decimal(12, 4)
   budgetHardBlockEnabled Boolean           @default(true) @map("budget_hard_block_enabled")
+  /// Store prompt/response previews in the request ledger. Off by default (privacy).
+  logRequestContent      Boolean           @default(false) @map("log_request_content")
   isBlocked              Boolean           @default(false) @map("is_blocked")
   blockReason            String?           @map("block_reason")
   createdAt              DateTime          @default(now()) @map("created_at")

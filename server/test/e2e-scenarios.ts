@@ -571,6 +571,34 @@ async function phase1(A: string) {
     check('test alert is recorded IN_APP/RECORDED (nothing was delivered), no invented spike stats', fake.status === 201 && fa?.channel === 'IN_APP' && fa?.status === 'RECORDED' && !/3\.4x|7-day/.test(fa?.message || ''), fa);
     check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
   }
+
+  // ── P1-10. Prompt privacy ────────────────────────────────────────────────
+  console.log('\n▶ Phase 1 · prompt privacy');
+  {
+    const secret = `SECRET-PROMPT-${RUN}`;
+    const proj = await newProject(A, 'Private By Default', 10);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const r = await api('POST', '/v1/chat/completions', { token: key.secret, body: chat(secret) });
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}`, { token: A });
+    check('default project: request succeeds and is audited', r.status === 200 && audit.body.total === 1, { status: r.status, total: audit.body.total });
+    check('default project: audit log contains no prompt text', !JSON.stringify(audit.body).includes(secret) && audit.body.logs?.[0]?.promptPreview == null, audit.body.logs?.[0]);
+
+    const optIn = await newProject(A, 'Logs Content', 10, { logRequestContent: true });
+    await addProviderKey(A, optIn.id);
+    const optKey = await newGatewayKey(A, optIn.id);
+    const secret2 = `OPTIN-PROMPT-${RUN}`;
+    await api('POST', '/v1/chat/completions', { token: optKey.secret, body: chat(secret2) });
+    const ownerView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: A });
+    check('logRequestContent=true: OWNER sees the stored preview', ownerView.body.logs?.[0]?.promptPreview?.includes(secret2), ownerView.body.logs?.[0]);
+
+    const memberEmail = `dana.${RUN}@e2e.spendguard.test`;
+    const inv = await api('POST', '/api/v1/team', { token: A, body: { name: 'Dana', email: memberEmail, role: 'MEMBER' } });
+    await api('POST', '/auth/reset-password', { body: { token: inv.body.invite?.token, newPassword: 'DanasOwnPass#1' } });
+    const dana = await api('POST', '/auth/login', { body: { email: memberEmail, password: 'DanasOwnPass#1' } });
+    const memberView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: dana.body.accessToken });
+    check('MEMBER never receives prompt/response previews', memberView.status === 200 && memberView.body.total === 1 && !JSON.stringify(memberView.body).includes(secret2), memberView.body.logs?.[0]);
+  }
 }
 
 /** A RedisService connected to the same Redis as the backend under test. */

@@ -197,7 +197,7 @@ export class GatewayService {
     }
 
     // 6. Append-only ledger row — written BEFORE the response is returned
-    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText);
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText, budgetGuard.logRequestContent === true);
 
     // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;
@@ -263,7 +263,8 @@ export class GatewayService {
         isAnomaly: false,
         anomalyReason: budgetGuard.blockReason || 'Hard-block limit active',
         isBlocked: true,
-        promptPreview: req.messages[0]?.content?.slice(0, 200) || '',
+        // Blocked attempts never store prompt text
+        promptPreview: null,
         responsePreview: 'FAIL_CLOSED_GUARDRAIL_BLOCKED',
       },
     });
@@ -279,6 +280,7 @@ export class GatewayService {
     latencyMs: number,
     anomalyResult: any,
     promptText: string,
+    logContent: boolean,
   ) {
     const data = {
         id: reqId,
@@ -298,8 +300,9 @@ export class GatewayService {
         isAnomaly: anomalyResult.isAnomaly,
         anomalyReason: anomalyResult.reason || null,
         isBlocked: false,
-        promptPreview: promptText.slice(0, 300),
-        responsePreview: adapterResult.responseText.slice(0, 300),
+        // Prompt/response text is stored only when the project opted in
+        promptPreview: logContent ? promptText.slice(0, 300) : null,
+        responsePreview: logContent ? adapterResult.responseText.slice(0, 300) : null,
         metadataJson: JSON.stringify({
           clientIp: req.clientIp || '127.0.0.1',
           clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',

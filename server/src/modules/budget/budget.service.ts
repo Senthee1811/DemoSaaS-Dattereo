@@ -14,6 +14,8 @@ export interface BudgetGuardrailResult {
   currentMonthlySpend: number;
   utilizationPct: number;
   reservedAmount?: number;
+  /** Project opted in to storing prompt/response previews (privacy: default false). */
+  logRequestContent?: boolean;
   /** Machine-readable reason when blocked by a cap other than the project's monthly budget. */
   blockCode?: 'key_budget_exceeded';
   /** Present when the request may proceed; settle or release it by request ID. */
@@ -298,6 +300,7 @@ export class BudgetService {
         // the actual cost to every bucket.
         reservedAmount: success ? maxEstimatedCost : 0,
         hold: { requestId, amount: success ? maxEstimatedCost : 0, buckets },
+        logRequestContent: project.logRequestContent === true,
       };
     } catch (err: any) {
       this.logger.error(`reserveCapacity failed: ${err.message}. Fail-closed active.`);

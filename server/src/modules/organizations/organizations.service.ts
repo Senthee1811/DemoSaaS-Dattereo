@@ -8,6 +8,7 @@ export interface CreateProjectDto {
   description?: string;
   budgetMonthly: number;
   budgetHardBlockEnabled?: boolean;
+  logRequestContent?: boolean;
 }
 
 export interface UpdateProjectDto {
@@ -15,6 +16,7 @@ export interface UpdateProjectDto {
   name?: string;
   budgetMonthly?: number;
   budgetHardBlockEnabled?: boolean;
+  logRequestContent?: boolean;
   isBlocked?: boolean;
   blockReason?: string;
 }
@@ -82,6 +84,7 @@ export class OrganizationsService {
           description: p.description,
           budgetMonthly,
           budgetHardBlockEnabled: p.budgetHardBlockEnabled,
+          logRequestContent: p.logRequestContent,
           isBlocked: p.isBlocked,
           blockReason: p.blockReason,
           currentMonthlySpend,
@@ -121,6 +124,7 @@ export class OrganizationsService {
         description: dto.description,
         budgetMonthly,
         budgetHardBlockEnabled: dto.budgetHardBlockEnabled !== false,
+        logRequestContent: dto.logRequestContent === true,
       },
     });
 
@@ -140,6 +144,7 @@ export class OrganizationsService {
     if (dto.name !== undefined) dataToUpdate.name = dto.name;
     if (dto.budgetMonthly !== undefined) dataToUpdate.budgetMonthly = dto.budgetMonthly;
     if (dto.budgetHardBlockEnabled !== undefined) dataToUpdate.budgetHardBlockEnabled = dto.budgetHardBlockEnabled;
+    if (dto.logRequestContent !== undefined) dataToUpdate.logRequestContent = dto.logRequestContent === true;
     if (dto.isBlocked !== undefined) {
       dataToUpdate.isBlocked = dto.isBlocked;
       dataToUpdate.blockReason = dto.isBlocked ? (dto.blockReason || 'Manual Admin Emergency Freeze') : null;

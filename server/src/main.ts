@@ -1,20 +1,35 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 async function bootstrap() {
   const logger = new Logger('SpendGuardBootstrap');
-  const app = await NestFactory.create(AppModule, {
+  // Browser traffic goes through the Next.js BFF, so only explicitly listed
+  // origins may call the API directly. Auth uses bearer tokens, not cookies.
+  const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
     cors: {
-      origin: '*',
+      origin: corsOrigins,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-      credentials: true,
+      credentials: false,
     },
   });
+
+  // Only trust X-Forwarded-For when explicitly deployed behind a proxy.
+  // e.g. TRUST_PROXY=1 (one hop) or TRUST_PROXY=loopback
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({

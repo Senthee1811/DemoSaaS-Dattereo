@@ -62,4 +62,6 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:4000/api/health || exit 1
 
-CMD ["node", "dist/main"]
+# nest build emits dist/src/main.js (tsconfig includes src/, test/ and prisma/).
+# Apply pending migrations before boot so a fresh database is always usable.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]

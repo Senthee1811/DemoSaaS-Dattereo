@@ -38,31 +38,46 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const exceptionResponse =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : { message: (exception as any)?.message || 'Internal server error' };
+    const isHttp = exception instanceof HttpException;
+    const rawResponse: any = isHttp ? exception.getResponse() : null;
 
-    const errorMessage =
-      typeof exceptionResponse === 'object' && (exceptionResponse as any).message
-        ? (exceptionResponse as any).message
-        : exceptionResponse;
+    // Normalise every error into a single, flat `error` object:
+    //   { error: { message: string, type?, code?, ... } }
+    // Gateway errors already arrive as { error: {...} } — unwrap instead of double-nesting.
+    let errorBody: Record<string, any>;
+    if (!isHttp) {
+      // Never leak internal exception text (DB errors, stack details) to clients
+      errorBody = { message: 'Internal server error', type: 'internal_error' };
+    } else if (rawResponse && typeof rawResponse === 'object' && rawResponse.error && typeof rawResponse.error === 'object') {
+      errorBody = { ...rawResponse.error };
+    } else if (rawResponse && typeof rawResponse === 'object') {
+      const msg = Array.isArray(rawResponse.message) ? rawResponse.message.join('; ') : rawResponse.message;
+      errorBody = { message: msg || exception.message, type: typeof rawResponse.error === 'string' ? rawResponse.error : undefined };
+    } else {
+      errorBody = { message: String(rawResponse) };
+    }
+    if (typeof errorBody.message === 'string') {
+      errorBody.message = scrubSecrets(errorBody.message);
+    }
 
-    // Scrub secrets from logged output
-    const safeMessage = typeof errorMessage === 'string'
-      ? scrubSecrets(errorMessage)
-      : JSON.stringify(errorMessage);
-
-    this.logger.error(
-      `[${request.method}] ${request.url} - Status: ${status} - RequestId: ${requestId} - Error: ${scrubSecrets(safeMessage)}`,
-    );
+    const logDetail = isHttp
+      ? errorBody.message
+      : `${(exception as any)?.message || exception}`;
+    const logLine = `[${request.method}] ${request.url} - Status: ${status} - RequestId: ${requestId} - Error: ${scrubSecrets(String(logDetail))}`;
+    if (status >= 500) {
+      this.logger.error(logLine, isHttp ? undefined : (exception as any)?.stack);
+    } else {
+      this.logger.warn(logLine);
+    }
 
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       requestId,
-      error: typeof exceptionResponse === 'object' ? exceptionResponse : { message: errorMessage },
+      error: errorBody,
+      // Back-compat for clients that read a top-level message
+      message: errorBody.message,
     });
   }
 }

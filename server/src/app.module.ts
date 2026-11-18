@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from './modules/auth/guards/roles.guard';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './modules/redis/redis.module';
@@ -40,6 +43,11 @@ import { HealthModule } from './health/health.module';
     TeamModule,
     BillingModule,
     HealthModule,
+  ],
+  providers: [
+    // Order matters: authenticate first, then enforce @Roles().
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}

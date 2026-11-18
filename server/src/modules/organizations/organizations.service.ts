@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
 export interface CreateProjectDto {
@@ -26,12 +26,9 @@ export class OrganizationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async listProjects(orgId?: string) {
-    const where: any = {};
-    if (orgId) where.orgId = orgId;
-
+  async listProjects(orgId: string) {
     const projects = await this.prisma.project.findMany({
-      where,
+      where: { orgId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -42,7 +39,7 @@ export class OrganizationsService {
 
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
 
     const enriched = await Promise.all(
       projects.map(async (p) => {
@@ -91,27 +88,28 @@ export class OrganizationsService {
     return { projects: enriched };
   }
 
-  async createProject(dto: CreateProjectDto, orgId?: string) {
-    let targetOrgId = orgId;
-    if (!targetOrgId) {
-      // Fallback for initial demo seed or unauthenticated local test
-      let org = await this.prisma.organization.findFirst();
-      if (!org) {
-        org = await this.prisma.organization.create({
-          data: { name: 'Apex Innovations Inc.', slug: 'apex-innovations' },
-        });
-      }
-      targetOrgId = org.id;
+  async createProject(dto: CreateProjectDto, orgId: string) {
+    const name = (dto.name || '').trim();
+    if (!name) {
+      throw new BadRequestException('Project name is required');
     }
 
-    const slug = dto.slug || dto.name.toLowerCase().replace(/\s+/g, '-');
-    const budgetMonthly = dto.budgetMonthly || 1000;
-    const budgetWeekly = dto.budgetWeekly || budgetMonthly / 4;
+    const budgetMonthly = Number(dto.budgetMonthly) || 1000;
+    if (budgetMonthly <= 0) {
+      throw new BadRequestException('Monthly budget must be greater than zero');
+    }
+    const budgetWeekly = Number(dto.budgetWeekly) || budgetMonthly / 4;
+    const slug = (dto.slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project';
+
+    const clash = await this.prisma.project.findUnique({ where: { orgId_slug: { orgId, slug } } });
+    if (clash) {
+      throw new ConflictException(`A project with slug '${slug}' already exists in this organization`);
+    }
 
     const project = await this.prisma.project.create({
       data: {
-        orgId: targetOrgId,
-        name: dto.name,
+        orgId,
+        name,
         slug,
         description: dto.description,
         budgetMonthly,
@@ -123,12 +121,12 @@ export class OrganizationsService {
     return { project };
   }
 
-  async updateProject(dto: UpdateProjectDto, orgId?: string) {
-    const existing = await this.prisma.project.findUnique({
-      where: { id: dto.id },
-    });
+  async updateProject(dto: UpdateProjectDto, orgId: string) {
+    const existing = dto.id
+      ? await this.prisma.project.findUnique({ where: { id: dto.id } })
+      : null;
 
-    if (!existing || (orgId && existing.orgId !== orgId)) {
+    if (!existing || existing.orgId !== orgId) {
       throw new NotFoundException(`Project ${dto.id} not found in this organization`);
     }
 

@@ -1,12 +1,12 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  Headers, 
-  Req, 
-  Res, 
-  HttpStatus, 
-  HttpException 
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  Req,
+  Res,
+  HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
@@ -15,9 +15,15 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { PricingService } from '@/modules/pricing/pricing.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { AuthService } from '@/modules/auth/auth.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 import { ChatMessage } from './adapters/provider.adapter.interface';
 
-export class ChatCompletionDto {
+// An interface (not a class) on purpose: the global ValidationPipe runs with
+// `whitelist: true`, which strips every property of an undecorated DTO class.
+// That silently emptied every gateway request body. The payload is validated
+// explicitly in the handler instead (OpenAI-compatible, many optional fields).
+export interface ChatCompletionDto {
   model: string;
   messages: ChatMessage[];
   projectId?: string;
@@ -30,7 +36,35 @@ export class ChatCompletionDto {
   userId?: string;
 }
 
+const MAX_OUTPUT_TOKENS = 32000;
+
+function authError(message: string, code = 'invalid_api_key'): HttpException {
+  return new HttpException(
+    { error: { message, type: 'authentication_error', code } },
+    HttpStatus.UNAUTHORIZED,
+  );
+}
+
+function parseJsonArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Authentication for the gateway is handled here (not by the global JWT guard)
+ * because it accepts two credential types:
+ *   1. SpendGuard gateway keys (sg_live_* / sg_test_*) — the key decides the project.
+ *   2. A dashboard user session (JWT) — the requested project must belong to the user's org.
+ * A bare project header is NEVER sufficient.
+ */
 @ApiTags('Unified AI Gateway Proxy')
+@ApiBearerAuth()
+@Public()
 @Controller(['v1/chat', 'api/v1/chat'])
 export class GatewayController {
   constructor(
@@ -39,11 +73,13 @@ export class GatewayController {
     private readonly encryptionService: EncryptionService,
     private readonly pricingService: PricingService,
     private readonly redisService: RedisService,
+    private readonly authService: AuthService,
   ) {}
 
   @Post('completions')
   @ApiOperation({ summary: 'OpenAI-Compatible Chat Completion with Spend Governance & Fail-Closed Guardrails' })
   @ApiResponse({ status: 200, description: 'Inference successful within budget' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid credentials' })
   @ApiResponse({ status: 429, description: 'Hard-block budget threshold exceeded (fail-closed)' })
   @ApiResponse({ status: 503, description: 'Governance engine unavailable (fail-closed)' })
   async createChatCompletion(
@@ -55,152 +91,140 @@ export class GatewayController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    if (!body.model || !body.messages || !Array.isArray(body.messages)) {
+    if (
+      !body?.model ||
+      typeof body.model !== 'string' ||
+      !Array.isArray(body.messages) ||
+      body.messages.length === 0 ||
+      body.messages.some((m) => !m || typeof m.content !== 'string' || typeof m.role !== 'string')
+    ) {
       throw new HttpException(
-        { error: { message: 'Missing required parameters: model and messages array.', type: 'invalid_request_error' } },
+        { error: { message: 'Missing required parameters: model and a non-empty messages array of {role, content}.', type: 'invalid_request_error' } },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    let resolvedProjectId = body.projectId || body.project_id || projectHeader || altProjectHeader;
-    const rawKey = spendguardKeyHeader || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null);
+    if (body.stream) {
+      throw new HttpException(
+        { error: { message: 'Streaming responses are not supported yet. Omit "stream" or set it to false.', type: 'invalid_request_error', code: 'stream_unsupported' } },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-    // FR-10: SpendGuard Virtual Key Validation & Guardrails
-    if (rawKey) {
-      const hashedSecret = this.encryptionService.hashToken(rawKey);
+    const requestedMax = Number(body.maxTokens ?? body.max_tokens ?? 1000);
+    const maxTokens = Number.isFinite(requestedMax) ? Math.min(Math.max(Math.floor(requestedMax), 1), MAX_OUTPUT_TOKENS) : 1000;
 
+    const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const rawKey = (spendguardKeyHeader || bearer || '').trim();
+
+    if (!rawKey) {
+      throw authError(
+        'Missing authentication. Provide a SpendGuard API key via "Authorization: Bearer sg_live_..."',
+        'missing_credentials',
+      );
+    }
+
+    let resolvedProjectId: string;
+    let actingUserId: string | undefined;
+
+    if (rawKey.startsWith('sg_')) {
+      // ---- 1. SpendGuard virtual gateway key ----
       const gwKey = await this.prisma.gatewayApiKey.findUnique({
-        where: { hashedSecret },
+        where: { hashedSecret: this.encryptionService.hashToken(rawKey) },
       });
 
-      if (!gwKey) {
-        throw new HttpException(
-          { error: { message: 'Invalid SpendGuard Gateway API key.', type: 'authentication_error', code: 'invalid_api_key' } },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      if (!gwKey.isActive) {
-        throw new HttpException(
-          { error: { message: 'SpendGuard Gateway API key has been revoked.', type: 'authentication_error' } },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      // Check Key Expiry
+      if (!gwKey) throw authError('Invalid SpendGuard Gateway API key.');
+      if (!gwKey.isActive) throw authError('SpendGuard Gateway API key has been revoked.');
       if (gwKey.expiresAt && new Date() > gwKey.expiresAt) {
+        throw authError('SpendGuard Gateway API key has expired.');
+      }
+
+      const allowedModels = parseJsonArray(gwKey.allowedModels);
+      if (allowedModels.length > 0 && !allowedModels.includes(body.model)) {
         throw new HttpException(
-          { error: { message: 'SpendGuard Gateway API key has expired.', type: 'authentication_error' } },
-          HttpStatus.UNAUTHORIZED,
+          { error: { message: `Model '${body.model}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
+          HttpStatus.FORBIDDEN,
         );
       }
 
-      // Check Model Allowlist
-      if (gwKey.allowedModels) {
-        try {
-          const allowed: string[] = JSON.parse(gwKey.allowedModels);
-          if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(body.model)) {
-            throw new HttpException(
-              { error: { message: `Model '${body.model}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
-              HttpStatus.FORBIDDEN,
-            );
-          }
-        } catch (e: any) {
-          if (e instanceof HttpException) throw e;
-        }
-      }
-
-      // Check Provider Allowlist
       const provider = this.pricingService.resolveProvider(body.model);
-      if (gwKey.allowedProviders) {
-        try {
-          const allowed: string[] = JSON.parse(gwKey.allowedProviders);
-          if (Array.isArray(allowed) && allowed.length > 0 && !allowed.includes(provider)) {
-            throw new HttpException(
-              { error: { message: `Provider '${provider}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
-              HttpStatus.FORBIDDEN,
-            );
-          }
-        } catch (e: any) {
-          if (e instanceof HttpException) throw e;
+      const allowedProviders = parseJsonArray(gwKey.allowedProviders);
+      if (allowedProviders.length > 0 && !allowedProviders.includes(provider)) {
+        throw new HttpException(
+          { error: { message: `Provider '${provider}' is not permitted by this SpendGuard key's guardrail policy.`, type: 'permission_denied' } },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      // Per-key RPM limit (fixed one-minute window in Redis)
+      const client = this.redisService.getClient();
+      if (client && gwKey.rateLimitRpm) {
+        const rateKey = `gw:rpm:${gwKey.id}:${Math.floor(Date.now() / 60000)}`;
+        const reqCount = await client.incr(rateKey);
+        if (reqCount === 1) await client.expire(rateKey, 120);
+        if (reqCount > gwKey.rateLimitRpm) {
+          throw new HttpException(
+            { error: { message: `SpendGuard Key Rate limit exceeded: ${gwKey.rateLimitRpm} RPM cap.`, type: 'rate_limit_exceeded' } },
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
         }
       }
 
-      // Rate Limiting (Sliding RPM counter in Redis if available)
-      if (this.redisService.isConnected && gwKey.rateLimitRpm) {
-        const client = this.redisService.getClient();
-        if (client) {
-          const currentMinute = Math.floor(Date.now() / 60000);
-          const rateKey = `gw:rpm:${gwKey.id}:${currentMinute}`;
-          const reqCount = await client.incr(rateKey);
-          if (reqCount === 1) {
-            await client.expire(rateKey, 120);
-          }
-          if (reqCount > gwKey.rateLimitRpm) {
-            throw new HttpException(
-              { error: { message: `SpendGuard Key Rate limit exceeded: ${gwKey.rateLimitRpm} RPM cap.`, type: 'rate_limit_exceeded' } },
-              HttpStatus.TOO_MANY_REQUESTS,
-            );
-          }
-        }
-      }
-
+      // The key — not any client-supplied header/body field — decides the project
       resolvedProjectId = gwKey.projectId;
 
-      // Update key usage timestamp asynchronously
-      this.prisma.gatewayApiKey.update({
-        where: { id: gwKey.id },
-        data: { lastUsedAt: new Date() },
-      }).catch(() => {});
+      this.prisma.gatewayApiKey
+        .update({ where: { id: gwKey.id }, data: { lastUsedAt: new Date() } })
+        .catch(() => {});
+    } else {
+      // ---- 2. Dashboard user session (e.g. the Playground) ----
+      const user = await this.authService.verifyAccessToken(rawKey);
+      if (!user) throw authError('Invalid or expired credentials.');
+
+      const requestedProjectId = body.projectId || body.project_id || projectHeader || altProjectHeader;
+      if (!requestedProjectId) {
+        throw new HttpException(
+          { error: { message: 'projectId is required when calling the gateway with a dashboard session.', type: 'invalid_request_error', code: 'project_required' } },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const project = await this.prisma.project.findFirst({
+        where: { id: requestedProjectId, orgId: user.orgId },
+        select: { id: true },
+      });
+      if (!project) {
+        throw new HttpException(
+          { error: { message: `Project '${requestedProjectId}' was not found.`, type: 'invalid_request_error', code: 'project_not_found' } },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      resolvedProjectId = project.id;
+      actingUserId = user.id;
     }
 
-    // Require valid authentication / project resolution
-    if (!resolvedProjectId) {
-      throw new HttpException(
-        {
-          error: {
-            message: 'Missing authentication. Please provide a valid SpendGuard API key via "Authorization: Bearer <sg_live_*>" or a valid project header.',
-            type: 'authentication_error',
-            code: 'missing_credentials',
-          },
-        },
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-
-    // Verify project exists
-    const targetProject = await this.prisma.project.findUnique({
-      where: { id: resolvedProjectId },
-      select: { id: true, orgId: true, isBlocked: true },
-    });
-
-    if (!targetProject) {
-      throw new HttpException(
-        { error: { message: `Project '${resolvedProjectId}' was not found.`, type: 'invalid_request_error', code: 'project_not_found' } },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const clientSdk = (req.headers['user-agent'] as string) || 'spendguard-sdk';
 
     const result = await this.gatewayService.processChatCompletion({
       projectId: resolvedProjectId,
-      userId: body.userId || body.user_id,
+      // userId is only trusted from an authenticated session, never from the body
+      userId: actingUserId,
       model: body.model,
       messages: body.messages,
       temperature: body.temperature,
-      maxTokens: body.maxTokens || body.max_tokens,
-      stream: body.stream,
+      maxTokens,
+      stream: false,
       clientIp,
       clientSdk,
     });
 
-    // Attach custom telemetry headers
-    for (const [k, v] of Object.entries(result.headers)) {
+    const { headers, ...payload } = result;
+    for (const [k, v] of Object.entries(headers)) {
       res.setHeader(k, v);
     }
 
-    return res.status(HttpStatus.OK).json(result);
+    return res.status(HttpStatus.OK).json(payload);
   }
 }

@@ -2,6 +2,9 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { PrismaService } from '@/prisma/prisma.service';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { assertProjectInOrg } from '@/common/tenant';
+
+const PROVIDERS = ['OPENAI', 'ANTHROPIC', 'GEMINI'] as const;
 
 export interface StoreProviderKeyDto {
   projectId: string;
@@ -32,8 +35,8 @@ export class KeysService {
     private readonly redisService: RedisService,
   ) {}
 
-  async listKeys(projectId?: string) {
-    const whereClause: any = {};
+  async listKeys(orgId: string, projectId?: string) {
+    const whereClause: any = { project: { orgId } };
     if (projectId) whereClause.projectId = projectId;
 
     const providerKeys = await this.prisma.providerApiKey.findMany({
@@ -81,10 +84,14 @@ export class KeysService {
     };
   }
 
-  async storeProviderKey(dto: StoreProviderKeyDto) {
+  async storeProviderKey(dto: StoreProviderKeyDto, orgId: string) {
     if (!dto.plainKey || !dto.keyName || !dto.projectId) {
-      throw new BadRequestException('Missing required key parameters');
+      throw new BadRequestException('Missing required key parameters (projectId, keyName, plainKey)');
     }
+    if (!PROVIDERS.includes(dto.provider)) {
+      throw new BadRequestException(`provider must be one of ${PROVIDERS.join(', ')}`);
+    }
+    await assertProjectInOrg(this.prisma, dto.projectId, orgId);
 
     const encryptedKey = this.encryptionService.encryptApiKey(dto.plainKey);
     const keyPrefix = dto.plainKey.slice(0, 7);
@@ -115,10 +122,11 @@ export class KeysService {
     };
   }
 
-  async generateGatewayKey(dto: GenerateGatewayKeyDto) {
+  async generateGatewayKey(dto: GenerateGatewayKeyDto, orgId: string) {
     if (!dto.keyName || !dto.projectId) {
-      throw new BadRequestException('Missing required key parameters');
+      throw new BadRequestException('Missing required key parameters (projectId, keyName)');
     }
+    await assertProjectInOrg(this.prisma, dto.projectId, orgId);
 
     const prefix = dto.environment === 'test' ? 'sg_test' : 'sg_live';
     const { secret, keyPrefix, hashedSecret } = this.encryptionService.generateGatewaySecret(prefix);
@@ -153,12 +161,17 @@ export class KeysService {
     };
   }
 
-  async revokeKey(id: string, type: 'PROVIDER' | 'GATEWAY') {
+  async revokeKey(id: string, type: 'PROVIDER' | 'GATEWAY', orgId: string) {
+    if (!id) throw new BadRequestException('Key id is required');
+
     if (type === 'PROVIDER') {
+      const key = await this.prisma.providerApiKey.findFirst({ where: { id, project: { orgId } } });
+      if (!key) throw new NotFoundException('Key not found');
       await this.prisma.providerApiKey.delete({ where: { id } });
     } else {
-      const key = await this.prisma.gatewayApiKey.findUnique({ where: { id } });
-      if (key) {
+      const key = await this.prisma.gatewayApiKey.findFirst({ where: { id, project: { orgId } } });
+      if (!key) throw new NotFoundException('Key not found');
+      {
         // Invalidate Redis cache if available
         if (this.redisService.isConnected) {
           try {

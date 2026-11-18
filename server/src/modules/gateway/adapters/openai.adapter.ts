@@ -36,7 +36,9 @@ export class OpenAIAdapter implements ProviderAdapter {
       const timeoutMs = Number(process.env.GATEWAY_PROXY_TIMEOUT_MS) || 60000;
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Overridable for OpenAI-compatible endpoints (Azure OpenAI proxies, self-hosted gateways, tests)
+      const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+      const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

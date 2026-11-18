@@ -1,11 +1,17 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Transform } from 'class-transformer';
+import { Public } from './decorators/public.decorator';
+
+/** Normalise emails before validation so ' Alice@X.com ' and 'alice@x.com' are the same account. */
+const NormalizeEmail = () =>
+  Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value));
 import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decorator';
 
 export class RegisterDto {
+  @NormalizeEmail()
   @IsEmail()
   email: string;
 
@@ -27,6 +33,7 @@ export class RegisterDto {
 }
 
 export class LoginDto {
+  @NormalizeEmail()
   @IsEmail()
   email: string;
 
@@ -40,6 +47,7 @@ export class RefreshDto {
 }
 
 export class ForgotPasswordDto {
+  @NormalizeEmail()
   @IsEmail()
   email: string;
 }
@@ -71,6 +79,7 @@ export class DeactivateAccountDto {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and organization' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
@@ -79,6 +88,7 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authenticate with email and password' })
@@ -88,6 +98,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
@@ -97,6 +108,7 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Initiate password reset flow' })
@@ -105,6 +117,7 @@ export class AuthController {
     return this.authService.forgotPassword(dto);
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password with time-limited token' })
@@ -115,7 +128,6 @@ export class AuthController {
   }
 
   @Get('account-status')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user account status and organization membership' })
   @ApiResponse({ status: 200, description: 'Account status details' })
@@ -124,7 +136,6 @@ export class AuthController {
   }
 
   @Post('deactivate')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Deactivate user account after password verification and ownership check' })

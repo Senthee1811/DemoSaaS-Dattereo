@@ -155,3 +155,43 @@ describe('5. Ledger row is written before the response', () => {
     expect(opts.jobId).toBe(data.id);
   });
 });
+
+describe('8. Per-IP gateway limit is configurable abuse protection', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { RateLimitMiddleware } = require('../src/common/middleware/rate-limit.middleware');
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  async function burst(n: number, headers: Record<string, string>) {
+    const mw = new RateLimitMiddleware({ getClient: () => null }); // in-memory path
+    let limited = 0;
+    for (let i = 0; i < n; i++) {
+      const req: any = { ip: '203.0.113.7', headers, socket: {} };
+      const res: any = { setHeader: () => undefined };
+      try {
+        await mw.use(req, res, () => undefined);
+      } catch (e: any) {
+        if (e.getStatus?.() === 429) limited++;
+        else throw e;
+      }
+    }
+    return limited;
+  }
+
+  it('default: 70 keyed requests from one IP → no per-IP 429', async () => {
+    delete process.env.GATEWAY_IP_RPM;
+    expect(await burst(70, { authorization: 'Bearer sg_live_abc' })).toBe(0);
+  });
+
+  it('GATEWAY_IP_RPM is honoured', async () => {
+    process.env.GATEWAY_IP_RPM = '50';
+    expect(await burst(70, { authorization: 'Bearer sg_live_abc' })).toBe(20);
+  });
+
+  it('credential-less floods keep a tight limit (default 60/min)', async () => {
+    delete process.env.GATEWAY_UNAUTH_IP_RPM;
+    expect(await burst(70, {})).toBe(10);
+  });
+});

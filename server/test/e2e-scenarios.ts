@@ -545,6 +545,20 @@ async function phase1(A: string) {
 
     const created = await api('POST', '/api/v1/projects', { token: A, body: { name: `Weekly ${RUN}`, budgetMonthly: 10, budgetWeekly: 0.001 } });
     const listedWeekly = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === created.body.project?.id);
+    // ── P1-8. Per-IP limit is abuse protection only, above key limits ──────
+    console.log('\n▶ Phase 1 · per-IP gateway limit does not undercut key RPM');
+    // TPM raised so only the per-IP limit could cause a 429 here (70 x 1,600 actual tokens > default 100k TPM)
+    const serverApp = await newGatewayKey(A, proj.id, { rateLimitRpm: 1200, rateLimitTpm: 1000000 });
+    const statuses: number[] = [];
+    const codes: string[] = [];
+    for (let i = 0; i < 70; i++) {
+      const r = await api('POST', '/v1/chat/completions', { token: serverApp.secret, body: { ...chat(`burst ${i}`), max_tokens: 5 } });
+      statuses.push(r.status);
+      if (r.status === 429) codes.push(r.body.error?.code);
+    }
+    const perIp429 = codes.filter((c) => c === 'rate_limit_exceeded').length;
+    check('key at 1,200 RPM: 70 requests in a minute from one IP → 0 per-IP 429s', perIp429 === 0 && statuses.every((s) => s === 200), { perIp429, statuses: statuses.join(',') });
+
     check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
   }
 }

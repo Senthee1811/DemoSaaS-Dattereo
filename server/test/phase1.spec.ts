@@ -71,3 +71,22 @@ describe('2. Redis reconnect backoff', () => {
     expect(redisRetryDelayMs(1000)).toBe(5000);
   });
 });
+
+describe('3. Unpriced models are rejected (no gpt-4o-mini fallback)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { PricingService } = require('../src/modules/pricing/pricing.service');
+  const pricing = new PricingService({ modelPricing: { findMany: async () => [] } }, { isConnected: false, getClient: () => null });
+
+  it('knows catalog models and rejects unknown ones', () => {
+    expect(pricing.isModelPriced('gpt-4o-mini')).toBe(true);
+    expect(pricing.isModelPriced('o1-pro-imaginary')).toBe(false);
+  });
+
+  it('calculateCost throws model_not_priced for an unknown model', () => {
+    expect(errorCode(() => pricing.calculateCost('o1-pro-imaginary', 1200, 400))).toBe('model_not_priced');
+  });
+
+  it('estimateMaxCost throws model_not_priced for an unknown model', () => {
+    expect(errorCode(() => pricing.estimateMaxCost('o1-pro-imaginary', 1200, 400))).toBe('model_not_priced');
+  });
+});

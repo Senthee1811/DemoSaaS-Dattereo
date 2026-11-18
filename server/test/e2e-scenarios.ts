@@ -406,6 +406,26 @@ async function phase1(A: string) {
     check('missing provider key → 0 upstream calls', after.calls === before.calls, { before, after });
     check('platform OPENAI_API_KEY is never sent upstream (whole run)', after.platformKeyCalls === mockAtStart.platformKeyCalls, { mockAtStart, after });
   }
+
+  // ── P1-3. Models with no price are rejected ──────────────────────────────
+  console.log('\n▶ Phase 1 · pricing: unpriced models rejected');
+  {
+    const proj = await newProject(A, 'Unpriced Model', 10);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await api('POST', '/v1/chat/completions', {
+      token: key.secret,
+      body: { model: 'o1-pro-imaginary', messages: [{ role: 'user', content: 'price me' }], max_tokens: 50 },
+    });
+    const after = await mockStats();
+    check('unpriced model → 400 model_not_priced', r.status === 400 && r.body.error?.code === 'model_not_priced', r.body);
+    check('unpriced model → 0 upstream calls', after.calls === before.calls, { before, after });
+    await new Promise((res) => setTimeout(res, 500));
+    const listed = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === proj.id);
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}`, { token: A });
+    check('unpriced model → no spend recorded', Number(listed?.currentMonthlySpend) === 0 && audit.body.total === 0, { spend: listed?.currentMonthlySpend, rows: audit.body.total });
+  }
 }
 
 run().catch((err) => {

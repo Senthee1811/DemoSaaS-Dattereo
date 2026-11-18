@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 
@@ -101,6 +101,14 @@ export const PRICING_CATALOG: Record<string, ModelPricingConfig> = {
     displayName: 'Gemini 1.5 Flash',
     contextWindow: 1000000,
   },
+  // Used by the onboarding test call; same rate the client catalog shows (client/lib/pricing.ts)
+  'gemini-2.0-flash': {
+    provider: 'GEMINI',
+    inputPricePerMillion: 0.10,
+    outputPricePerMillion: 0.40,
+    displayName: 'Gemini 2.0 Flash',
+    contextWindow: 1000000,
+  },
   'gemini-2.0-flash-exp': {
     provider: 'GEMINI',
     inputPricePerMillion: 0.00,
@@ -109,6 +117,19 @@ export const PRICING_CATALOG: Record<string, ModelPricingConfig> = {
     contextWindow: 1000000,
   },
 };
+
+export function modelNotPricedError(model: string): HttpException {
+  return new HttpException(
+    {
+      error: {
+        message: `Model '${model}' has no price in the SpendGuard pricing catalog, so its cost cannot be governed. Use a priced model or ask a platform admin to add a price for it.`,
+        type: 'invalid_request_error',
+        code: 'model_not_priced',
+      },
+    },
+    HttpStatus.BAD_REQUEST,
+  );
+}
 
 @Injectable()
 export class PricingService implements OnModuleInit {
@@ -158,11 +179,30 @@ export class PricingService implements OnModuleInit {
   }
 
   /**
-   * Calculates USD cost estimate for a model inference request.
-   * Guarantees 6 decimal precision and handles unpriced models with graceful default.
+   * Price for a model from the DB pricing table (cached) or the built-in catalog.
+   * Returns undefined for unknown models — there is deliberately no default rate.
+   */
+  getModelPrice(modelName: string): ModelPricingConfig | undefined {
+    return this.memoryCache.get(modelName) || PRICING_CATALOG[modelName];
+  }
+
+  isModelPriced(modelName: string): boolean {
+    return this.getModelPrice(modelName) !== undefined;
+  }
+
+  /** Price or throw 400 model_not_priced. Never bill an unknown model at another model's rate. */
+  private requirePrice(modelName: string): ModelPricingConfig {
+    const config = this.getModelPrice(modelName);
+    if (!config) throw modelNotPricedError(modelName);
+    return config;
+  }
+
+  /**
+   * Calculates USD cost estimate for a model inference request (6 decimal precision).
+   * Throws 400 model_not_priced for models with no price.
    */
   calculateCost(modelName: string, tokensIn: number, tokensOut: number): number {
-    const config = this.memoryCache.get(modelName) || PRICING_CATALOG[modelName] || PRICING_CATALOG['gpt-4o-mini'];
+    const config = this.requirePrice(modelName);
     const inCost = (tokensIn / 1_000_000) * config.inputPricePerMillion;
     const outCost = (tokensOut / 1_000_000) * config.outputPricePerMillion;
     return Number((inCost + outCost).toFixed(6));
@@ -193,7 +233,7 @@ export class PricingService implements OnModuleInit {
    * Assumes completion may generate up to maxTokens.
    */
   estimateMaxCost(model: string, promptTokens: number, maxTokens = 1000): number {
-    const config = this.memoryCache.get(model) || PRICING_CATALOG[model] || PRICING_CATALOG['gpt-4o-mini'];
+    const config = this.requirePrice(model);
     const inputCost = (promptTokens / 1_000_000) * config.inputPricePerMillion;
     const maxOutputCost = (maxTokens / 1_000_000) * config.outputPricePerMillion;
     return Number((inputCost + maxOutputCost).toFixed(6));

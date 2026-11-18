@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { RedisService } from '@/modules/redis/redis.service';
+import { RedisService, BudgetBucket } from '@/modules/redis/redis.service';
 
 /** Prefix for blocks applied automatically by the budget engine (vs. manual admin freezes). */
 export const AUTO_BLOCK_PREFIX = 'Budget Cap Exceeded:';
@@ -13,6 +13,15 @@ export interface BudgetGuardrailResult {
   currentMonthlySpend: number;
   utilizationPct: number;
   reservedAmount?: number;
+  /** Present when the request may proceed; settle or release it by request ID. */
+  hold?: BudgetHold;
+}
+
+/** A request's budget hold: identified by the request ID, spread over one or more buckets. */
+export interface BudgetHold {
+  requestId: string;
+  amount: number;
+  buckets: BudgetBucket[];
 }
 
 @Injectable()
@@ -145,6 +154,7 @@ export class BudgetService {
    */
   async reserveCapacity(
     projectId: string,
+    requestId: string,
     maxEstimatedCost: number,
   ): Promise<BudgetGuardrailResult> {
     try {
@@ -176,12 +186,9 @@ export class BudgetService {
 
       const budgetMonthly = Number(project.budgetMonthly);
 
-      // Execute atomic reservation via Redis Lua script
-      const reservation = await this.redisService.reserveBudget(
-        projectId,
-        maxEstimatedCost,
-        budgetMonthly,
-      );
+      // Atomic per-request hold via Redis Lua script (expired holds are dropped first)
+      const buckets = [this.redisService.projectMonthBucket(projectId, budgetMonthly)];
+      const reservation = await this.redisService.reserveHold(requestId, maxEstimatedCost, buckets);
 
       // Fail-closed if Redis is disconnected or failed
       if (!reservation) {
@@ -196,7 +203,9 @@ export class BudgetService {
         };
       }
 
-      const { success, currentSpend, currentReserved } = reservation;
+      const success = reservation.status !== 'rejected';
+      const currentSpend = reservation.spend;
+      const currentReserved = reservation.held;
       const totalCommitted = currentSpend + currentReserved;
       const utilizationPct = budgetMonthly > 0 ? (totalCommitted / budgetMonthly) * 100 : 0;
 
@@ -252,9 +261,10 @@ export class BudgetService {
         currentMonthlySpend: currentSpend,
         utilizationPct,
         // If the Lua reservation was refused (over budget, hard-block disabled) the
-        // request proceeds as soft-overage with NOTHING reserved. Reconciling a
-        // non-existent reservation would otherwise release other requests' holds.
+        // request proceeds as soft-overage with NOTHING held; settling still charges
+        // the actual cost to every bucket.
         reservedAmount: success ? maxEstimatedCost : 0,
+        hold: { requestId, amount: success ? maxEstimatedCost : 0, buckets },
       };
     } catch (err: any) {
       this.logger.error(`reserveCapacity failed: ${err.message}. Fail-closed active.`);
@@ -270,21 +280,17 @@ export class BudgetService {
   }
 
   /**
-   * Reconcile atomic reservation with verified actual provider token usage.
+   * Settle a request's hold with its verified actual cost. Idempotent per
+   * request ID: a second settle (or a settle after release) changes nothing.
+   * Returns null if Redis was unavailable.
    */
-  async reconcileReservation(
-    projectId: string,
-    estimatedAmount: number,
-    actualCost: number,
-  ): Promise<{ newSpend: number; newReserved: number } | null> {
-    return this.redisService.reconcileBudget(projectId, estimatedAmount, actualCost);
+  async settleHold(hold: BudgetHold, actualCost: number): Promise<{ applied: boolean; spend: number } | null> {
+    return this.redisService.settleHold(hold.requestId, actualCost, hold.buckets);
   }
 
-  /**
-   * Release reserved capacity when request fails or is canceled.
-   */
-  async releaseReservation(projectId: string, estimatedAmount: number): Promise<void> {
-    return this.redisService.releaseReservation(projectId, estimatedAmount);
+  /** Release a request's hold without charging (upstream failure). Idempotent per request ID. */
+  async releaseHold(hold: BudgetHold): Promise<void> {
+    await this.redisService.releaseHold(hold.requestId, hold.buckets);
   }
 
   /**
@@ -381,6 +387,8 @@ export class BudgetService {
     });
 
     const trueSpend = Number(aggregate._sum.costEstimate || 0);
+    // Holds leaked by crashed requests expire on their own; drop them here too.
+    await this.redisService.pruneExpiredHolds(this.redisService.projectMonthBucket(projectId, null));
     await this.redisService.setProjectSpend(projectId, trueSpend);
 
     // Lift automatic budget blocks once spend is back under the cap

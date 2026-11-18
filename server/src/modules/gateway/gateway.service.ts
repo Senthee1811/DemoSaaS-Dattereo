@@ -1,4 +1,5 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
@@ -28,6 +29,8 @@ export class GatewayService {
 
   async processChatCompletion(req: GatewayChatRequest) {
     const startTime = Date.now();
+    // One ID for the whole request: budget hold, ledger row and response id.
+    const reqId = `req_${randomUUID()}`;
     const provider = this.pricingService.resolveProvider(req.model);
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);
@@ -35,13 +38,11 @@ export class GatewayService {
     const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
 
     // 1. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
-    const budgetGuard = await this.budgetService.reserveCapacity(req.projectId, maxEstimatedCost);
+    const budgetGuard = await this.budgetService.reserveCapacity(req.projectId, reqId, maxEstimatedCost);
 
     if (!budgetGuard.canProceed) {
-      const blockedReqId = `req_blk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      
       // Log blocked attempt into audit ledger (async)
-      this.logBlockedRequest(blockedReqId, req, provider, budgetGuard).catch(err =>
+      this.logBlockedRequest(reqId, req, provider, budgetGuard).catch(err =>
         this.logger.warn(`Could not log blocked request: ${err.message}`),
       );
 
@@ -66,7 +67,7 @@ export class GatewayService {
       );
     }
 
-    const reservedAmount = budgetGuard.reservedAmount ?? 0;
+    const hold = budgetGuard.hold!;
 
     // 2. Fetch scoped provider API key from encrypted vault
     let decryptedKey: string | undefined;
@@ -103,10 +104,8 @@ export class GatewayService {
         adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
       }
     } catch (upstreamErr) {
-      // Release reserved budget capacity so failures do not drain the project cap
-      if (reservedAmount > 0) {
-        await this.budgetService.releaseReservation(req.projectId, reservedAmount);
-      }
+      // Release this request's hold so failures do not drain the project cap
+      await this.budgetService.releaseHold(hold);
       throw upstreamErr;
     }
 
@@ -118,11 +117,11 @@ export class GatewayService {
     );
 
     // 4. Reconcile atomic reservation with verified actual usage
-    const reconciled = await this.budgetService.reconcileReservation(req.projectId, reservedAmount, costEstimate);
-    if (!reconciled) {
-      // Redis lost mid-request: the reservation auto-expires (5 min TTL) and the
-      // scheduled DB reconciliation restores the true spend counter.
-      this.logger.error(`Spend settlement failed for project ${req.projectId}; reconciliation job will correct it.`);
+    const settled = await this.budgetService.settleHold(hold, costEstimate);
+    if (!settled) {
+      // Redis lost mid-request: the hold expires on its own and the scheduled
+      // DB reconciliation restores the true spend counter from the ledger.
+      this.logger.error(`Spend settlement failed for request ${reqId} (project ${req.projectId}); reconciliation job will correct it.`);
     }
 
     // 5. Anomaly Spike Detection
@@ -153,7 +152,6 @@ export class GatewayService {
     }
 
     // 6. Append-only Immutable Request Logging (async — don't block response)
-    const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     this.logSuccessfulRequest(reqId, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText)
       .catch(err => this.logger.warn(`Failed to log request: ${err.message}`));

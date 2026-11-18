@@ -426,6 +426,71 @@ async function phase1(A: string) {
     const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}`, { token: A });
     check('unpriced model → no spend recorded', Number(listed?.currentMonthlySpend) === 0 && audit.body.total === 0, { spend: listed?.currentMonthlySpend, rows: audit.body.total });
   }
+
+  // ── P1-4. Per-request budget holds ───────────────────────────────────────
+  console.log('\n▶ Phase 1 · budget holds: per request, cannot leak');
+  {
+    // (a) 30 parallel requests, each exactly $0.007 worst case AND actual
+    //     (gpt-4o: 1200 prompt tokens ≈ 4800 chars + max_tokens 400; mock bills 1200/400).
+    const proj = await newProject(A, 'Concurrency', 0.05);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const body = { model: 'gpt-4o', messages: [{ role: 'user', content: 'x'.repeat(4800) }], max_tokens: 400 };
+    const results = await Promise.all(
+      Array.from({ length: 30 }, () => api('POST', '/v1/chat/completions', { token: key.secret, body })),
+    );
+    const ok = results.filter((r) => r.status === 200).length;
+    const budget429 = results.filter((r) => r.status === 429 && r.body.error?.code === 'budget_exceeded').length;
+    check('30 parallel $0.007 requests on a $0.05 cap → exactly 7 succeed', ok === 7 && budget429 === 23, { ok, budget429, statuses: results.map((r) => r.status) });
+    await new Promise((res) => setTimeout(res, 800));
+    const listed = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === proj.id);
+    check('concurrent spend stays ≤ cap', Number(listed?.currentMonthlySpend) <= 0.05 + 1e-9, listed?.currentMonthlySpend);
+  }
+
+  // (b) and (c) drive the real Lua scripts against the suite's Redis.
+  const redis = await connectRedis();
+  try {
+    const bucket = redis.projectMonthBucket(`e2e-holds-${RUN}`, 0.05);
+    const leaked = await redis.reserveHold(`leak-${RUN}`, 0.04, [bucket], 2000); // never settled: simulated crash
+    const blockedWhileHeld = await redis.reserveHold(`big1-${RUN}`, 0.02, [bucket]);
+    // Steady traffic for longer than the leaked hold's lifetime
+    for (let i = 0; i < 12; i++) {
+      const id = `tick-${RUN}-${i}`;
+      await redis.reserveHold(id, 0.0001, [bucket]);
+      await redis.settleHold(id, 0.0001, [bucket]);
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    const afterExpiry = await redis.reserveHold(`big2-${RUN}`, 0.02, [bucket]);
+    check('leaked hold counts while active', leaked?.status === 'reserved' && blockedWhileHeld?.status === 'rejected', { leaked, blockedWhileHeld });
+    check('leaked hold stops counting after its expiry despite steady traffic', afterExpiry?.status === 'reserved', afterExpiry);
+
+    const b2 = redis.projectMonthBucket(`e2e-dbl-${RUN}`, 1);
+    await redis.reserveHold(`dbl-${RUN}`, 0.01, [b2]);
+    const s1 = await redis.settleHold(`dbl-${RUN}`, 0.007, [b2]);
+    const s2 = await redis.settleHold(`dbl-${RUN}`, 0.007, [b2]);
+    await redis.releaseHold(`dbl-${RUN}`, [b2]);
+    const spend = Number(await redis.getClient()!.get(b2.spendKey));
+    check('double settle of one request ID charges once', s1?.applied === true && s2?.applied === false && Math.abs(spend - 0.007) < 1e-9, { s1, s2, spend });
+    const holdsLeft = await redis.pruneExpiredHolds(b2);
+    check('settle removes the hold', holdsLeft === 0, holdsLeft);
+  } finally {
+    await redis.onModuleDestroy();
+  }
+}
+
+/** A RedisService connected to the same Redis as the backend under test. */
+async function connectRedis() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { RedisService } = require('../src/modules/redis/redis.service');
+  const cfg: Record<string, unknown> = {
+    'redis.host': process.env.E2E_REDIS_HOST || 'localhost',
+    'redis.port': Number(process.env.E2E_REDIS_PORT || 6379),
+    'redis.password': process.env.E2E_REDIS_PASSWORD || undefined,
+  };
+  const svc = new RedisService({ get: (k: string) => cfg[k] });
+  await svc.onModuleInit();
+  for (let i = 0; i < 50 && !svc.isConnected; i++) await new Promise((r) => setTimeout(r, 100));
+  return svc as import('../src/modules/redis/redis.service').RedisService;
 }
 
 run().catch((err) => {

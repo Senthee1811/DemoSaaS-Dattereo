@@ -2,15 +2,16 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  KeyRound, 
-  FlaskConical, 
-  ScrollText, 
-  BellRing, 
-  Network, 
-  Users, 
+import { useStoredUser } from '@/lib/client-storage';
+import {
+  LayoutDashboard,
+  FolderKanban,
+  KeyRound,
+  FlaskConical,
+  ScrollText,
+  BellRing,
+  Network,
+  Users,
   ShieldCheck,
   CreditCard,
   ExternalLink,
@@ -18,7 +19,7 @@ import {
   X,
   CircleHelp,
   Compass,
-  Settings2
+  Settings2,
 } from 'lucide-react';
 
 export type NavTab = 
@@ -63,19 +64,7 @@ export function Sidebar({
   onOpenHelp,
   onStartTour
 }: SidebarProps) {
-  const [orgName, setOrgName] = React.useState('Apex Innovations');
-
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('spendguard_user');
-      if (stored) {
-        try {
-          const u = JSON.parse(stored);
-          if (u.orgName) setOrgName(u.orgName);
-        } catch {}
-      }
-    }
-  }, []);
+  const orgName = useStoredUser()?.orgName || 'Your workspace';
 
   const sections: NavSection[] = [
     {

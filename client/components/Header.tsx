@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Building2, 
-  Bell, 
-  RefreshCw, 
-  FlaskConical, 
+import {
+  Building2,
+  Bell,
+  RefreshCw,
+  FlaskConical,
   LogOut,
   Menu,
-  CircleHelp
+  CircleHelp,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { clearSession } from '@/lib/auth-fetch';
+import { useStoredUser } from '@/lib/client-storage';
 
 interface HeaderProps {
   projects: Array<{ id: string; name: string }>;
@@ -23,7 +24,18 @@ interface HeaderProps {
   unreadAlertsCount: number;
   onToggleMobileMenu?: () => void;
   onOpenHelp?: () => void;
-  onStartTour?: () => void;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'Organization Owner',
+  ADMIN: 'FinOps Admin',
+  MEMBER: 'Member',
+};
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase();
 }
 
 export function Header({
@@ -37,36 +49,15 @@ export function Header({
   unreadAlertsCount,
   onToggleMobileMenu,
   onOpenHelp,
-  onStartTour,
 }: HeaderProps) {
   const router = useRouter();
-  const [userName, setUserName] = useState('Sarah Chen');
-  const [userRole, setUserRole] = useState('FinOps Lead');
-  const [userInitials, setUserInitials] = useState('SC');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('spendguard_user');
-      if (stored) {
-        try {
-          const u = JSON.parse(stored);
-          if (u.name) {
-            setUserName(u.name);
-            const parts = u.name.trim().split(' ');
-            setUserInitials(parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase());
-          }
-          if (u.role) setUserRole(u.role === 'OWNER' ? 'Organization Owner' : u.role === 'ADMIN' ? 'FinOps Admin' : 'Member');
-        } catch {}
-      }
-    }
-  }, []);
+  const user = useStoredUser();
+  const userName = user?.name?.trim() || 'Signed in';
+  const userRole = (user?.role && ROLE_LABELS[user.role]) || 'Member';
+  const userInitials = user?.name ? initialsOf(user.name) : '?';
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('spendguard_token');
-      localStorage.removeItem('spendguard_refresh_token');
-      localStorage.removeItem('spendguard_user');
-    }
+    clearSession();
     router.push('/login');
   };
 

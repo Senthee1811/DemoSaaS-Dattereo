@@ -1,23 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Play, 
-  Terminal, 
-  Cpu, 
-  Layers, 
-  Clock, 
-  DollarSign, 
-  CheckCircle2, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Copy, 
-  Check, 
-  Zap, 
-  Lock,
-  Code2
+import {
+  Play,
+  Terminal,
+  Copy,
+  Check,
+  Code2,
 } from 'lucide-react';
 import { authFetch } from '@/lib/auth-fetch';
+import { errorMessage } from '@/lib/types';
+
+interface ExecutionResult {
+  status: number;
+  headers?: Record<'x-spendguard-cost' | 'x-spendguard-latency' | 'x-spendguard-blocked', string | null>;
+  data?: {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+    [key: string]: unknown;
+  };
+}
 
 interface PlaygroundViewProps {
   projects: Array<{ id: string; name: string }>;
@@ -33,20 +35,20 @@ const MODELS = [
 ];
 
 export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewProps) {
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || 'proj_copilot');
+  // The user's pick, else the first project (projects arrive after mount, so derive each render)
+  const [pickedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const selectedProjectId = pickedProjectId || projects[0]?.id || '';
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [prompt, setPrompt] = useState('Generate a concise spend analysis summary for our Q3 multi-model AI infrastructure.');
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(1000);
   const [isLoading, setIsLoading] = useState(false);
-  const [executionResult, setExecutionResult] = useState<any>(null);
+  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [codeTab, setCodeTab] = useState<'curl' | 'node' | 'python'>('curl');
 
-  const selectedModelObj = MODELS.find(m => m.id === selectedModel) || MODELS[0];
-
   const handleExecuteRequest = async () => {
-    if (!prompt) return;
+    if (!prompt || !selectedProjectId) return;
     setIsLoading(true);
     setExecutionResult(null);
     try {
@@ -78,10 +80,10 @@ export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewPro
         data
       });
       onRefreshMetrics();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setExecutionResult({
         status: 500,
-        data: { error: { message: err.message || 'Failed to connect to gateway' } }
+        data: { error: { message: errorMessage(err, 'Failed to connect to gateway') } }
       });
     } finally {
       setIsLoading(false);
@@ -252,7 +254,7 @@ response = client.chat.completions.create(
             <button
               type="button"
               onClick={handleExecuteRequest}
-              disabled={isLoading || !prompt}
+              disabled={isLoading || !prompt || !selectedProjectId}
               className="w-full py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Play className="w-3.5 h-3.5 fill-white" />

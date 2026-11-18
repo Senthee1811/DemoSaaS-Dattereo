@@ -1,22 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  KeyRound, 
-  Plus, 
-  Trash2, 
-  Copy, 
-  Check, 
-  ShieldCheck, 
-  Lock, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  KeyRound,
+  Plus,
+  Copy,
+  Check,
+  ShieldCheck,
+  Lock,
   X,
-  Sparkles,
-  Zap,
-  Terminal,
-  AlertCircle
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { authFetch } from '@/lib/auth-fetch';
+import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { errorMessage } from '@/lib/types';
 
 interface ProviderKey {
   id: string;
@@ -59,7 +56,15 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
   const [newGatewaySecret, setNewGatewaySecret] = useState<string | null>(null);
 
   // Form State
-  const [modalProjectId, setModalProjectId] = useState(selectedProjectId || projects[0]?.id || '');
+  // Target project for the modals: the user's pick, else the header's project, else the first one.
+  // Picking a different project in the header resets the pick.
+  const [pickedProjectId, setModalProjectId] = useState<string | null>(null);
+  const [prevSelectedProjectId, setPrevSelectedProjectId] = useState(selectedProjectId);
+  if (selectedProjectId !== prevSelectedProjectId) {
+    setPrevSelectedProjectId(selectedProjectId);
+    setModalProjectId(null);
+  }
+  const modalProjectId = pickedProjectId || selectedProjectId || projects[0]?.id || '';
   const [provider, setProvider] = useState<'OPENAI' | 'ANTHROPIC' | 'GEMINI'>('OPENAI');
   const [keyName, setKeyName] = useState('');
   const [plainKey, setPlainKey] = useState('');
@@ -82,44 +87,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
         },
         body: JSON.stringify({ provider, apiKey: plainKey }),
       });
-      const data = await res.json();
-      setTestResult(data);
-    } catch (err: any) {
-      setTestResult({ valid: false, message: `Test failed: ${err.message}` });
+      if (!res.ok) throw new Error(await readApiError(res, `HTTP ${res.status}`));
+      setTestResult(await res.json());
+    } catch (err: unknown) {
+      setTestResult({ valid: false, message: `Test failed: ${errorMessage(err)}` });
     } finally {
       setIsTestingProvider(false);
     }
   };
 
-  const fetchKeys = async () => {
-    setIsLoading(true);
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const url = selectedProjectId ? `/api/v1/keys?projectId=${selectedProjectId}` : '/api/v1/keys';
-      const res = await authFetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      setProviderKeys(data.providerKeys || []);
-      setGatewayKeys(data.gatewayKeys || []);
-    } catch (err) {
-      console.error('Failed to fetch keys:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchKeys = useCallback(
+    () =>
+      authFetch(selectedProjectId ? `/api/v1/keys?projectId=${encodeURIComponent(selectedProjectId)}` : '/api/v1/keys')
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+        .then((data: { providerKeys?: ProviderKey[]; gatewayKeys?: GatewayKey[] }) => {
+          setProviderKeys(data.providerKeys || []);
+          setGatewayKeys(data.gatewayKeys || []);
+        })
+        .catch((err) => console.error('Failed to fetch keys:', err))
+        .finally(() => setIsLoading(false)),
+    [selectedProjectId],
+  );
 
   useEffect(() => {
     fetchKeys();
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    if (selectedProjectId) {
-      setModalProjectId(selectedProjectId);
-    } else if (projects.length > 0 && !modalProjectId) {
-      setModalProjectId(projects[0].id);
-    }
-  }, [selectedProjectId, projects]);
+  }, [fetchKeys]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -248,7 +240,11 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
           </button>
         </div>
 
-        {providerKeys.length === 0 ? (
+        {isLoading && providerKeys.length === 0 ? (
+          <div className="p-6">
+            <TableRowSkeleton count={2} />
+          </div>
+        ) : providerKeys.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={KeyRound}
@@ -335,7 +331,11 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
           </button>
         </div>
 
-        {gatewayKeys.length === 0 ? (
+        {isLoading && gatewayKeys.length === 0 ? (
+          <div className="p-6">
+            <TableRowSkeleton count={2} />
+          </div>
+        ) : gatewayKeys.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={KeyRound}

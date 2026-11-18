@@ -1,16 +1,15 @@
 'use client';
 
 import React from 'react';
-import { 
-  ShieldCheck, 
-  ArrowRight, 
-  Compass, 
-  FolderKanban, 
-  X, 
-  CircleCheck, 
-  Lock, 
-  Zap, 
-  Cpu 
+import {
+  ShieldCheck,
+  ArrowRight,
+  Compass,
+  FolderKanban,
+  X,
+  Lock,
+  Zap,
+  Cpu,
 } from 'lucide-react';
 
 interface WelcomeModalProps {
@@ -148,7 +147,7 @@ export function WelcomeModal({
             onClick={onClose}
             className="text-xs text-[#888882] hover:text-[#141413] transition-colors"
           >
-            I'll configure this later, take me to dashboard
+            I&apos;ll configure this later, take me to dashboard
           </button>
         </div>
       </div>

@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted at build time by next/font (no runtime request to Google, no layout shift).
+// Exposed as CSS variables consumed by the --font-* tokens in globals.css.
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  display: "swap",
+  variable: "--font-source-serif",
+});
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-jetbrains-mono" });
 
 export const metadata: Metadata = {
   title: "SpendGuard AI · by Dattreo — Real-Time AI FinOps & Governance Gateway",
@@ -14,15 +27,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="en"
+      className={`scroll-smooth ${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="bg-[#FBFBFA] text-[#18191B] antialiased selection:bg-[#FF6B35] selection:text-white min-h-screen">
         {children}
       </body>

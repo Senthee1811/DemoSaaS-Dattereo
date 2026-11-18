@@ -3,20 +3,22 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  ShieldCheck, 
-  ArrowRight, 
-  Lock, 
-  Mail, 
-  UserRound, 
-  Building2, 
-  TriangleAlert, 
-  Loader2, 
-  CircleCheck, 
-  Eye, 
-  EyeOff, 
-  Check, 
-  X 
+import { saveSession } from '@/lib/auth-fetch';
+import { errorMessage as toMessage } from '@/lib/types';
+import {
+  ShieldCheck,
+  ArrowRight,
+  Lock,
+  Mail,
+  UserRound,
+  Building2,
+  TriangleAlert,
+  Loader2,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  Check,
+  X,
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -93,10 +95,8 @@ export default function RegisterPage() {
       }
 
       // Store auth session
+      saveSession(data);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('spendguard_token', data.accessToken);
-        localStorage.setItem('spendguard_refresh_token', data.refreshToken);
-        localStorage.setItem('spendguard_user', JSON.stringify(data.user));
         // Flag for the post-signup welcome experience & product tour
         sessionStorage.setItem('spendguard_just_registered', 'true');
         localStorage.setItem('spendguard_onboarding_state', 'ACCOUNT_READY');
@@ -104,8 +104,8 @@ export default function RegisterPage() {
 
       // Route immediately to the dashboard for the Welcome Experience & Product Tour
       router.push('/dashboard');
-    } catch (err: any) {
-      setErrorMessage(err.message || 'An error occurred during registration.');
+    } catch (err: unknown) {
+      setErrorMessage(toMessage(err, 'An error occurred during registration.'));
     } finally {
       setIsLoading(false);
     }

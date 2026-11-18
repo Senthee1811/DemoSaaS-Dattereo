@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Activity, Zap, Layers, ArrowUpRight, ShieldAlert, Cpu } from 'lucide-react';
+import { Layers, ArrowUpRight, Cpu } from 'lucide-react';
 
 interface RequestLog {
   provider: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Star, Quote } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 export function TestimonialsSection() {
   const testimonials = [
@@ -53,7 +53,7 @@ export function TestimonialsSection() {
               </div>
 
               <p className="text-sm text-[#333333] leading-relaxed italic mb-6">
-                "{t.quote}"
+                &quot;{t.quote}&quot;
               </p>
             </div>
 

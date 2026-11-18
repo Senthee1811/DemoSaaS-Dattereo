@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar, NavTab } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
@@ -17,136 +17,129 @@ import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
-import { authFetch } from '@/lib/auth-fetch';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useHydrated, useLocalStorageValue, useSessionStorageValue, useStoredUser } from '@/lib/client-storage';
+import type { DashboardAnalytics } from '@/lib/types';
+import type { ProjectItem } from '@/components/projects/ProjectsView';
+
+/** GET a JSON endpoint with the session token; rejects on non-2xx. */
+async function getJson<T>(url: string): Promise<T> {
+  const res = await authFetch(url);
+  if (!res.ok) throw new Error(await readApiError(res, `${url} returned ${res.status}`));
+  return (await res.json()) as T;
+}
 
 export default function AppDashboard() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [projects, setProjects] = useState<any[]>([]);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Modal & Tour States
-  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [userName, setUserName] = useState('there');
-  const [orgName, setOrgName] = useState('your workspace');
 
   // Key tracking for activation checklist
   const [hasProviderKeys, setHasProviderKeys] = useState(false);
   const [hasGatewayKeys, setHasGatewayKeys] = useState(false);
 
+  // Session-derived values are read from storage during render (no effect + setState)
+  const hydrated = useHydrated();
+  const accessToken = useLocalStorageValue('spendguard_token');
+  const storedUser = useStoredUser();
+  const userName = storedUser?.name?.split(' ')[0] || 'there';
+  const orgName = storedUser?.orgName || 'your workspace';
+
+  // Show the welcome modal right after sign-up, or until the first tour is done
+  const justRegistered = useSessionStorageValue('spendguard_just_registered') === 'true';
+  const tourCompleted = useLocalStorageValue('spendguard_tour_completed');
+  const onboardingState = useLocalStorageValue('spendguard_onboarding_state');
+  const isWelcomeOpen =
+    !welcomeDismissed && (justRegistered || (onboardingState === 'ACCOUNT_READY' && !tourCompleted));
+
+  const dismissWelcome = () => {
+    setWelcomeDismissed(true);
+    try {
+      sessionStorage.removeItem('spendguard_just_registered');
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  // Unauthenticated visitors go to login
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('spendguard_token');
-      if (!storedToken) {
-        router.push('/login');
-        return;
-      }
-      setToken(storedToken);
+    if (hydrated && !accessToken) router.push('/login');
+  }, [hydrated, accessToken, router]);
 
-      const storedUser = localStorage.getItem('spendguard_user');
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser);
-          if (u.name) setUserName(u.name.split(' ')[0]);
-          if (u.orgName) setOrgName(u.orgName);
-        } catch {}
-      }
+  // Data loaders. State is set in .then() callbacks (after the response
+  // arrives), never synchronously, so they are safe to call from effects.
+  const fetchProjects = useCallback(
+    () =>
+      getJson<{ projects?: ProjectItem[] }>('/api/v1/projects')
+        .then((data) => setProjects(data.projects || []))
+        .catch((err) => console.error('Failed to fetch projects:', err)),
+    [],
+  );
 
-      // Check if user just registered or onboarding is at initial stage
-      const justRegistered = sessionStorage.getItem('spendguard_just_registered');
-      const tourCompleted = localStorage.getItem('spendguard_tour_completed');
-      const onboardingState = localStorage.getItem('spendguard_onboarding_state');
+  // Keys state for the activation checklist
+  const fetchKeys = useCallback(
+    () =>
+      getJson<{ providerKeys?: unknown[]; gatewayKeys?: unknown[] }>('/api/v1/keys')
+        .then((data) => {
+          setHasProviderKeys(Boolean(data.providerKeys?.length));
+          setHasGatewayKeys(Boolean(data.gatewayKeys?.length));
+        })
+        .catch((err) => console.error('Failed to fetch keys:', err)),
+    [],
+  );
 
-      if (justRegistered === 'true' || (onboardingState === 'ACCOUNT_READY' && !tourCompleted)) {
-        sessionStorage.removeItem('spendguard_just_registered');
-        setIsWelcomeOpen(true);
-      }
-    }
-  }, [router]);
+  const fetchAnalytics = useCallback(
+    () =>
+      getJson<DashboardAnalytics>(
+        selectedProjectId ? `/api/v1/analytics?projectId=${encodeURIComponent(selectedProjectId)}` : '/api/v1/analytics',
+      )
+        .then(setAnalyticsData)
+        .catch((err) => console.error('Failed to fetch analytics:', err)),
+    [selectedProjectId],
+  );
 
-  // Fetch Projects List
-  const fetchProjects = useCallback(async () => {
-    try {
-      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await authFetch('/api/v1/projects', {
-        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
-      });
-      const data = await res.json();
-      setProjects(data.projects || []);
-    } catch (err) {
-      console.error('Failed to fetch projects:', err);
-    }
-  }, []);
+  const fetchUnreadAlerts = useCallback(
+    () =>
+      getJson<{ alerts?: Array<{ isRead: boolean }> }>('/api/v1/alerts')
+        .then((data) => setUnreadAlertsCount((data.alerts || []).filter((a) => !a.isRead).length))
+        .catch((err) => console.error('Failed to fetch alert counts:', err)),
+    [],
+  );
 
-  // Fetch Keys state for checklist
-  const fetchKeys = useCallback(async () => {
-    try {
-      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await authFetch('/api/v1/keys', {
-        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
-      });
-      const data = await res.json();
-      setHasProviderKeys(Boolean(data.providerKeys && data.providerKeys.length > 0));
-      setHasGatewayKeys(Boolean(data.gatewayKeys && data.gatewayKeys.length > 0));
-    } catch (err) {
-      console.error('Failed to fetch keys:', err);
-    }
-  }, []);
+  const loadAll = useCallback(
+    () => Promise.all([fetchProjects(), fetchKeys(), fetchAnalytics(), fetchUnreadAlerts()]),
+    [fetchProjects, fetchKeys, fetchAnalytics, fetchUnreadAlerts],
+  );
 
-  // Fetch Analytics Metrics
-  const fetchAnalytics = useCallback(async () => {
-    try {
-      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const url = selectedProjectId ? `/api/v1/analytics?projectId=${selectedProjectId}` : '/api/v1/analytics';
-      const res = await authFetch(url, {
-        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
-      });
-      const data = await res.json();
-      setAnalyticsData(data);
-    } catch (err) {
-      console.error('Failed to fetch analytics:', err);
-    }
-  }, [selectedProjectId]);
-
-  // Fetch Unread Alerts
-  const fetchUnreadAlerts = useCallback(async () => {
-    try {
-      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await authFetch('/api/v1/alerts', {
-        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
-      });
-      const data = await res.json();
-      const unread = (data.alerts || []).filter((a: any) => !a.isRead).length;
-      setUnreadAlertsCount(unread);
-    } catch (err) {
-      console.error('Failed to fetch alert counts:', err);
-    }
-  }, []);
-
+  // Manual refresh (button / after mutations) shows the spinner
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchProjects(), fetchKeys(), fetchAnalytics(), fetchUnreadAlerts()]);
+    await loadAll();
     setIsRefreshing(false);
-  }, [fetchProjects, fetchKeys, fetchAnalytics, fetchUnreadAlerts]);
+  }, [loadAll]);
 
   useEffect(() => {
-    refreshAll();
+    if (!accessToken) return;
+    loadAll();
     const interval = setInterval(() => {
       fetchAnalytics();
       fetchUnreadAlerts();
     }, 12000);
     return () => clearInterval(interval);
-  }, [selectedProjectId, refreshAll, fetchAnalytics, fetchUnreadAlerts]);
+  }, [accessToken, loadAll, fetchAnalytics, fetchUnreadAlerts]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#FBFBFA] text-[#18191B]">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#FBFBFA] text-sg-text-primary">
       {/* Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -172,7 +165,6 @@ export default function AppDashboard() {
           unreadAlertsCount={unreadAlertsCount}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onOpenHelp={() => setIsHelpOpen(true)}
-          onStartTour={() => setIsTourActive(true)}
         />
 
         {/* Dynamic Viewport Container */}
@@ -253,10 +245,10 @@ export default function AppDashboard() {
       {/* Post-Signup Welcome Modal */}
       <WelcomeModal
         isOpen={isWelcomeOpen}
-        onClose={() => setIsWelcomeOpen(false)}
+        onClose={dismissWelcome}
         onStartOnboarding={() => router.push('/onboarding')}
         onStartTour={() => {
-          setIsWelcomeOpen(false);
+          dismissWelcome();
           setIsTourActive(true);
         }}
         userName={userName}

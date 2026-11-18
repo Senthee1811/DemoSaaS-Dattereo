@@ -1,20 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Layers, 
-  Plus, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Settings2, 
-  Lock, 
-  Unlock, 
-  DollarSign, 
+import {
+  Plus,
+  ShieldAlert,
+  ShieldCheck,
+  Settings2,
+  Lock,
+  Unlock,
   AlertTriangle,
   X,
-  Check,
-  Building2,
-  FolderKanban
+  FolderKanban,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch } from '@/lib/auth-fetch';

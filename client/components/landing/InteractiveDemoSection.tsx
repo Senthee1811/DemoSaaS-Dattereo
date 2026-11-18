@@ -1,20 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Sparkles, 
-  CheckCircle2, 
-  Copy, 
-  Check, 
-  Send, 
-  Share2, 
-  Download, 
-  Globe, 
-  TrendingUp, 
-  Zap, 
-  FileText, 
-  CheckSquare, 
-  PieChart 
+import {
+  Sparkles,
+  CheckCircle2,
+  Copy,
+  Check,
+  Share2,
+  Globe,
+  FileText,
+  CheckSquare,
+  PieChart,
 } from 'lucide-react';
 
 export function InteractiveDemoSection() {
@@ -56,7 +52,7 @@ export function InteractiveDemoSection() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 isActive
                   ? 'bg-[#111111] text-white shadow-md'
@@ -233,7 +229,7 @@ export function InteractiveDemoSection() {
                     <span className="text-[10px] text-[#888888]">Live Stream</span>
                   </div>
                   <p className="text-xs sm:text-sm text-[#222222] italic leading-relaxed">
-                    "We have resolved the API gateway latency constraints and will begin rollout to enterprise beta users next week."
+                    &quot;We have resolved the API gateway latency constraints and will begin rollout to enterprise beta users next week.&quot;
                   </p>
                 </div>
 

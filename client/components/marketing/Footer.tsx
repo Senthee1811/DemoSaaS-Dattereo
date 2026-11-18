@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Lock, Activity, CheckCircle } from 'lucide-react';
+import { ShieldCheck, Lock, CheckCircle } from 'lucide-react';
 
 export function Footer() {
   return (

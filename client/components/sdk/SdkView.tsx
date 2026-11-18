@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Code2, 
-  Copy, 
-  Check, 
-  Terminal, 
-  ExternalLink, 
-  ShieldCheck, 
-  Cpu
+import {
+  Code2,
+  Copy,
+  Check,
+  ShieldCheck,
+  Cpu,
 } from 'lucide-react';
 
 interface SdkViewProps {

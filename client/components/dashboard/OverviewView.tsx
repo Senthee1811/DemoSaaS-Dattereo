@@ -2,22 +2,30 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Activity, 
-  TriangleAlert, 
-  Zap, 
-  Clock, 
-  CircleCheck, 
-  ArrowRight, 
-  FolderKanban,
-  Calendar
+import {
+  DollarSign,
+  TrendingUp,
+  Activity,
+  TriangleAlert,
+  Zap,
+  Clock,
+  ArrowRight,
+  Calendar,
 } from 'lucide-react';
 import { MODEL_CHART_COLORS } from '@/lib/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton, ChartSkeleton } from '@/components/ui/LoadingSkeleton';
 import { OnboardingChecklist } from './OnboardingChecklist';
+import type { PieSlice } from './OverviewCharts';
+import type { DashboardAnalytics } from '@/lib/types';
+
+type DateFilter = '24h' | '7d' | '30d' | 'mtd';
+const DATE_FILTERS: Array<{ id: DateFilter; label: string }> = [
+  { id: '24h', label: '24H' },
+  { id: '7d', label: '7D' },
+  { id: '30d', label: '30D' },
+  { id: 'mtd', label: 'Month-to-Date' },
+];
 
 // Lazy load heavy Recharts bundle dynamically
 const OverviewCharts = dynamic(
@@ -34,7 +42,7 @@ const OverviewCharts = dynamic(
 );
 
 interface OverviewViewProps {
-  analyticsData: any;
+  analyticsData: DashboardAnalytics | null;
   projectsCount?: number;
   hasProviderKeys?: boolean;
   hasGatewayKeys?: boolean;
@@ -54,7 +62,7 @@ export function OverviewView({
   onNavigateToAudit,
   onNavigateToKeys,
 }: OverviewViewProps) {
-  const [dateFilter, setDateFilter] = useState<'24h' | '7d' | '30d' | 'mtd'>('mtd');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('mtd');
 
   if (!analyticsData || !analyticsData.summary) {
     return (
@@ -89,8 +97,8 @@ export function OverviewView({
   const isWarning = utilizationPct >= 80 && !isOverBudget;
 
   const pieData = (modelBreakdown || [])
-    .filter((m: any) => Number(m.spend) > 0)
-    .map((m: any) => ({
+    .filter((m) => Number(m.spend) > 0)
+    .map((m): PieSlice => ({
       name: m.model,
       value: Number(Number(m.spend).toFixed(4)),
       color: MODEL_CHART_COLORS[m.model] || MODEL_CHART_COLORS.default
@@ -145,15 +153,10 @@ export function OverviewView({
         {/* Date Filter Pills */}
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] self-start sm:self-auto shadow-2xs">
           <Calendar className="w-3.5 h-3.5 text-[#888882] ml-2 mr-1" />
-          {[
-            { id: '24h', label: '24H' },
-            { id: '7d', label: '7D' },
-            { id: '30d', label: '30D' },
-            { id: 'mtd', label: 'Month-to-Date' },
-          ].map((f) => (
+          {DATE_FILTERS.map((f) => (
             <button
               key={f.id}
-              onClick={() => setDateFilter(f.id as any)}
+              onClick={() => setDateFilter(f.id)}
               className={`px-3 py-1 rounded-full text-xs font-mono transition-colors ${
                 dateFilter === f.id
                   ? 'bg-white text-[#141413] font-bold shadow-2xs'
@@ -307,7 +310,7 @@ export function OverviewView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECECE8]">
-                {recentRequests.slice(0, 5).map((req: any) => (
+                {recentRequests.slice(0, 5).map((req) => (
                   <tr key={req.id} className="hover:bg-[#FAF8F5] transition-colors">
                     <td className="py-3 px-3 font-mono text-[#5F6368]">
                       {req.id.slice(0, 14)}...
@@ -318,20 +321,20 @@ export function OverviewView({
                       </span>
                     </td>
                     <td className="py-3 px-3 font-mono tabular-nums text-[#141413]">
-                      {(req.totalTokens || req.tokensIn + req.tokensOut || 0).toLocaleString()}
+                      {(req.total_tokens || req.tokens_in + req.tokens_out || 0).toLocaleString()}
                     </td>
                     <td className="py-3 px-3 font-mono tabular-nums font-semibold text-[#141413]">
-                      ${Number(req.costEstimate || 0).toFixed(4)}
+                      ${Number(req.cost_estimate || 0).toFixed(4)}
                     </td>
                     <td className="py-3 px-3 font-mono tabular-nums text-[#5F6368]">
-                      {req.latencyMs}ms
+                      {req.latency_ms}ms
                     </td>
                     <td className="py-3 px-3">
-                      {req.isBlocked ? (
+                      {req.is_blocked ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                           429 BLOCKED
                         </span>
-                      ) : req.isAnomaly ? (
+                      ) : req.is_anomaly ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                           FLAGGED SPIKE
                         </span>
@@ -342,7 +345,7 @@ export function OverviewView({
                       )}
                     </td>
                     <td className="py-3 px-3 text-right text-[#80868B] font-mono text-[11px]">
-                      {new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </td>
                   </tr>
                 ))}

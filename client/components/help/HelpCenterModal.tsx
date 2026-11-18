@@ -1,22 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  X, 
-  CircleHelp, 
-  BookOpen, 
-  Compass, 
-  ShieldCheck, 
-  Network, 
-  KeyRound, 
-  DollarSign, 
-  TriangleAlert, 
-  CreditCard, 
-  Search,
+import {
+  X,
+  CircleHelp,
+  BookOpen,
+  Compass,
+  Network,
+  KeyRound,
+  DollarSign,
+  TriangleAlert,
+  CreditCard,
   ExternalLink,
-  CircleCheck,
   Lock,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
 
 interface HelpCenterModalProps {
@@ -44,7 +41,6 @@ export function HelpCenterModal({
   onNavigateToSdk,
 }: HelpCenterModalProps) {
   const [activeCategory, setActiveCategory] = useState<HelpCategory>('getting-started');
-  const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
 

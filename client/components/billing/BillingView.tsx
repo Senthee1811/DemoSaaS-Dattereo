@@ -1,20 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  CreditCard, 
-  CheckCircle2, 
-  Sparkles, 
-  ShieldCheck, 
-  ArrowRight, 
-  Receipt, 
+import {
+  CreditCard,
+  CheckCircle2,
+  ShieldCheck,
+  ArrowRight,
+  Receipt,
   Building2,
   Check,
   ExternalLink,
-  X
+  X,
 } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { authFetch } from '@/lib/auth-fetch';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useStoredUser } from '@/lib/client-storage';
+import { errorMessage } from '@/lib/types';
 
 interface SubscriptionData {
   orgId: string;
@@ -30,41 +31,18 @@ export function BillingView() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
   const [enterpriseSubmitted, setEnterpriseSubmitted] = useState(false);
-  const [orgName, setOrgName] = useState('Apex Innovations');
-  const [orgId, setOrgId] = useState('');
+  const orgName = useStoredUser()?.orgName || 'Your organization';
 
+  // The backend scopes billing to the caller's own org (from the session), so no orgId is sent
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('spendguard_user');
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          if (user.orgName) setOrgName(user.orgName);
-          if (user.orgId) setOrgId(user.orgId);
-        } catch {}
-      }
-    }
+    authFetch('/api/v1/billing/subscription')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: SubscriptionData | null) => {
+        if (data) setSubData(data);
+      })
+      .catch((err) => console.error('Failed to load subscription:', err))
+      .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    async function fetchSub() {
-      try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-        const res = await authFetch(`/api/v1/billing/subscription${orgId ? `?orgId=${orgId}` : ''}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setSubData(data);
-        }
-      } catch (err) {
-        console.error('Failed to load subscription:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSub();
-  }, [orgId]);
 
   const handleCheckout = async (tier: 'starter' | 'growth' | 'enterprise') => {
     if (tier === 'enterprise') {
@@ -81,22 +59,19 @@ export function BillingView() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          orgId: orgId || 'default-org',
-          tier,
-          successUrl: `${window.location.origin}/dashboard?checkout=success`,
-          cancelUrl: `${window.location.origin}/dashboard?checkout=cancelled`,
-        }),
+        body: JSON.stringify({ tier }),
       });
 
-      const data = await res.json();
+      if (!res.ok) throw new Error(await readApiError(res, 'Checkout session could not be created.'));
+      const data: { checkoutUrl?: string } = await res.json();
       if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        // External Stripe Checkout page — a full navigation is required
+        window.location.assign(data.checkoutUrl);
       } else {
         alert('Checkout session could not be created. Please try again.');
       }
-    } catch (err: any) {
-      alert(`Checkout failed: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Checkout failed: ${errorMessage(err)}`);
     } finally {
       setCheckoutLoading(null);
     }

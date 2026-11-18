@@ -1,24 +1,34 @@
 'use client';
 
 import React from 'react';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid, 
-  PieChart, 
-  Pie, 
-  Cell 
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { BarChart3, PieChart as PieIcon } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import type { DailySpendPoint } from '@/lib/types';
+
+export interface PieSlice {
+  name: string;
+  value: number;
+  color: string;
+}
+
+type TooltipValue = number | string | ReadonlyArray<number | string> | undefined;
+const formatUsd = (val: TooltipValue) => `$${Number(Array.isArray(val) ? val[0] : val).toFixed(4)}`;
 
 interface OverviewChartsProps {
-  dailySpend: any[];
-  pieData: any[];
+  dailySpend: DailySpendPoint[];
+  pieData: PieSlice[];
   totalSpend: number;
   onNavigateToPlayground: () => void;
 }
@@ -87,7 +97,7 @@ export function OverviewCharts({
                       fontSize: '11px',
                       color: '#141413'
                     }}
-                    formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Cost']}
+                    formatter={(val: TooltipValue) => [formatUsd(val), 'Cost']}
                   />
                   <Area
                     type="monotone"
@@ -135,7 +145,7 @@ export function OverviewCharts({
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {pieData.map((entry: any, index: number) => (
+                      {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -148,7 +158,7 @@ export function OverviewCharts({
                         fontSize: '11px',
                         color: '#141413'
                       }}
-                      formatter={(val: any) => [`$${Number(val).toFixed(4)}`, 'Spend']}
+                      formatter={(val: TooltipValue) => [formatUsd(val), 'Spend']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -156,7 +166,7 @@ export function OverviewCharts({
 
               {/* Legend List */}
               <div className="space-y-2 pt-2 border-t border-[#ECECE8]">
-                {pieData.map((m: any) => {
+                {pieData.map((m) => {
                   const pct = totalSpend > 0 ? ((m.value / totalSpend) * 100).toFixed(1) : '0.0';
                   return (
                     <div key={m.name} className="flex items-center justify-between text-xs">

@@ -1,0 +1,8 @@
+{
+  // The server uses Prisma 6 (datasource `url` in schema.prisma is valid there).
+  // Keep the Prisma VS Code extension on Prisma 6 language rules until the
+  // project migrates to Prisma 7's prisma.config.ts.
+  "prisma.pinToPrisma6": true,
+  // Use the workspace TypeScript (5.9) rather than the editor's bundled version.
+  "typescript.tsdk": "server/node_modules/typescript/lib"
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Terminal, Cpu, Building2, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Cpu } from 'lucide-react';
 
 interface CaseStudy {
   quote: string;
@@ -91,7 +91,7 @@ export function TestimonialsSection() {
 
               {/* Quotation */}
               <p className="font-serif text-sm text-[#2A2B28] leading-relaxed mb-6 font-normal italic">
-                "{study.quote}"
+                &quot;{study.quote}&quot;
               </p>
             </div>
 

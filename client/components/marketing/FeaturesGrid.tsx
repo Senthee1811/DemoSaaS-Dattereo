@@ -1,15 +1,13 @@
 'use client';
 
 import React from 'react';
-import { 
-  ShieldCheck, 
-  Layers, 
-  Key, 
-  FileText, 
-  Activity, 
-  Users, 
-  Lock,
-  Cpu
+import {
+  ShieldCheck,
+  Layers,
+  Key,
+  FileText,
+  Activity,
+  Users,
 } from 'lucide-react';
 
 const FEATURES = [

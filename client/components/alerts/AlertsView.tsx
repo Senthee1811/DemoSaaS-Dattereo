@@ -1,21 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Bell, 
-  ShieldAlert, 
-  AlertTriangle, 
-  Check, 
-  Send, 
-  Mail, 
-  MessageSquare, 
-  CheckCircle2,
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Bell,
+  ShieldAlert,
+  AlertTriangle,
+  Send,
   Clock,
-  RefreshCw,
   Sliders,
-  ExternalLink
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch } from '@/lib/auth-fetch';
 
 interface AlertItem {
@@ -32,6 +27,9 @@ interface AlertItem {
   triggeredAt: string;
 }
 
+type TestChannel = 'SLACK' | 'EMAIL' | 'IN_APP';
+type TestThreshold = 'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
+
 interface AlertsViewProps {
   projects: Array<{ id: string; name: string }>;
   onRefreshUnreadCount: () => void;
@@ -40,43 +38,33 @@ interface AlertsViewProps {
 export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [testProjectId, setTestProjectId] = useState(projects[0]?.id || '');
-  const [testChannel, setTestChannel] = useState<'SLACK' | 'EMAIL' | 'IN_APP'>('SLACK');
-  const [testThreshold, setTestThreshold] = useState<'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED'>('PERCENT_80');
+  // Test alerts go to the first project (derived each render: projects load after mount)
+  const testProjectId = projects[0]?.id;
+  const [testChannel, setTestChannel] = useState<TestChannel>('SLACK');
+  const [testThreshold, setTestThreshold] = useState<TestThreshold>('PERCENT_80');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [slackWebhook, setSlackWebhook] = useState('https://hooks.slack.com/services/spendguard/alerts');
   const [emailList, setEmailList] = useState('eng-leads@company.com');
   const [showConfig, setShowConfig] = useState(false);
 
-  const fetchAlerts = async () => {
-    setIsLoading(true);
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await authFetch('/api/v1/alerts', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      setAlerts(data.alerts || []);
-    } catch (err) {
-      console.error('Failed to fetch alerts:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchAlerts = useCallback(
+    () =>
+      authFetch('/api/v1/alerts')
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+        .then((data: { alerts?: AlertItem[] }) => setAlerts(data.alerts || []))
+        .catch((err) => console.error('Failed to fetch alerts:', err))
+        .finally(() => setIsLoading(false)),
+    [],
+  );
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [fetchAlerts]);
 
   const handleMarkAsRead = async (id?: string, markAll = false) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       await authFetch('/api/v1/alerts', {
         method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
         body: JSON.stringify({ id, isRead: true, markAllRead: markAll })
       });
       fetchAlerts();
@@ -87,17 +75,13 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   };
 
   const handleSendTestAlert = async () => {
+    if (!testProjectId) return;
     setIsSendingTest(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const res = await authFetch('/api/v1/alerts', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
         body: JSON.stringify({
-          projectId: testProjectId || projects[0]?.id || 'proj_copilot',
+          projectId: testProjectId,
           thresholdType: testThreshold,
           channel: testChannel,
           slackWebhookUrl: slackWebhook,
@@ -215,7 +199,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
               <span className="text-[#5F6368] font-medium">Test Trigger:</span>
               <select
                 value={testThreshold}
-                onChange={(e) => setTestThreshold(e.target.value as any)}
+                onChange={(e) => setTestThreshold(e.target.value as TestThreshold)}
                 className="px-3 py-1.5 rounded-full border border-[#E4E4E0] text-xs bg-[#FAF8F5] cursor-pointer"
               >
                 <option value="PERCENT_80">80% Threshold Warning</option>
@@ -225,7 +209,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
 
               <select
                 value={testChannel}
-                onChange={(e) => setTestChannel(e.target.value as any)}
+                onChange={(e) => setTestChannel(e.target.value as TestChannel)}
                 className="px-3 py-1.5 rounded-full border border-[#E4E4E0] text-xs bg-[#FAF8F5] cursor-pointer"
               >
                 <option value="SLACK">Slack</option>
@@ -237,8 +221,9 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             <button
               type="button"
               onClick={handleSendTestAlert}
-              disabled={isSendingTest}
-              className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2"
+              disabled={isSendingTest || !testProjectId}
+              title={testProjectId ? undefined : 'Create a project first'}
+              className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{isSendingTest ? 'Dispatching...' : 'Dispatch Test Alert'}</span>
@@ -248,7 +233,9 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
       )}
 
       {/* Incidents & Alerts List Table */}
-      {alerts.length === 0 ? (
+      {isLoading ? (
+        <CardSkeleton className="h-40" />
+      ) : alerts.length === 0 ? (
         <EmptyState
           icon={Bell}
           title="No alerts triggered"

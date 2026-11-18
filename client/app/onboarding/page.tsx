@@ -3,25 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  ShieldCheck, 
-  ArrowRight, 
+import {
+  ShieldCheck,
+  ArrowRight,
   ArrowLeft,
-  KeyRound, 
-  CircleCheck, 
-  Building2, 
-  DollarSign, 
-  Copy, 
-  Check, 
-  FlaskConical, 
-  Loader2, 
-  TriangleAlert, 
-  Cpu, 
-  Lock, 
-  Zap, 
-  Activity 
+  KeyRound,
+  CircleCheck,
+  Building2,
+  DollarSign,
+  Copy,
+  Check,
+  Loader2,
+  TriangleAlert,
+  Lock,
+  Zap,
+  Activity,
 } from 'lucide-react';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-storage';
 
 const DEFAULT_MODEL: Record<'OPENAI' | 'ANTHROPIC' | 'GEMINI', string> = {
   OPENAI: 'gpt-4o-mini',
@@ -31,15 +30,27 @@ const DEFAULT_MODEL: Record<'OPENAI' | 'ANTHROPIC' | 'GEMINI', string> = {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
+type ProviderId = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+const PROVIDER_OPTIONS: Array<{ id: ProviderId; label: string; desc: string }> = [
+  { id: 'OPENAI', label: 'OpenAI', desc: 'GPT-4o / o1' },
+  { id: 'ANTHROPIC', label: 'Anthropic', desc: 'Claude 3.5' },
+  { id: 'GEMINI', label: 'Gemini', desc: '1.5 Pro & Flash' },
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
 
   // User & Org Data
-  const [orgName, setOrgName] = useState('My AI Workspace');
+  // Workspace name defaults to the org saved at login; typing overrides it
+  const storedOrgName = useStoredUser()?.orgName;
+  const [editedOrgName, setOrgName] = useState<string | null>(null);
+  const orgName = editedOrgName ?? storedOrgName ?? 'My AI Workspace';
+  const hydrated = useHydrated();
+  const accessToken = useLocalStorageValue('spendguard_token');
 
   // Step 2: Provider Connection
-  const [provider, setProvider] = useState<'OPENAI' | 'ANTHROPIC' | 'GEMINI'>('OPENAI');
+  const [provider, setProvider] = useState<ProviderId>('OPENAI');
   const [providerKey, setProviderKey] = useState('');
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ valid: boolean; message: string } | null>(null);
@@ -53,7 +64,6 @@ export default function OnboardingPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [gatewayKey, setGatewayKey] = useState('');
-  const [createdProjectId, setCreatedProjectId] = useState('');
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [activeCodeTab, setActiveCodeTab] = useState<'curl' | 'python' | 'node'>('curl');
@@ -67,22 +77,8 @@ export default function OnboardingPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('spendguard_token');
-      const storedUser = localStorage.getItem('spendguard_user');
-      if (!storedToken) {
-        router.replace('/login?required=1&next=%2Fonboarding');
-        return;
-      }
-
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          if (user.orgName) setOrgName(user.orgName);
-        } catch {}
-      }
-    }
-  }, [router]);
+    if (hydrated && !accessToken) router.replace('/login?required=1&next=%2Fonboarding');
+  }, [hydrated, accessToken, router]);
 
   const handleTestConnection = async () => {
     if (!providerKey) {
@@ -135,7 +131,6 @@ export default function OnboardingPage() {
       const projData = await projRes.json();
       const projId: string | undefined = projData?.project?.id;
       if (!projId) throw new Error('The server did not return a project id.');
-      setCreatedProjectId(projId);
 
       // 2. Store the encrypted provider key, if one was provided
       if (providerKey) {
@@ -287,7 +282,7 @@ const response = await openai.chat.completions.create({
 console.log(response.choices[0].message.content);`;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-parchment-ivory py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-2xl mx-auto">
         {/* Brand Header */}
         <div className="text-center mb-8">
@@ -296,13 +291,13 @@ console.log(response.choices[0].message.content);`;
               <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-serif text-xl font-normal tracking-tight text-[#141413]">
+              <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
                 SpendGuard <span className="text-[#FF6B35]">AI</span>
               </span>
               <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
             </div>
           </Link>
-          <h1 className="mt-4 font-serif text-2xl sm:text-3xl font-normal text-[#141413] tracking-tight">
+          <h1 className="mt-4 font-serif text-2xl sm:text-3xl font-normal text-inversion-dark tracking-tight">
             FinOps Gateway Onboarding
           </h1>
           <p className="text-xs text-[#555550] mt-1 font-sans">
@@ -311,7 +306,7 @@ console.log(response.choices[0].message.content);`;
         </div>
 
         {/* Stepper Progress Bar (5 Steps) */}
-        <div className="mb-6 bg-white p-3 rounded-full border border-[#E5E0D8] flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="mb-6 bg-white p-3 rounded-full border border-parchment-border flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
           {[
             { num: 1, label: 'Workspace' },
             { num: 2, label: 'Provider Vault' },
@@ -325,14 +320,14 @@ console.log(response.choices[0].message.content);`;
                   currentStep === s.num
                     ? 'bg-[#FF6B35] text-white'
                     : currentStep > s.num
-                    ? 'bg-[#141413] text-white'
-                    : 'bg-[#FAF8F5] text-[#888882] border border-[#E5E0D8]'
+                    ? 'bg-inversion-dark text-white'
+                    : 'bg-parchment-ivory text-[#888882] border border-parchment-border'
                 }`}
               >
                 {currentStep > s.num ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.num}
               </div>
               <span className={`text-xs font-medium hidden sm:inline ${
-                currentStep === s.num ? 'text-[#141413] font-semibold' : 'text-[#888882]'
+                currentStep === s.num ? 'text-inversion-dark font-semibold' : 'text-[#888882]'
               }`}>
                 {s.label}
               </span>
@@ -341,19 +336,19 @@ console.log(response.choices[0].message.content);`;
         </div>
 
         {/* Step Card Container (24px radius per Steep) */}
-        <div className="bg-white rounded-[24px] p-6 sm:p-9 border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="bg-white rounded-3xl p-6 sm:p-9 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {/* STEP 1: Workspace */}
           {currentStep === 1 && (
             <div className="space-y-5">
               <div>
-                <h3 className="font-serif text-lg font-normal text-[#141413]">Confirm Organization Workspace</h3>
+                <h3 className="font-serif text-lg font-normal text-inversion-dark">Confirm Organization Workspace</h3>
                 <p className="text-xs text-[#555550] mt-1 font-sans">
                   All projects, keys, and audit ledgers will be multi-tenant isolated under this organization.
                 </p>
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Organization Name
                 </label>
                 <div className="relative">
@@ -364,7 +359,7 @@ console.log(response.choices[0].message.content);`;
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs sm:text-sm text-[#141413] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs sm:text-sm text-inversion-dark focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                 </div>
               </div>
@@ -386,7 +381,7 @@ console.log(response.choices[0].message.content);`;
           {currentStep === 2 && (
             <div className="space-y-5">
               <div>
-                <h3 className="font-serif text-lg font-normal text-[#141413]">Connect Upstream AI Provider</h3>
+                <h3 className="font-serif text-lg font-normal text-inversion-dark">Connect Upstream AI Provider</h3>
                 <p className="text-xs text-[#555550] mt-1 font-sans">
                   Provider keys are cryptographically sealed with AES-256-GCM envelope encryption. Plaintext is never logged.
                 </p>
@@ -394,26 +389,22 @@ console.log(response.choices[0].message.content);`;
 
               {/* Provider Selection Tabs */}
               <div>
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Select Provider
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { id: 'OPENAI', label: 'OpenAI', desc: 'GPT-4o / o1' },
-                    { id: 'ANTHROPIC', label: 'Anthropic', desc: 'Claude 3.5' },
-                    { id: 'GEMINI', label: 'Gemini', desc: '1.5 Pro & Flash' },
-                  ].map((p) => (
+                  {PROVIDER_OPTIONS.map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => {
-                        setProvider(p.id as any);
+                        setProvider(p.id);
                         setTestResult(null);
                       }}
                       className={`p-3 rounded-2xl border text-left transition-all ${
                         provider === p.id
-                          ? 'border-[#FF6B35] bg-[#FFF7F2] text-[#141413] shadow-xs'
-                          : 'border-[#E5E0D8] hover:border-[#D0D0D0] bg-white text-[#555550]'
+                          ? 'border-[#FF6B35] bg-[#FFF7F2] text-inversion-dark shadow-xs'
+                          : 'border-parchment-border hover:border-[#D0D0D0] bg-white text-[#555550]'
                       }`}
                     >
                       <div className="text-xs font-bold">{p.label}</div>
@@ -426,7 +417,7 @@ console.log(response.choices[0].message.content);`;
               {/* API Key Input with Connection Test */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
+                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     {provider} API Key
                   </label>
                   <span className="text-[10px] font-mono text-[#888882]">Encrypted at rest (AES-256-GCM)</span>
@@ -449,13 +440,13 @@ console.log(response.choices[0].message.content);`;
                         ? 'sk-ant-api03-...'
                         : 'AIzaSy...'
                     }
-                    className="block w-full pl-10 pr-24 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs sm:text-sm font-mono text-[#141413] placeholder-[#A0A09B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-10 pr-24 py-2.5 rounded-2xl border border-parchment-border text-xs sm:text-sm font-mono text-inversion-dark placeholder-[#A0A09B] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={handleTestConnection}
                     disabled={isTestingKey || !providerKey}
-                    className="absolute right-2 top-2 px-3 py-1 rounded-full bg-[#FAF8F5] hover:bg-[#EFECE6] border border-[#E5E0D8] text-[11px] font-mono font-semibold text-[#141413] transition-colors disabled:opacity-40"
+                    className="absolute right-2 top-2 px-3 py-1 rounded-full bg-parchment-ivory hover:bg-parchment-oat border border-parchment-border text-[11px] font-mono font-semibold text-inversion-dark transition-colors disabled:opacity-40"
                   >
                     {isTestingKey ? 'Testing...' : '⚡ Test'}
                   </button>
@@ -477,7 +468,7 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-[#141413]"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-inversion-dark"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -498,27 +489,27 @@ console.log(response.choices[0].message.content);`;
           {currentStep === 3 && (
             <div className="space-y-5">
               <div>
-                <h3 className="font-serif text-lg font-normal text-[#141413]">Configure Project & Budget Limits</h3>
+                <h3 className="font-serif text-lg font-normal text-inversion-dark">Configure Project & Budget Limits</h3>
                 <p className="text-xs text-[#555550] mt-1 font-sans">
                   Define hard spending caps. Requests exceeding this threshold receive HTTP 429 budget_exceeded instantly.
                 </p>
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Project Name
                 </label>
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  className="block w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs sm:text-sm text-[#141413] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
+                  className="block w-full px-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs sm:text-sm text-inversion-dark focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
+                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     Monthly Budget Cap (USD)
                   </label>
                   <span className="text-[10px] font-mono text-[#FF6B35] font-semibold">Pre-Flight Guardrail</span>
@@ -533,15 +524,15 @@ console.log(response.choices[0].message.content);`;
                     step={50}
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(Number(e.target.value))}
-                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs sm:text-sm font-mono text-[#141413] focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
+                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs sm:text-sm font-mono text-inversion-dark focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Hard block policy toggle */}
-              <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-start justify-between gap-3">
+              <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border flex items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#141413]">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-inversion-dark">
                     <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
                     <span>Fail-Closed Hard Block Policy</span>
                   </div>
@@ -568,7 +559,7 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-[#141413]"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-inversion-dark"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -599,23 +590,23 @@ console.log(response.choices[0].message.content);`;
           {currentStep === 4 && (
             <div className="space-y-5">
               <div className="text-center pb-2">
-                <div className="w-12 h-12 rounded-2xl bg-[#141413] text-white flex items-center justify-center mx-auto mb-3 border border-[#E5E0D8] shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-inversion-dark text-white flex items-center justify-center mx-auto mb-3 border border-parchment-border shadow-xs">
                   <CircleCheck className="w-6 h-6 text-emerald-400 stroke-[2.5]" />
                 </div>
-                <h3 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+                <h3 className="font-serif text-2xl font-normal text-inversion-dark tracking-tight">
                   Virtual Gateway Token Issued
                 </h3>
-                <p className="text-xs text-[#5F6368] mt-1 max-w-sm mx-auto">
+                <p className="text-xs text-sg-text-secondary mt-1 max-w-sm mx-auto">
                   Your scoped virtual gateway token is generated. Route your requests through SpendGuard.
                 </p>
               </div>
 
               {/* Gateway Key Reveal Box */}
               <div>
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   SpendGuard Scoped Live Token
                 </label>
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#141413] text-white font-mono text-xs border border-white/10 shadow-xs">
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-inversion-dark text-white font-mono text-xs border border-white/10 shadow-xs">
                   <span className="flex-1 truncate select-all">{gatewayKey}</span>
                   <button
                     type="button"
@@ -635,10 +626,10 @@ console.log(response.choices[0].message.content);`;
               {/* Code Snippet Tabs */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
+                  <span className="text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     Drop-In Integration Snippet
                   </span>
-                  <div className="flex items-center gap-1 p-0.5 rounded-full bg-[#EFECE6] border border-[#E5E0D8]">
+                  <div className="flex items-center gap-1 p-0.5 rounded-full bg-parchment-oat border border-parchment-border">
                     {(['curl', 'python', 'node'] as const).map((tab) => (
                       <button
                         key={tab}
@@ -646,8 +637,8 @@ console.log(response.choices[0].message.content);`;
                         onClick={() => setActiveCodeTab(tab)}
                         className={`px-3 py-1 rounded-full text-[11px] font-mono transition-colors ${
                           activeCodeTab === tab
-                            ? 'bg-white text-[#141413] font-bold shadow-xs'
-                            : 'text-[#5F6368] hover:text-[#141413]'
+                            ? 'bg-white text-inversion-dark font-bold shadow-xs'
+                            : 'text-sg-text-secondary hover:text-inversion-dark'
                         }`}
                       >
                         {tab.toUpperCase()}
@@ -656,7 +647,7 @@ console.log(response.choices[0].message.content);`;
                   </div>
                 </div>
 
-                <div className="relative rounded-2xl bg-[#141413] text-[#E4E4E7] p-4 font-mono text-xs overflow-x-auto border border-white/10 shadow-xs">
+                <div className="relative rounded-2xl bg-inversion-dark text-[#E4E4E7] p-4 font-mono text-xs overflow-x-auto border border-white/10 shadow-xs">
                   <button
                     type="button"
                     onClick={() =>
@@ -683,10 +674,10 @@ console.log(response.choices[0].message.content);`;
               </div>
 
               {/* Live Connection Verification Test */}
-              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-3">
+              <div className="p-4 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-semibold text-[#141413]">Verify Gateway Integration</h4>
+                    <h4 className="text-xs font-semibold text-inversion-dark">Verify Gateway Integration</h4>
                     <p className="text-[11px] text-[#555550]">
                       Execute a real pre-flight reservation probe through the gateway right now.
                     </p>
@@ -695,7 +686,7 @@ console.log(response.choices[0].message.content);`;
                     type="button"
                     onClick={handleVerifyIntegration}
                     disabled={isVerifying}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#141413] hover:bg-black text-white text-xs font-mono font-semibold transition-colors shadow-xs disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-inversion-dark hover:bg-black text-white text-xs font-mono font-semibold transition-colors shadow-xs disabled:opacity-50"
                   >
                     {isVerifying ? (
                       <>
@@ -732,7 +723,7 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-[#141413]"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#555550] hover:text-inversion-dark"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
@@ -756,47 +747,47 @@ console.log(response.choices[0].message.content);`;
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto mb-3 shadow-xs">
                   <CircleCheck className="w-7 h-7 stroke-[2.5]" />
                 </div>
-                <h3 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+                <h3 className="font-serif text-2xl font-normal text-inversion-dark tracking-tight">
                   Workspace Ready for Production
                 </h3>
-                <p className="text-xs text-[#5F6368] mt-1 max-w-sm mx-auto">
+                <p className="text-xs text-sg-text-secondary mt-1 max-w-sm mx-auto">
                   Your AI infrastructure is now governed by SpendGuard AI with fail-closed financial guardrails.
                 </p>
               </div>
 
               {/* Status Breakdown Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
+                <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Connected Provider</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-[#141413]">{provider}</span>
+                    <span className="text-xs font-semibold text-inversion-dark">{provider}</span>
                     <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">AES-256-GCM Sealed</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
+                <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Provisioned Project</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-[#141413] truncate">{projectName}</span>
+                    <span className="text-xs font-semibold text-inversion-dark truncate">{projectName}</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
+                <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Monthly Budget Cap</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-semibold text-[#141413] font-mono tabular-nums">${budgetMonthly.toLocaleString()}/mo</span>
+                    <span className="text-xs font-semibold text-inversion-dark font-mono tabular-nums">${budgetMonthly.toLocaleString()}/mo</span>
                     <span className="text-[10px] font-mono text-[#FF6B35] bg-[#FFF7F2] px-2 py-0.5 rounded-full border border-[#FFD2C0]">Hard Block Enforced</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
+                <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
                   <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Virtual Gateway Token</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-mono text-[#141413]">{gatewayKey.substring(0, 11)}••••••••</span>
+                    <span className="text-xs font-mono text-inversion-dark">{gatewayKey.substring(0, 11)}••••••••</span>
                     <span className="text-[10px] font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">SHA-256 Hashed</span>
                   </div>
                 </div>

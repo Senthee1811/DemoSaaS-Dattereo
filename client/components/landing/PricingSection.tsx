@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(true);
@@ -131,7 +131,7 @@ export function PricingSection() {
 
               {/* Feature List */}
               <div className="space-y-3 mb-8">
-                <span className="text-xs font-bold text-[#111111] uppercase tracking-wider block">What's included:</span>
+                <span className="text-xs font-bold text-[#111111] uppercase tracking-wider block">What&apos;s included:</span>
                 {p.features.map((feat, idx) => (
                   <div key={idx} className="flex items-start space-x-2.5 text-xs text-[#444444]">
                     <Check className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5 stroke-[2.5]" />

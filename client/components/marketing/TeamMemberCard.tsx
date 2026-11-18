@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 
 export interface TeamMemberProps {
   name: string;
   role: string;
   statusText: string;
   statusColor: 'green' | 'orange' | 'amber';
-  avatarUrl: string;
+  /** Reserved for a photo; the card currently renders initials. */
+  avatarUrl?: string;
   className?: string;
   showConnectionLine?: boolean;
 }
@@ -18,7 +18,6 @@ export function TeamMemberCard({
   role,
   statusText,
   statusColor,
-  avatarUrl,
   className = '',
 }: TeamMemberProps) {
   const dotBg =

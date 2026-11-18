@@ -1,22 +1,22 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { 
-  X, 
-  ArrowLeft, 
-  ArrowRight, 
-  Check, 
-  Compass, 
-  LayoutDashboard, 
-  FolderKanban, 
-  KeyRound, 
-  Network, 
-  FlaskConical, 
-  BellRing, 
-  ScrollText, 
-  Users, 
-  CreditCard 
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  X,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  LayoutDashboard,
+  FolderKanban,
+  KeyRound,
+  Network,
+  FlaskConical,
+  BellRing,
+  ScrollText,
+  Users,
+  CreditCard,
 } from 'lucide-react';
+import { notifyStorageChange } from '@/lib/client-storage';
 import { NavTab } from '@/components/Sidebar';
 
 interface TourStep {
@@ -120,6 +120,20 @@ export function ProductTour({
 
   const currentStep = TOUR_STEPS[currentStepIndex];
 
+  // Declared before the effects that use it (it is also the Escape-key handler)
+  const handleFinish = useCallback(() => {
+    try {
+      localStorage.setItem('spendguard_tour_completed', 'true');
+      localStorage.setItem('spendguard_onboarding_state', 'TOUR_COMPLETED');
+    } catch {
+      /* storage unavailable */
+    }
+    notifyStorageChange();
+    setCurrentStepIndex(0); // a restarted tour begins at step 1
+    onClose();
+    onStartWorkspaceSetup?.();
+  }, [onClose, onStartWorkspaceSetup]);
+
   // Navigate to corresponding tab when step changes
   useEffect(() => {
     if (isActive && currentStep) {
@@ -143,7 +157,7 @@ export function ProductTour({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, currentStepIndex]);
+  }, [isActive, currentStepIndex, handleFinish]);
 
   if (!isActive || !currentStep) return null;
 
@@ -159,15 +173,6 @@ export function ProductTour({
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
     }
-  };
-
-  const handleFinish = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('spendguard_tour_completed', 'true');
-      localStorage.setItem('spendguard_onboarding_state', 'TOUR_COMPLETED');
-    }
-    onClose();
-    onStartWorkspaceSetup?.();
   };
 
   const Icon = currentStep.icon;

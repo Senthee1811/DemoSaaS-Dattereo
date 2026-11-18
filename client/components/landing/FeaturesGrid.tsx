@@ -1,15 +1,12 @@
 'use client';
 
 import React from 'react';
-import { 
-  Zap, 
-  ShieldCheck, 
-  Cpu, 
-  Workflow, 
-  Lock, 
-  Sparkles, 
-  CheckCircle2, 
-  ArrowRight 
+import {
+  Zap,
+  ShieldCheck,
+  Workflow,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 export function FeaturesGrid() {

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Video, Cpu, Send, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Video, Cpu, Send, CheckCircle2 } from 'lucide-react';
 
 export function HowItWorks() {
   const steps = [

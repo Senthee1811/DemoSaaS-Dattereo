@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Terminal, Shield, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Terminal, CheckCircle2 } from 'lucide-react';
 
 export function CtaBanner() {
   return (

@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  CircleCheck, 
-  Circle, 
-  ArrowRight, 
-  ChevronDown, 
-  ChevronUp, 
-  ShieldCheck, 
-  KeyRound, 
-  FolderKanban, 
-  DollarSign, 
-  Network, 
-  FlaskConical 
+import {
+  CircleCheck,
+  Circle,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  KeyRound,
+  FolderKanban,
+  DollarSign,
+  Network,
+  FlaskConical,
 } from 'lucide-react';
 
 interface OnboardingChecklistProps {
@@ -132,7 +132,6 @@ export function OnboardingChecklist({
       {!isCollapsed && (
         <div className="p-5 space-y-3">
           {tasks.map((task) => {
-            const Icon = task.icon;
             return (
               <div
                 key={task.id}

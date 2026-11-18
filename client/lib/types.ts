@@ -131,3 +131,86 @@ export interface ModelPricing {
   outputPer1k: number;
   contextWindow: number;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard analytics (GET /api/v1/analytics)
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsSummary {
+  totalSpend: number;
+  totalBudget: number;
+  budgetUtilizationPct: number;
+  totalTokens: number;
+  totalRequests: number;
+  avgLatency: number;
+  anomalyCount: number;
+  blockedCount: number;
+}
+
+export interface DailySpendPoint {
+  date: string;
+  spend: number;
+  tokens: number;
+  requests: number;
+}
+
+export interface ModelBreakdownItem {
+  model: string;
+  provider: string;
+  spend: number;
+  tokens: number;
+  requests: number;
+}
+
+export interface ProjectBreakdownItem {
+  projectId: string;
+  name: string;
+  spend: number;
+  budget: number;
+  utilizationPct: number;
+  requests: number;
+}
+
+export interface RecentRequestRow {
+  id: string;
+  project_id: string;
+  project_name: string;
+  user_name: string;
+  provider: string;
+  model: string;
+  tokens_in: number;
+  tokens_out: number;
+  total_tokens: number;
+  cost_estimate: number;
+  latency_ms: number;
+  status_code: number;
+  is_anomaly: boolean;
+  anomaly_reason?: string | null;
+  is_blocked: boolean;
+  created_at: string;
+}
+
+export interface DashboardAnalytics {
+  summary: AnalyticsSummary;
+  dailySpend: DailySpendPoint[];
+  modelBreakdown: ModelBreakdownItem[];
+  projectBreakdown: ProjectBreakdownItem[];
+  recentRequests: RecentRequestRow[];
+}
+
+/** Shape of `spendguard_user` stored in localStorage after login. */
+export interface StoredUser {
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  orgId?: string;
+  orgName?: string;
+}
+
+/** Narrows an unknown thrown value to a readable message. */
+export function errorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string' && err) return err;
+  return fallback;
+}

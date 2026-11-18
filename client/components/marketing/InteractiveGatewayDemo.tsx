@@ -2,17 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Play, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Layers, 
-  Clock, 
-  DollarSign, 
-  ArrowRight, 
-  Zap, 
+import {
+  Play,
+  ShieldCheck,
+  ShieldAlert,
+  ArrowRight,
   RefreshCw,
-  Terminal
 } from 'lucide-react';
 
 interface ModelOption {

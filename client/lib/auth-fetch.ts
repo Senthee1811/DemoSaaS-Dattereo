@@ -1,5 +1,7 @@
 'use client';
 
+import { notifyStorageChange } from './client-storage';
+
 /**
  * Browser-side fetch wrapper for authenticated SpendGuard API calls.
  *
@@ -37,6 +39,7 @@ export function saveSession(data: { accessToken?: string; refreshToken?: string;
   } catch {
     /* storage unavailable (private mode) — session lasts for this page only */
   }
+  notifyStorageChange();
 }
 
 export function clearSession() {
@@ -47,13 +50,16 @@ export function clearSession() {
   } catch {
     /* ignore */
   }
+  notifyStorageChange();
 }
 
 /** Sends the user to the login page, remembering where they were. */
 export function redirectToLogin(reason: 'expired' | 'required' = 'expired') {
   if (typeof window === 'undefined') return;
   const next = encodeURIComponent(window.location.pathname + window.location.search);
-  window.location.href = `/login?${reason}=1&next=${next}`;
+  // Deliberately a full page load (not router.push): this runs outside React,
+  // and dropping all in-memory state is what we want once a session ends.
+  window.location.assign(new URL(`/login?${reason}=1&next=${next}`, window.location.origin).href);
 }
 
 async function refreshAccessToken(): Promise<string | null> {

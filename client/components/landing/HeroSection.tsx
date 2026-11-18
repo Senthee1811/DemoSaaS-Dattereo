@@ -1,23 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  ArrowRight, 
-  Sparkles, 
-  Mic, 
-  MicOff, 
-  Video, 
-  Check, 
-  Star, 
-  TrendingUp, 
-  Play, 
-  Pause, 
-  Activity, 
-  CheckCircle2, 
-  Users, 
-  ShieldCheck, 
+import {
+  ArrowRight,
+  Sparkles,
+  Mic,
+  Video,
+  Check,
+  Star,
+  TrendingUp,
+  Play,
+  Pause,
+  Users,
   Flame,
-  Volume2
+  Volume2,
 } from 'lucide-react';
 
 const DYNAMIC_INSIGHTS = [
@@ -221,7 +217,7 @@ export function HeroSection() {
                     className="w-6 h-6 rounded-full border border-[#FF6B35] object-cover shrink-0 mt-0.5"
                   />
                   <p className="text-xs text-white/90 leading-relaxed">
-                    <span className="font-semibold text-[#FF8A4C]">Elena:</span> "...we can deploy latency reduction benchmarks by Friday and lock the API surface."
+                    <span className="font-semibold text-[#FF8A4C]">Elena:</span> &quot;...we can deploy latency reduction benchmarks by Friday and lock the API surface.&quot;
                   </p>
                 </div>
               </div>

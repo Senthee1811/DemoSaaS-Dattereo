@@ -2,27 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  UserRound, 
-  ShieldCheck, 
-  BellRing, 
-  Settings2, 
-  UserRoundX, 
-  CircleCheck, 
-  TriangleAlert, 
-  CircleX, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Compass, 
-  Users, 
-  Building2, 
-  Calendar, 
-  Check, 
-  ArrowRight, 
-  Loader2 
+import {
+  UserRound,
+  ShieldCheck,
+  BellRing,
+  Settings2,
+  UserRoundX,
+  CircleCheck,
+  TriangleAlert,
+  CircleX,
+  Eye,
+  EyeOff,
+  Compass,
+  Users,
+  ArrowRight,
+  Loader2,
 } from 'lucide-react';
-import { authFetch } from '@/lib/auth-fetch';
+import { authFetch, clearSession, readApiError } from '@/lib/auth-fetch';
+import { useStoredUser } from '@/lib/client-storage';
+import { errorMessage } from '@/lib/types';
+
+interface AccountStatus {
+  accountStatus?: 'ACTIVE' | 'DEACTIVATED';
+  organization?: { memberCount?: number };
+  ownershipConstraint?: { canDeactivate?: boolean; isSoleOwner?: boolean; reason?: string | null };
+}
 
 interface SettingsViewProps {
   onStartTour?: () => void;
@@ -36,17 +40,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
 
   // User & Org state
-  const [user, setUser] = useState<{
-    id?: string;
-    name?: string;
-    email?: string;
-    role?: string;
-    orgId?: string;
-    orgName?: string;
-    createdAt?: string;
-  }>({});
-  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
-  const [accountStatus, setAccountStatus] = useState<any>(null);
+  const user = useStoredUser() ?? {};
+  const [accountStatus, setAccountStatus] = useState<AccountStatus | null>(null);
 
   // Deactivation Modal State
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
@@ -59,36 +54,13 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('spendguard_user');
-      if (stored) {
-        try {
-          setUser(JSON.parse(stored));
-        } catch {}
-      }
-    }
-    fetchAccountStatus();
+    authFetch('/api/auth/account-status')
+      .then((res) => (res.ok ? (res.json() as Promise<AccountStatus>) : null))
+      .then((data) => {
+        if (data) setAccountStatus(data);
+      })
+      .catch((err) => console.error('Failed to fetch account status:', err));
   }, []);
-
-  const fetchAccountStatus = async () => {
-    setIsLoadingStatus(true);
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      if (!token) return;
-
-      const res = await authFetch('/api/auth/account-status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAccountStatus(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch account status:', err);
-    } finally {
-      setIsLoadingStatus(false);
-    }
-  };
 
   const handleDeactivate = async () => {
     if (confirmPhrase !== 'DEACTIVATE') {
@@ -119,23 +91,22 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || data.error?.message || 'Deactivation failed.');
+        throw new Error(await readApiError(res, 'Deactivation failed.'));
       }
 
       // Purge client sessions
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('spendguard_token');
-        localStorage.removeItem('spendguard_refresh_token');
-        localStorage.removeItem('spendguard_user');
+      clearSession();
+      try {
         sessionStorage.clear();
+      } catch {
+        /* storage unavailable */
       }
 
       // Redirect to login with confirmation
       router.push('/login?deactivated=true');
-    } catch (err: any) {
-      setDeactivateError(err.message || 'Deactivation failed.');
+    } catch (err: unknown) {
+      setDeactivateError(errorMessage(err, 'Deactivation failed.'));
     } finally {
       setIsDeactivating(false);
     }
@@ -221,7 +192,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                   Account Email
                 </span>
                 <p className="text-xs font-semibold text-[#141413] truncate font-mono">
-                  {user.email || 'user@company.com'}
+                  {user.email || '—'}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[10px] text-[#0D9488] font-medium mt-1">
                   <CircleCheck className="w-3 h-3" />
@@ -285,7 +256,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                 <p className="text-xs text-[#555550] leading-relaxed max-w-3xl">
                   Deactivating your account permanently invalidates all active JWT sessions and refresh tokens.
                   Your access to SpendGuard AI will be revoked immediately. Organization data, provider keys, 
-                  audit records, and other team members' access remain intact.
+                  audit records, and other team members&apos; access remain intact.
                 </p>
               </div>
             </div>
@@ -362,7 +333,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               <input
                 type="text"
                 readOnly
-                value={user.name || 'Elena Rostova'}
+                value={user.name || ''}
                 className="w-full px-3.5 py-2 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none"
               />
             </div>
@@ -372,7 +343,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               <input
                 type="email"
                 readOnly
-                value={user.email || 'elena@company.com'}
+                value={user.email || ''}
                 className="w-full px-3.5 py-2 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] font-mono focus:outline-none"
               />
             </div>
@@ -381,7 +352,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               <label className="block text-xs font-semibold text-[#141413]">Assigned Role</label>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] text-xs font-medium text-[#141413]">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#FF6B35]" />
-                <span>{user.role || 'OWNER'} (Full FinOps Governance & Key Access)</span>
+                <span>{user.role || 'MEMBER'} ({user.role === 'OWNER' ? 'Full FinOps Governance & Key Access' : user.role === 'ADMIN' ? 'Project, Key & Team Management' : 'Read-only Dashboard Access'})</span>
               </div>
             </div>
           </div>

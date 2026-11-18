@@ -1,19 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  UserPlus, 
-  ShieldCheck, 
-  Shield, 
-  Mail, 
-  Check, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Users,
+  UserPlus,
   X,
-  Lock,
-  Building2
+  Building2,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useStoredUser } from '@/lib/client-storage';
 
 interface UserItem {
   id: string;
@@ -31,36 +27,24 @@ export function TeamView() {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orgName, setOrgName] = useState('My Organization');
+  const orgName = useStoredUser()?.orgName || 'My Organization';
   const [inviteError, setInviteError] = useState('');
   const [inviteNotice, setInviteNotice] = useState<{ email: string; link: string | null } | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('spendguard_user');
-      if (stored) {
-        try {
-          const u = JSON.parse(stored);
-          if (u.orgName) setOrgName(u.orgName);
-        } catch {}
-      }
-    }
-  }, []);
-
-  const fetchTeam = async () => {
-    try {
-      const res = await authFetch('/api/v1/team');
-      if (!res.ok) return;
-      const data = await res.json();
-      setUsers(data.users || []);
-    } catch (err) {
-      console.error('Failed to fetch team:', err);
-    }
-  };
+  const fetchTeam = useCallback(
+    () =>
+      authFetch('/api/v1/team')
+        .then((res) => (res.ok ? (res.json() as Promise<{ users?: UserItem[] }>) : null))
+        .then((data) => {
+          if (data) setUsers(data.users || []);
+        })
+        .catch((err) => console.error('Failed to fetch team:', err)),
+    [],
+  );
 
   useEffect(() => {
     fetchTeam();
-  }, []);
+  }, [fetchTeam]);
 
   const handleInvite = async () => {
     if (!name || !email) return;
@@ -118,10 +102,10 @@ export function TeamView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-inversion-dark tracking-tight">
             Team & Role-Based Access Control
           </h2>
-          <p className="text-xs text-[#5F6368] mt-1">
+          <p className="text-xs text-sg-text-secondary mt-1">
             Manage organization members, assign FinOps administrator privileges, and scope project permissions.
           </p>
         </div>
@@ -137,12 +121,12 @@ export function TeamView() {
       </div>
 
       {/* Team Members Table */}
-      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-[#E4E4E0] flex items-center justify-between">
-          <h3 className="font-serif text-lg font-normal text-[#141413]">
+      <div className="bg-white rounded-3xl border border-sg-border shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-sg-border flex items-center justify-between">
+          <h3 className="font-serif text-lg font-normal text-inversion-dark">
             Organization Members ({users.length})
           </h3>
-          <span className="text-xs text-[#5F6368] font-medium flex items-center gap-1.5 bg-[#FAF8F5] px-3 py-1 rounded-full border border-[#E4E4E0]">
+          <span className="text-xs text-sg-text-secondary font-medium flex items-center gap-1.5 bg-parchment-ivory px-3 py-1 rounded-full border border-sg-border">
             <Building2 className="w-3.5 h-3.5" />
             {orgName}
           </span>
@@ -160,7 +144,7 @@ export function TeamView() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-parchment-ivory text-sg-text-secondary font-semibold border-b border-sg-border">
                 <tr>
                   <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Member</th>
                   <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Email</th>
@@ -169,40 +153,40 @@ export function TeamView() {
                   <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Joined</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+              <tbody className="divide-y divide-sg-border text-inversion-dark">
                 {users.map((u) => {
                   const initials = u.name
                     ? u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
                     : 'U';
 
                   return (
-                    <tr key={u.id} className="hover:bg-[#FAF8F5] transition-colors">
+                    <tr key={u.id} className="hover:bg-parchment-ivory transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] flex items-center justify-center font-bold text-xs text-[#141413]">
+                          <div className="w-8 h-8 rounded-full bg-parchment-ivory border border-sg-border flex items-center justify-center font-bold text-xs text-inversion-dark">
                             {initials}
                           </div>
-                          <span className="font-semibold text-xs text-[#141413]">{u.name}</span>
+                          <span className="font-semibold text-xs text-inversion-dark">{u.name}</span>
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-[#5F6368]">{u.email}</td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-sg-text-secondary">{u.email}</td>
 
                       <td className="py-3.5 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                           u.role === 'OWNER'
-                            ? 'bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]'
+                            ? 'bg-sg-success-bg text-[#0D9488] border border-sg-success-border'
                             : u.role === 'ADMIN'
-                            ? 'bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]'
-                            : 'bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]'
+                            ? 'bg-[#EFF6FF] text-sg-chart-secondary border border-[#BFDBFE]'
+                            : 'bg-[#F3F3F0] text-sg-text-secondary border border-sg-border'
                         }`}>
                           {u.role}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4 text-[#5F6368]">{orgName}</td>
+                      <td className="py-3.5 px-4 text-sg-text-secondary">{orgName}</td>
 
-                      <td className="py-3.5 px-4 text-right text-[#80868B] text-[11px]">
+                      <td className="py-3.5 px-4 text-right text-sg-text-muted text-[11px]">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
                       </td>
                     </tr>
@@ -217,13 +201,13 @@ export function TeamView() {
       {/* Modal: Invite Member */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-              <h3 className="font-serif text-lg font-normal text-[#141413]">Invite Organization Member</h3>
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-sg-border shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-sg-border">
+              <h3 className="font-serif text-lg font-normal text-inversion-dark">Invite Organization Member</h3>
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
-                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-sg-text-muted hover:text-inversion-dark rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -231,33 +215,33 @@ export function TeamView() {
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Full Name *</label>
+                <label className="font-semibold text-inversion-dark block mb-1.5">Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Alex Rivera"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Email Address *</label>
+                <label className="font-semibold text-inversion-dark block mb-1.5">Email Address *</label>
                 <input
                   type="email"
                   placeholder="alex.rivera@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark focus:outline-none focus:border-[#FF6B35]"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Access Role *</label>
+                <label className="font-semibold text-inversion-dark block mb-1.5">Access Role *</label>
                 <select
                   value={role}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] bg-[#FAF8F5] focus:outline-none focus:border-[#FF6B35]"
+                  onChange={(e) => setRole(e.target.value as 'ADMIN' | 'MEMBER')}
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark bg-parchment-ivory focus:outline-none focus:border-[#FF6B35]"
                 >
                   <option value="MEMBER">Member — Read-only analytics & self-service tokens</option>
                   <option value="ADMIN">FinOps Admin — Configure project budgets & key vault</option>
@@ -275,7 +259,7 @@ export function TeamView() {
               <button
                 type="button"
                 onClick={() => { setShowInviteModal(false); setInviteError(''); }}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-sg-text-secondary hover:bg-[#F3F3F0] transition-colors"
               >
                 Cancel
               </button>

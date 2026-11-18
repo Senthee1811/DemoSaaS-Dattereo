@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 export function FaqSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
@@ -39,7 +39,7 @@ export function FaqSection() {
           Frequently asked <span className="text-orange-gradient">questions</span>
         </h2>
         <p className="text-base text-[#666666]">
-          Everything you need to know about Aura AI's real-time intelligence engine.
+          Everything you need to know about Aura AI&apos;s real-time intelligence engine.
         </p>
       </div>
 

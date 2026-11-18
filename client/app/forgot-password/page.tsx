@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQueryParam } from '@/lib/client-storage';
+import { errorMessage as toMessage } from '@/lib/types';
 import Link from 'next/link';
 import { ShieldCheck, ArrowRight, Mail, TriangleAlert, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 
@@ -12,7 +14,11 @@ export default function ForgotPasswordPage() {
   const [resetToken, setResetToken] = useState('');
   
   // Reset password form state (when token is provided)
-  const [tokenInput, setTokenInput] = useState('');
+  // Invite / reset links arrive as /forgot-password?token=... — prefill it and
+  // jump straight to "set password". Typing in the field overrides the URL value.
+  const urlToken = useQueryParam('token');
+  const [editedToken, setTokenInput] = useState<string | null>(null);
+  const tokenInput = editedToken ?? urlToken ?? '';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,14 +26,7 @@ export default function ForgotPasswordPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  // Invite / reset links arrive as /forgot-password?token=... — jump straight to "set password"
-  useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get('token');
-    if (token) {
-      setTokenInput(token);
-      setMessage('Choose a password for your SpendGuard account.');
-    }
-  }, []);
+  const shownMessage = message || (urlToken ? 'Choose a password for your SpendGuard account.' : '');
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +56,8 @@ export default function ForgotPasswordPage() {
         setResetToken(data.resetToken);
         setTokenInput(data.resetToken);
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to submit recovery request.');
+    } catch (err: unknown) {
+      setErrorMessage(toMessage(err, 'Failed to submit recovery request.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -98,15 +97,15 @@ export default function ForgotPasswordPage() {
       }
 
       setResetSuccess(true);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to reset password.');
+    } catch (err: unknown) {
+      setErrorMessage(toMessage(err, 'Failed to reset password.'));
     } finally {
       setIsResetting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-parchment-ivory flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Logo */}
         <Link href="/" className="inline-flex items-center gap-2">
@@ -114,14 +113,14 @@ export default function ForgotPasswordPage() {
             <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-serif text-xl font-normal tracking-tight text-[#141413]">
+            <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
               SpendGuard <span className="text-[#FF6B35]">AI</span>
             </span>
             <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
           </div>
         </Link>
 
-        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-[#141413]">
+        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-inversion-dark">
           Recover your workspace access
         </h2>
         <p className="mt-1.5 text-xs text-[#555550]">
@@ -130,7 +129,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 rounded-[24px] sm:px-8 border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="bg-white py-8 px-6 rounded-3xl sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {errorMessage && (
             <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
               <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -145,7 +144,7 @@ export default function ForgotPasswordPage() {
               <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 mx-auto flex items-center justify-center text-emerald-600">
                 <CircleCheck className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-lg font-normal text-[#141413]">
+              <h3 className="font-serif text-lg font-normal text-inversion-dark">
                 Password Reset Successfully
               </h3>
               <p className="text-xs text-[#555550] max-w-sm mx-auto">
@@ -161,26 +160,26 @@ export default function ForgotPasswordPage() {
                 </Link>
               </div>
             </div>
-          ) : message ? (
+          ) : shownMessage ? (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-[#FFF7F2] border border-[#FFD2C0] flex items-start gap-3">
                 <CircleCheck className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5" />
-                <div className="text-xs text-[#141413] space-y-1">
+                <div className="text-xs text-inversion-dark space-y-1">
                   <p className="font-semibold text-[#FF6B35]">Request Received</p>
-                  <p className="text-[#555550]">{message}</p>
+                  <p className="text-[#555550]">{shownMessage}</p>
                 </div>
               </div>
 
               {/* Informative dependency notice */}
-              <div className="p-3.5 rounded-2xl bg-[#F8F8F7] border border-[#E5E0D8] text-[11px] text-[#555550] space-y-1">
-                <span className="font-mono font-semibold uppercase text-[#141413] block">
+              <div className="p-3.5 rounded-2xl bg-sg-surface-hover border border-parchment-border text-[11px] text-[#555550] space-y-1">
+                <span className="font-mono font-semibold uppercase text-inversion-dark block">
                   Infrastructure Note:
                 </span>
                 <p>
                   External email dispatch requires an active SMTP or Resend API provider configuration in production.
                   {resetToken && (
-                    <span className="block mt-1 text-[#141413] font-mono font-medium">
-                      Development Token Generated: <code className="bg-white px-1.5 py-0.5 rounded border border-[#E5E0D8] select-all">{resetToken}</code>
+                    <span className="block mt-1 text-inversion-dark font-mono font-medium">
+                      Development Token Generated: <code className="bg-white px-1.5 py-0.5 rounded border border-parchment-border select-all">{resetToken}</code>
                     </span>
                   )}
                 </p>
@@ -189,7 +188,7 @@ export default function ForgotPasswordPage() {
               {/* Reset Password Form when token is available */}
               <form className="space-y-3.5 pt-2" onSubmit={handlePerformReset}>
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     Reset Token
                   </label>
                   <div className="relative">
@@ -202,13 +201,13 @@ export default function ForgotPasswordPage() {
                       value={tokenInput}
                       onChange={(e) => setTokenInput(e.target.value)}
                       placeholder="Paste recovery token"
-                      className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm font-mono text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm font-mono text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     New Password
                   </label>
                   <div className="relative">
@@ -222,14 +221,14 @@ export default function ForgotPasswordPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Min. 8 characters"
-                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
                     />
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-[#141413]"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-inversion-dark"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -237,7 +236,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     Confirm New Password
                   </label>
                   <div className="relative">
@@ -251,14 +250,14 @@ export default function ForgotPasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm new password"
-                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
                     />
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-[#141413]"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-inversion-dark"
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -284,7 +283,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form className="space-y-4" onSubmit={handleRequestReset}>
               <div>
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Account Work Email
                 </label>
                 <div className="relative">
@@ -297,7 +296,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="sarah.chen@company.com"
-                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] bg-white text-xs sm:text-sm text-[#141413] placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
+                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
                   />
                 </div>
               </div>
@@ -322,7 +321,7 @@ export default function ForgotPasswordPage() {
             </form>
           )}
 
-          <div className="mt-6 pt-4 border-t border-[#E5E0D8] text-center">
+          <div className="mt-6 pt-4 border-t border-parchment-border text-center">
             <Link
               href="/login"
               className="text-xs font-semibold text-[#FF6B35] hover:underline"

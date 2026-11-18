@@ -22,6 +22,7 @@ import {
   ArrowRight, 
   Loader2 
 } from 'lucide-react';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface SettingsViewProps {
   onStartTour?: () => void;
@@ -75,7 +76,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       if (!token) return;
 
-      const res = await fetch('/api/auth/account-status', {
+      const res = await authFetch('/api/auth/account-status', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -105,7 +106,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/auth/deactivate', {
+      const res = await authFetch('/api/auth/deactivate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

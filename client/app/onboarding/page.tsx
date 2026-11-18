@@ -21,6 +21,13 @@ import {
   Zap, 
   Activity 
 } from 'lucide-react';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
+
+const DEFAULT_MODEL: Record<'OPENAI' | 'ANTHROPIC' | 'GEMINI', string> = {
+  OPENAI: 'gpt-4o-mini',
+  ANTHROPIC: 'claude-3-5-haiku-20241022',
+  GEMINI: 'gemini-2.0-flash',
+};
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -30,7 +37,6 @@ export default function OnboardingPage() {
 
   // User & Org Data
   const [orgName, setOrgName] = useState('My AI Workspace');
-  const [token, setToken] = useState<string | null>(null);
 
   // Step 2: Provider Connection
   const [provider, setProvider] = useState<'OPENAI' | 'ANTHROPIC' | 'GEMINI'>('OPENAI');
@@ -45,6 +51,7 @@ export default function OnboardingPage() {
 
   // Step 4: Gateway Key & Generated Snippet
   const [isGenerating, setIsGenerating] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const [gatewayKey, setGatewayKey] = useState('');
   const [createdProjectId, setCreatedProjectId] = useState('');
   const [copiedKey, setCopiedKey] = useState(false);
@@ -63,7 +70,10 @@ export default function OnboardingPage() {
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem('spendguard_token');
       const storedUser = localStorage.getItem('spendguard_user');
-      setToken(storedToken);
+      if (!storedToken) {
+        router.replace('/login?required=1&next=%2Fonboarding');
+        return;
+      }
 
       if (storedUser) {
         try {
@@ -72,44 +82,33 @@ export default function OnboardingPage() {
         } catch {}
       }
     }
-  }, []);
+  }, [router]);
 
   const handleTestConnection = async () => {
     if (!providerKey) {
       setTestResult({ valid: false, message: 'Please paste your provider key to test.' });
       return;
     }
-
     setIsTestingKey(true);
     setTestResult(null);
 
     try {
-      const testRes = await fetch('/api/v1/keys', {
+      // Live check against the provider (the key is not stored by this call)
+      const testRes = await authFetch('/api/v1/keys/provider/test', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          type: 'TEST_CONNECTION',
-          provider,
-          plainKey: providerKey,
-        }),
+        body: JSON.stringify({ provider, plainKey: providerKey }),
       });
 
-      const data = await testRes.json();
       if (!testRes.ok) {
-        throw new Error(data.message || 'Key syntax validation failed.');
+        throw new Error(await readApiError(testRes, 'Could not verify this key.'));
       }
 
-      setTestResult({
-        valid: true,
-        message: `${provider} signature valid. Ready for AES-256-GCM envelope encryption.`,
-      });
-    } catch (err: any) {
+      const data: { valid: boolean; message: string } = await testRes.json();
+      setTestResult({ valid: Boolean(data.valid), message: data.message });
+    } catch (err: unknown) {
       setTestResult({
         valid: false,
-        message: err.message || 'Invalid key format for this provider.',
+        message: err instanceof Error ? err.message : 'Could not verify this key.',
       });
     } finally {
       setIsTestingKey(false);
@@ -118,34 +117,30 @@ export default function OnboardingPage() {
 
   const handleFinishStep3 = async () => {
     setIsGenerating(true);
+    setSetupError(null);
 
     try {
-      // 1. Create Project
-      const projRes = await fetch('/api/v1/projects', {
+      // 1. Create the project (budget guardrails live here)
+      const projRes = await authFetch('/api/v1/projects', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           name: projectName,
           budgetMonthly,
           budgetHardBlockEnabled: hardBlockEnabled,
         }),
       });
-
+      if (!projRes.ok) {
+        throw new Error(await readApiError(projRes, 'Could not create the project.'));
+      }
       const projData = await projRes.json();
-      const projId = projData.id || `proj_${Date.now()}`;
+      const projId: string | undefined = projData?.project?.id;
+      if (!projId) throw new Error('The server did not return a project id.');
       setCreatedProjectId(projId);
 
-      // 2. Store encrypted provider key if provided
+      // 2. Store the encrypted provider key, if one was provided
       if (providerKey) {
-        await fetch('/api/v1/keys', {
+        const keyRes = await authFetch('/api/v1/keys', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
           body: JSON.stringify({
             type: 'PROVIDER',
             projectId: projId,
@@ -153,16 +148,15 @@ export default function OnboardingPage() {
             plainKey: providerKey,
             keyName: `${provider} Primary Key`,
           }),
-        }).catch(() => null);
+        });
+        if (!keyRes.ok) {
+          throw new Error(await readApiError(keyRes, 'Project created, but the provider key could not be stored.'));
+        }
       }
 
-      // 3. Generate SpendGuard Gateway Virtual Key
-      const gwRes = await fetch('/api/v1/keys', {
+      // 3. Issue the SpendGuard gateway key (shown once)
+      const gwRes = await authFetch('/api/v1/keys', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({
           type: 'GATEWAY',
           projectId: projId,
@@ -171,25 +165,31 @@ export default function OnboardingPage() {
           rateLimitRpm: 1200,
         }),
       });
-
+      if (!gwRes.ok) {
+        throw new Error(await readApiError(gwRes, 'Project created, but the gateway key could not be issued.'));
+      }
       const gwData = await gwRes.json();
-      setGatewayKey(gwData.secret || `sg_live_${Math.random().toString(36).substring(2, 18)}`);
+      if (!gwData?.secret) throw new Error('The server did not return a gateway key.');
+
+      setGatewayKey(gwData.secret);
       setCurrentStep(4);
-    } catch (err: any) {
-      console.error('Onboarding finalization error:', err);
-      setGatewayKey(`sg_live_${Math.random().toString(36).substring(2, 18)}`);
-      setCurrentStep(4);
+    } catch (err: unknown) {
+      // Never fabricate a key: a fake key would fail every request the user makes with it
+      setSetupError(err instanceof Error ? err.message : 'Workspace setup failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleVerifyIntegration = async () => {
+    if (!gatewayKey) return;
     setIsVerifying(true);
     setVerificationOutcome(null);
 
     const startTime = performance.now();
     try {
+      // Deliberately a plain fetch: this call authenticates with the *gateway key*,
+      // exactly like the user's own application will.
       const res = await fetch('/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
           'Authorization': `Bearer ${gatewayKey}`,
         },
         body: JSON.stringify({
-          model: provider === 'OPENAI' ? 'gpt-4o' : provider === 'ANTHROPIC' ? 'claude-3-5-sonnet' : 'gemini-1.5-pro',
+          model: DEFAULT_MODEL[provider],
           messages: [{ role: 'user', content: 'Connection test ping' }],
           max_tokens: 15,
         }),
@@ -209,20 +209,25 @@ export default function OnboardingPage() {
         setVerificationOutcome({
           verified: true,
           latencyMs,
-          message: `Gateway proxy request succeeded in ${latencyMs}ms. Pre-flight reservation and audit settlement verified.`,
+          message: `Gateway request succeeded in ${latencyMs}ms. Budget reservation, provider call and audit logging all verified.`,
+        });
+      } else if (res.status === 401 || res.status === 403) {
+        setVerificationOutcome({
+          verified: false,
+          latencyMs,
+          message: `The gateway rejected the key: ${await readApiError(res)}`,
         });
       } else {
-        // Even if upstream sandbox key fails, gateway responded
         setVerificationOutcome({
-          verified: true,
+          verified: false,
           latencyMs,
-          message: `Gateway responded in ${latencyMs}ms (HTTP ${res.status}). Proxy routing and header authentication confirmed.`,
+          message: `Your gateway key is valid, but the request did not complete (HTTP ${res.status}): ${await readApiError(res)}`,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setVerificationOutcome({
         verified: false,
-        message: err.message || 'Gateway probe failed. Ensure backend service is reachable on port 4000.',
+        message: err instanceof Error ? err.message : 'Gateway probe failed. Ensure the backend service is reachable.',
       });
     } finally {
       setIsVerifying(false);
@@ -251,7 +256,7 @@ export default function OnboardingPage() {
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${gatewayKey || 'YOUR_SPENDGUARD_KEY'}" \\
   -d '{
-    "model": "${provider === 'OPENAI' ? 'gpt-4o' : provider === 'ANTHROPIC' ? 'claude-3-5-sonnet' : 'gemini-1.5-pro'}",
+    "model": "${DEFAULT_MODEL[provider]}",
     "messages": [{"role": "user", "content": "Hello SpendGuard AI!"}]
   }'`;
 
@@ -263,7 +268,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="${provider === 'OPENAI' ? 'gpt-4o' : provider === 'ANTHROPIC' ? 'claude-3-5-sonnet' : 'gemini-1.5-pro'}",
+    model="${DEFAULT_MODEL[provider]}",
     messages=[{"role": "user", "content": "Hello SpendGuard AI!"}]
 )
 print(response.choices[0].message.content)`;
@@ -276,7 +281,7 @@ const openai = new OpenAI({
 });
 
 const response = await openai.chat.completions.create({
-  model: '${provider === 'OPENAI' ? 'gpt-4o' : provider === 'ANTHROPIC' ? 'claude-3-5-sonnet' : 'gemini-1.5-pro'}',
+  model: '${DEFAULT_MODEL[provider]}',
   messages: [{ role: 'user', content: 'Hello SpendGuard AI!' }],
 });
 console.log(response.choices[0].message.content);`;
@@ -551,6 +556,13 @@ console.log(response.choices[0].message.content);`;
                   className="w-4 h-4 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35] mt-1 cursor-pointer"
                 />
               </div>
+
+              {setupError && (
+                <div role="alert" className="p-3 rounded-xl border border-sg-critical-border bg-sg-critical-bg flex items-start gap-2 text-xs text-[#B91C1C]">
+                  <TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{setupError}</span>
+                </div>
+              )}
 
               <div className="pt-3 flex items-center justify-between">
                 <button

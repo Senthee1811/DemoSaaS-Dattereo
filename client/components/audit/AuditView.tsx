@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
 
 interface AuditLog {
   id: string;
@@ -67,7 +68,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
       if (filterBlockedOnly) params.append('blockedOnly', 'true');
       
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch(`/api/v1/audit?${params.toString()}`, {
+      const res = await authFetch(`/api/v1/audit?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
@@ -89,9 +90,30 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
     }
   }, [selectedProjectId]);
 
-  const handleExportCsv = () => {
-    const url = filterProject ? `/api/v1/audit/export?projectId=${filterProject}` : '/api/v1/audit/export';
-    window.open(url, '_blank');
+  const handleExportCsv = async () => {
+    // Fetch with the session token (a plain link/window.open cannot send it), then download the blob
+    const url = filterProject
+      ? `/api/v1/audit/export?projectId=${encodeURIComponent(filterProject)}`
+      : '/api/v1/audit/export';
+    try {
+      const res = await authFetch(url);
+      if (!res.ok) {
+        window.alert(await readApiError(res, 'Export failed. Please try again.'));
+        return;
+      }
+      const blob = await res.blob();
+      const match = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = match?.[1] || `spendguard-audit-export-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error('CSV export failed:', err);
+      window.alert('Export failed. Please check your connection and try again.');
+    }
   };
 
   const handleCopy = (text: string) => {

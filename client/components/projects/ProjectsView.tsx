@@ -17,6 +17,7 @@ import {
   FolderKanban
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { authFetch } from '@/lib/auth-fetch';
 
 export interface ProjectItem {
   id: string;
@@ -60,7 +61,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const handleToggleBlock = async (project: ProjectItem) => {
     try {
       const newBlockedState = !project.isBlocked;
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
     if (!name) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -113,7 +114,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
     if (!editingProject) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -16,6 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface AlertItem {
   id: string;
@@ -51,7 +52,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
     setIsLoading(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/alerts', {
+      const res = await authFetch('/api/v1/alerts', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
@@ -70,7 +71,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   const handleMarkAsRead = async (id?: string, markAll = false) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      await fetch('/api/v1/alerts', {
+      await authFetch('/api/v1/alerts', {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
     setIsSendingTest(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/alerts', {
+      const res = await authFetch('/api/v1/alerts', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

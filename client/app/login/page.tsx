@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, ArrowRight, Lock, Mail, TriangleAlert, CircleCheck, Loader2, Eye, EyeOff } from 'lucide-react';
+import { saveSession } from '@/lib/auth-fetch';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,12 +14,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [deactivatedNotice, setDeactivatedNotice] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.search.includes('deactivated=true')) {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('deactivated') === 'true') {
       setDeactivatedNotice(true);
+    } else if (params.get('expired')) {
+      setSessionNotice('Your session expired. Please sign in again.');
+    } else if (params.get('required')) {
+      setSessionNotice('Please sign in to continue.');
     }
   }, []);
+
+  /** Only allow same-origin relative paths as post-login destinations (no open redirects). */
+  const resolveNextPath = (): string => {
+    const next = new URLSearchParams(window.location.search).get('next') || '';
+    return next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/dashboard';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,14 +57,8 @@ export default function LoginPage() {
         throw new Error(data.message || data.error?.message || 'Invalid email or password.');
       }
 
-      // Store auth session
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('spendguard_token', data.accessToken);
-        localStorage.setItem('spendguard_refresh_token', data.refreshToken);
-        localStorage.setItem('spendguard_user', JSON.stringify(data.user));
-      }
-
-      router.push('/dashboard');
+      saveSession(data);
+      router.push(resolveNextPath());
     } catch (err: any) {
       setErrorMessage(err.message || 'Login failed. Please verify your credentials.');
     } finally {
@@ -94,6 +102,12 @@ export default function LoginPage() {
                   Workspace data and team members remain unaffected.
                 </p>
               </div>
+            </div>
+          )}
+
+          {sessionNotice && !deactivatedNotice && (
+            <div role="status" className="mb-5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+              {sessionNotice}
             </div>
           )}
 

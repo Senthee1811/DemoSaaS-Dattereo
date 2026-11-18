@@ -17,6 +17,7 @@ import {
   Lock,
   Code2
 } from 'lucide-react';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface PlaygroundViewProps {
   projects: Array<{ id: string; name: string }>;
@@ -50,7 +51,7 @@ export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewPro
     setExecutionResult(null);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/chat/completions', {
+      const res = await authFetch('/api/v1/chat/completions', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -17,6 +17,7 @@ import { SettingsView } from '@/components/settings/SettingsView';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
+import { authFetch } from '@/lib/auth-fetch';
 
 export default function AppDashboard() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export default function AppDashboard() {
   const fetchProjects = useCallback(async () => {
     try {
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/projects', {
+      const res = await authFetch('/api/v1/projects', {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
       });
       const data = await res.json();
@@ -88,7 +89,7 @@ export default function AppDashboard() {
   const fetchKeys = useCallback(async () => {
     try {
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/keys', {
+      const res = await authFetch('/api/v1/keys', {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
       });
       const data = await res.json();
@@ -104,7 +105,7 @@ export default function AppDashboard() {
     try {
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const url = selectedProjectId ? `/api/v1/analytics?projectId=${selectedProjectId}` : '/api/v1/analytics';
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
       });
       const data = await res.json();
@@ -118,7 +119,7 @@ export default function AppDashboard() {
   const fetchUnreadAlerts = useCallback(async () => {
     try {
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/alerts', {
+      const res = await authFetch('/api/v1/alerts', {
         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
       });
       const data = await res.json();

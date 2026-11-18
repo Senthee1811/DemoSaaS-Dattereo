@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, ArrowRight, Mail, TriangleAlert, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 
@@ -19,6 +19,15 @@ export default function ForgotPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Invite / reset links arrive as /forgot-password?token=... — jump straight to "set password"
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token');
+    if (token) {
+      setTokenInput(token);
+      setMessage('Choose a password for your SpendGuard account.');
+    }
+  }, []);
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface ProviderKey {
   id: string;
@@ -73,7 +74,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     setTestResult(null);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/keys/provider/test', {
+      const res = await authFetch('/api/v1/keys/provider/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +96,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
       const url = selectedProjectId ? `/api/v1/keys?projectId=${selectedProjectId}` : '/api/v1/keys';
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
@@ -132,7 +133,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     setIsSubmitting(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/keys', {
+      const res = await authFetch('/api/v1/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     setIsSubmitting(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/keys', {
+      const res = await authFetch('/api/v1/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -195,7 +196,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
   const handleRevokeKey = async (id: string, type: 'PROVIDER' | 'GATEWAY') => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch(`/api/v1/keys?id=${id}&type=${type}`, {
+      const res = await authFetch(`/api/v1/keys?id=${id}&type=${type}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

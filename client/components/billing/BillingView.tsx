@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { authFetch } from '@/lib/auth-fetch';
 
 interface SubscriptionData {
   orgId: string;
@@ -49,7 +50,7 @@ export function BillingView() {
     async function fetchSub() {
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-        const res = await fetch(`/api/v1/billing/subscription${orgId ? `?orgId=${orgId}` : ''}`, {
+        const res = await authFetch(`/api/v1/billing/subscription${orgId ? `?orgId=${orgId}` : ''}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -74,7 +75,7 @@ export function BillingView() {
     setCheckoutLoading(tier);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await fetch('/api/v1/billing/checkout', {
+      const res = await authFetch('/api/v1/billing/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

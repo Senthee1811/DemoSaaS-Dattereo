@@ -195,3 +195,64 @@ describe('8. Per-IP gateway limit is configurable abuse protection', () => {
     expect(await burst(70, {})).toBe(10);
   });
 });
+
+describe('11. Auth rate limits', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { AuthRateLimitMiddleware } = require('../src/common/middleware/auth-rate-limit.middleware');
+
+  /** Minimal Redis stand-in: multi().incr().expire().exec() */
+  function fakeRedis() {
+    const counts = new Map<string, number>();
+    return {
+      multi() {
+        const ops: string[] = [];
+        const chain: any = {
+          incr: (k: string) => (ops.push(k), chain),
+          expire: () => chain,
+          exec: async () =>
+            ops.flatMap((k) => {
+              counts.set(k, (counts.get(k) || 0) + 1);
+              return [[null, counts.get(k)], [null, 1]];
+            }),
+        };
+        return chain;
+      },
+    };
+  }
+
+  async function attempts(mw: any, n: number, route: string, ip: (i: number) => string, email?: (i: number) => string) {
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const req: any = { originalUrl: `/auth/${route}`, ip: ip(i), body: email ? { email: email(i) } : {}, socket: {} };
+      const res: any = { setHeader: () => undefined };
+      try {
+        await mw.use(req, res, () => undefined);
+        out.push(200);
+      } catch (e: any) {
+        out.push(e.getStatus());
+      }
+    }
+    return out;
+  }
+
+  it('5 login attempts per email per minute, the 6th is 429 (even from different IPs)', async () => {
+    const shared = fakeRedis();
+    const mw = new AuthRateLimitMiddleware({ getClient: () => shared });
+    const res = await attempts(mw, 6, 'login', (i) => `198.51.100.${i}`, () => ' Victim@Example.com ');
+    expect(res).toEqual([200, 200, 200, 200, 200, 429]);
+  });
+
+  it('10 attempts per IP per minute on reset-password, the 11th is 429', async () => {
+    const shared = fakeRedis();
+    const mw = new AuthRateLimitMiddleware({ getClient: () => shared });
+    const res = await attempts(mw, 11, 'reset-password', () => '198.51.100.9');
+    expect(res.filter((s) => s === 429)).toEqual([429]);
+    expect(res[10]).toBe(429);
+  });
+
+  it('fails open when Redis is unavailable', async () => {
+    const mw = new AuthRateLimitMiddleware({ getClient: () => null });
+    const res = await attempts(mw, 20, 'login', () => '198.51.100.1', () => 'a@b.c');
+    expect(res.every((s) => s === 200)).toBe(true);
+  });
+});

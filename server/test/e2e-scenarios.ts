@@ -599,6 +599,20 @@ async function phase1(A: string) {
     const memberView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: dana.body.accessToken });
     check('MEMBER never receives prompt/response previews', memberView.status === 200 && memberView.body.total === 1 && !JSON.stringify(memberView.body).includes(secret2), memberView.body.logs?.[0]);
   }
+
+  // ── P1-11. Auth routes are rate limited ──────────────────────────────────
+  console.log('\n▶ Phase 1 · auth rate limits');
+  {
+    const victim = await register('Victim', `Victim ${RUN}`);
+    const attempts: ApiResult[] = [];
+    for (let i = 0; i < 6; i++) {
+      attempts.push(await api('POST', '/auth/login', { body: { email: victim.email, password: `wrong-${i}` } }));
+    }
+    const statuses = attempts.map((r) => r.status);
+    const last = attempts[5];
+    check('6 failed logins for one email in a minute → first 5 are 401, 6th is 429', statuses.slice(0, 5).every((s) => s === 401) && last.status === 429, statuses);
+    check('auth 429 uses the flat error shape', typeof last.body.error?.message === 'string' && last.body.error?.code === 'auth_rate_limited', last.body);
+  }
 }
 
 /** A RedisService connected to the same Redis as the backend under test. */

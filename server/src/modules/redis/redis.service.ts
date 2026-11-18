@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { utcMonthKey, utcNextMonthStart, ttlUntil } from '@/common/billing-period';
 import {
   BudgetBucket,
   HoldReservation,
@@ -126,11 +127,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = this.getSpendKey(projectId);
       await client.incrbyfloat(key, amount);
 
-      // Set TTL to end of current month + 1 day buffer
-      const now = new Date();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const ttlSeconds = Math.ceil((endOfMonth.getTime() - now.getTime()) / 1000) + 86400;
-      await client.expire(key, ttlSeconds);
+      // TTL: end of the current UTC month + 1 day buffer
+      await client.expire(key, ttlUntil(utcNextMonthStart()));
     } catch (err: any) {
       this.logger.warn(`Failed to increment spend in Redis: ${err.message}`);
     }
@@ -147,10 +145,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = this.getSpendKey(projectId);
       await client.set(key, amount.toString());
 
-      const now = new Date();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const ttlSeconds = Math.ceil((endOfMonth.getTime() - now.getTime()) / 1000) + 86400;
-      await client.expire(key, ttlSeconds);
+      await client.expire(key, ttlUntil(utcNextMonthStart()));
     } catch (err: any) {
       this.logger.warn(`Failed to set spend in Redis: ${err.message}`);
     }
@@ -377,13 +372,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private monthKey(at: Date): string {
-    return `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}`;
+    return utcMonthKey(at);
   }
 
-  /** Seconds until the end of the month plus a one-day buffer. */
+  /** Seconds until the end of the UTC month plus a one-day buffer. */
   private monthTtlSec(at: Date): number {
-    const endOfMonth = new Date(at.getFullYear(), at.getMonth() + 1, 1);
-    return Math.ceil((endOfMonth.getTime() - at.getTime()) / 1000) + 86400;
+    return ttlUntil(utcNextMonthStart(at), at);
   }
 
   /**

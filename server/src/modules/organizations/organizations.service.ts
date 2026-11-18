@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { utcMonthStart, utcIsoWeekStart } from '@/common/billing-period';
 
 export interface CreateProjectDto {
   name: string;
@@ -38,8 +39,8 @@ export class OrganizationsService {
     });
 
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const firstDayOfMonth = utcMonthStart(now);
+    const firstDayOfWeek = utcIsoWeekStart(now);
 
     const enriched = await Promise.all(
       projects.map(async (p) => {

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService, BudgetBucket } from '@/modules/redis/redis.service';
+import { utcMonthStart } from '@/common/billing-period';
 
 /** Prefix for blocks applied automatically by the budget engine (vs. manual admin freezes). */
 export const AUTO_BLOCK_PREFIX = 'Budget Cap Exceeded:';
@@ -323,7 +324,7 @@ export class BudgetService {
       if (currentSpend >= warningThreshold && currentSpend < budget) {
         // Check if an 80% alert was already sent this month (idempotent)
         const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const firstDayOfMonth = utcMonthStart(now);
 
         const existing = await this.prisma.budgetAlert.findFirst({
           where: {
@@ -385,7 +386,7 @@ export class BudgetService {
    */
   async reconcileProjectSpend(projectId: string): Promise<void> {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfMonth = utcMonthStart(now);
 
     // Read the ledger activity counter BEFORE the DB, so any request that settles
     // or persists while we aggregate is detected and spend is not lowered.

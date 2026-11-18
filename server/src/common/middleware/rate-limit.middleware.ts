@@ -18,7 +18,9 @@ export class RateLimitMiddleware implements NestMiddleware {
   constructor(private readonly redisService: RedisService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    // req.ip only honours X-Forwarded-For when TRUST_PROXY is configured (see main.ts),
+    // so clients cannot rotate a spoofed header to escape the limit.
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const key = `ratelimit:gateway:${clientIp}`;
 
     try {
@@ -61,6 +63,11 @@ export class RateLimitMiddleware implements NestMiddleware {
 
   private checkMemoryRateLimit(clientIp: string, res: Response) {
     const now = Date.now();
+    if (this.memoryStore.size > 10_000) {
+      for (const [ip, e] of this.memoryStore) {
+        if (now > e.resetAt) this.memoryStore.delete(ip);
+      }
+    }
     const entry = this.memoryStore.get(clientIp);
 
     if (!entry || now > entry.resetAt) {

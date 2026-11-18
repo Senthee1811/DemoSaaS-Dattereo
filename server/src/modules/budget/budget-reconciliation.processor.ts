@@ -24,7 +24,12 @@ export class BudgetReconciliationProcessor extends WorkerHost {
       });
 
       for (const project of projects) {
-        await this.budgetService.reconcileProjectSpend(project.id);
+        // One bad project must not stop reconciliation for every other tenant
+        try {
+          await this.budgetService.reconcileProjectSpend(project.id);
+        } catch (err: any) {
+          this.logger.warn(`Reconciliation failed for project ${project.id}: ${err.message}`);
+        }
       }
 
       this.logger.log(`Reconciliation complete for ${projects.length} projects`);

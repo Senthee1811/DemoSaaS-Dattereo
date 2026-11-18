@@ -20,9 +20,14 @@ export class EncryptionService {
   private readonly pepper: string;
 
   constructor(private readonly configService: ConfigService) {
-    const rawKey = this.configService.get<string>('encryptionMasterKey') || 'spendguard-master-encryption-key-32b!';
+    const rawKey = this.configService.get<string>('encryptionMasterKey');
+    const pepper = this.configService.get<string>('jwt.accessSecret');
+    if (!rawKey || !pepper) {
+      // No hardcoded fallbacks: a silent default key would make every vault decryptable
+      throw new Error('EncryptionService requires ENCRYPTION_MASTER_KEY and JWT_ACCESS_SECRET');
+    }
     this.masterKey = crypto.createHash('sha256').update(rawKey).digest();
-    this.pepper = this.configService.get<string>('jwt.accessSecret') || 'spendguard-pepper-default-salt';
+    this.pepper = pepper;
   }
 
   /**

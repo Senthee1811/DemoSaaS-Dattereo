@@ -66,6 +66,8 @@ export class GatewayService {
       );
     }
 
+    const reservedAmount = budgetGuard.reservedAmount ?? 0;
+
     // 2. Fetch scoped provider API key from encrypted vault
     let decryptedKey: string | undefined;
     try {
@@ -102,7 +104,9 @@ export class GatewayService {
       }
     } catch (upstreamErr) {
       // Release reserved budget capacity so failures do not drain the project cap
-      await this.budgetService.releaseReservation(req.projectId, maxEstimatedCost);
+      if (reservedAmount > 0) {
+        await this.budgetService.releaseReservation(req.projectId, reservedAmount);
+      }
       throw upstreamErr;
     }
 
@@ -114,7 +118,12 @@ export class GatewayService {
     );
 
     // 4. Reconcile atomic reservation with verified actual usage
-    await this.budgetService.reconcileReservation(req.projectId, maxEstimatedCost, costEstimate);
+    const reconciled = await this.budgetService.reconcileReservation(req.projectId, reservedAmount, costEstimate);
+    if (!reconciled) {
+      // Redis lost mid-request: the reservation auto-expires (5 min TTL) and the
+      // scheduled DB reconciliation restores the true spend counter.
+      this.logger.error(`Spend settlement failed for project ${req.projectId}; reconciliation job will correct it.`);
+    }
 
     // 5. Anomaly Spike Detection
     const recentRequests = await this.prisma.request.findMany({

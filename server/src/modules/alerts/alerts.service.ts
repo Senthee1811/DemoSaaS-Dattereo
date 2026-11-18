@@ -1,5 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { assertProjectInOrg } from '@/common/tenant';
+
+const THRESHOLD_TYPES = ['PERCENT_80', 'HARD_BLOCK', 'ANOMALY_DETECTED'] as const;
+const CHANNELS = ['SLACK', 'EMAIL', 'IN_APP'] as const;
 
 @Injectable()
 export class AlertsService {
@@ -7,8 +11,8 @@ export class AlertsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAlerts(projectId?: string) {
-    const where: any = {};
+  async listAlerts(orgId: string, projectId?: string) {
+    const where: any = { project: { orgId } };
     if (projectId) where.projectId = projectId;
 
     const alerts = await this.prisma.budgetAlert.findMany({
@@ -35,53 +39,57 @@ export class AlertsService {
     };
   }
 
-  async markAsRead(id?: string, markAllRead = false) {
+  async markAsRead(orgId: string, id?: string, markAllRead = false) {
     if (markAllRead) {
       await this.prisma.budgetAlert.updateMany({
-        where: { isRead: false },
+        where: { isRead: false, project: { orgId } },
         data: { isRead: true },
       });
     } else if (id) {
-      await this.prisma.budgetAlert.update({
-        where: { id },
+      const result = await this.prisma.budgetAlert.updateMany({
+        where: { id, project: { orgId } },
         data: { isRead: true },
       });
+      if (result.count === 0) throw new NotFoundException('Alert not found');
+    } else {
+      throw new BadRequestException('Provide an alert id or markAllRead: true');
     }
     return { success: true };
   }
 
-  async triggerTestAlert(dto: {
-    projectId: string;
-    thresholdType: 'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
-    channel?: 'SLACK' | 'EMAIL' | 'IN_APP';
-    slackWebhookUrl?: string;
-    emailRecipients?: string[];
-  }) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: dto.projectId },
-    });
+  async triggerTestAlert(
+    orgId: string,
+    dto: {
+      projectId: string;
+      thresholdType: 'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
+      channel?: 'SLACK' | 'EMAIL' | 'IN_APP';
+    },
+  ) {
+    const project = await assertProjectInOrg(this.prisma, dto?.projectId, orgId);
 
-    const projectName = project?.name || dto.projectId;
-    const budget = project ? Number(project.budgetMonthly) : 1000;
+    const thresholdType = THRESHOLD_TYPES.includes(dto.thresholdType) ? dto.thresholdType : 'PERCENT_80';
+    const channel = dto.channel && CHANNELS.includes(dto.channel) ? dto.channel : 'IN_APP';
+    const projectName = project.name;
+    const budget = Number(project.budgetMonthly);
 
     let title = `⚠️ Budget Warning (80%): ${projectName}`;
     let message = `Project ${projectName} has used 80% of its monthly budget allocation ($${(budget * 0.8).toFixed(2)} / $${budget.toFixed(2)}).`;
 
-    if (dto.thresholdType === 'HARD_BLOCK') {
+    if (thresholdType === 'HARD_BLOCK') {
       title = `🛑 Hard-Block Activated: ${projectName}`;
       message = `Monthly budget cap of $${budget.toFixed(2)} reached. Future AI requests will fail closed with HTTP 429.`;
-    } else if (dto.thresholdType === 'ANOMALY_DETECTED') {
+    } else if (thresholdType === 'ANOMALY_DETECTED') {
       title = `⚡ Spend Anomaly Spike: ${projectName}`;
       message = `Statistical usage surge detected: 3.4x above 7-day rolling average spend.`;
     }
 
     const alert = await this.prisma.budgetAlert.create({
       data: {
-        projectId: dto.projectId,
-        thresholdType: dto.thresholdType,
+        projectId: project.id,
+        thresholdType,
         thresholdValue: budget,
-        channel: dto.channel || 'SLACK',
-        title,
+        channel,
+        title: `[TEST] ${title}`,
         message,
         isRead: false,
         status: 'SENT',

@@ -11,8 +11,8 @@ export class AnalyticsService {
     private readonly redisService: RedisService,
   ) {}
 
-  async getDashboardAnalytics(projectId?: string, orgId?: string) {
-    const cacheKey = `spendguard:analytics:${orgId || 'all'}:${projectId || 'all'}`;
+  async getDashboardAnalytics(orgId: string, projectId?: string) {
+    const cacheKey = `spendguard:analytics:${orgId}:${projectId || 'all'}`;
     const cached = await this.redisService.getCache(cacheKey);
     if (cached) {
       try {
@@ -22,7 +22,8 @@ export class AnalyticsService {
       }
     }
 
-    const where: any = {};
+    // Tenant scope: only requests belonging to the caller's organization
+    const where: any = { project: { orgId } };
     if (projectId) where.projectId = projectId;
 
     const now = new Date();
@@ -43,7 +44,7 @@ export class AnalyticsService {
         where: { ...where, createdAt: { gte: firstDayOfMonth }, isBlocked: true },
       }),
       this.prisma.project.findMany({
-        where: projectId ? { id: projectId } : {},
+        where: projectId ? { id: projectId, orgId } : { orgId },
         select: { id: true, name: true, budgetMonthly: true, isBlocked: true },
       }),
     ]);
@@ -112,7 +113,7 @@ export class AnalyticsService {
     // 4. Project Breakdown
     const projectGroup = await this.prisma.request.groupBy({
       by: ['projectId'],
-      where: { createdAt: { gte: firstDayOfMonth }, isBlocked: false },
+      where: { ...where, createdAt: { gte: firstDayOfMonth }, isBlocked: false },
       _sum: { costEstimate: true, totalTokens: true },
       _count: { id: true },
     });

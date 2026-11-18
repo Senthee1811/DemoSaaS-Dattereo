@@ -33,6 +33,7 @@ export class AuditService {
   }
 
   async listLogs(params: {
+    orgId: string;
     projectId?: string;
     model?: string;
     provider?: string;
@@ -45,7 +46,7 @@ export class AuditService {
     limit?: number;
     offset?: number;
   }) {
-    const where: any = {};
+    const where: any = { project: { orgId: params.orgId } };
     if (params.projectId) where.projectId = params.projectId;
     if (params.model) where.model = params.model;
     if (params.provider) where.provider = params.provider.toUpperCase();
@@ -113,8 +114,8 @@ export class AuditService {
    * to avoid loading the full table into memory for large orgs.
    * Per Step 8: "Build a paginated/streamed CSV export endpoint."
    */
-  async generateCsv(projectId?: string): Promise<string> {
-    const where: any = {};
+  async generateCsv(orgId: string, projectId?: string): Promise<string> {
+    const where: any = { project: { orgId } };
     if (projectId) where.projectId = projectId;
 
     const headers = [
@@ -138,8 +139,10 @@ export class AuditService {
 
     const escapeCsv = (val: any) => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
+      let str = String(val);
+      // Neutralise spreadsheet formula injection (=, +, -, @, tab, CR)
+      if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+      return `"${str.replace(/"/g, '""')}"`;
     };
 
     const chunks: string[] = [headers.join(',')];

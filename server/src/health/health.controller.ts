@@ -2,8 +2,10 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 
 @ApiTags('System Health')
+@Public()
 @Controller(['health', 'api/health'])
 export class HealthController {
   constructor(
@@ -18,7 +20,8 @@ export class HealthController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
     } catch (err: any) {
-      dbStatus = `degraded: ${err.message}`;
+      // Public endpoint: don't disclose connection strings/driver errors
+      dbStatus = 'degraded';
     }
 
     const redisStatus = await this.redisService.healthCheck();

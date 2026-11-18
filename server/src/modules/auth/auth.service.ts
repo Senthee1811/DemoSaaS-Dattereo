@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import * as crypto from 'crypto';
+import { promisify } from 'util';
+
+const pbkdf2 = promisify(crypto.pbkdf2);
 
 export interface RegisterDto {
   email: string;
@@ -46,31 +49,47 @@ export class AuthService {
   ) {}
 
   /**
-   * Hash password using PBKDF2 (production-grade, no native dependency issues like argon2 on Windows)
+   * Hash password using PBKDF2-SHA512 (async so it does not block the event loop).
    */
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     const salt = crypto.randomBytes(32).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    const hash = (await pbkdf2(password, salt, 100000, 64, 'sha512')).toString('hex');
     return `$pbkdf2$${salt}$${hash}`;
   }
 
   /**
-   * Verify password against stored hash
+   * Verify password against stored hash using a constant-time comparison.
    */
   private async verifyPassword(password: string, storedHash: string): Promise<boolean> {
     if (storedHash.startsWith('$pbkdf2$')) {
       const parts = storedHash.split('$');
       const salt = parts[2];
       const hash = parts[3];
-      const derived = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-      return derived === hash;
+      if (!salt || !hash) return false;
+      const derived = await pbkdf2(password, salt, 100000, 64, 'sha512');
+      return this.safeEqualHex(derived.toString('hex'), hash);
     }
     // Fallback for seed data with different hash format
     if (storedHash.startsWith('$seed$')) {
       const seedHash = crypto.createHash('sha256').update(password).digest('hex');
-      return storedHash === `$seed$${seedHash}`;
+      return this.safeEqualHex(seedHash, storedHash.slice('$seed$'.length));
     }
     return false;
+  }
+
+  private safeEqualHex(a: string, b: string): boolean {
+    const bufA = Buffer.from(a, 'hex');
+    const bufB = Buffer.from(b, 'hex');
+    return bufA.length > 0 && bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+  }
+
+  private normalizeEmail(email: string): string {
+    return (email || '').trim().toLowerCase();
+  }
+
+  /** Deactivation is persisted in Postgres; Redis only holds descriptive details. */
+  private isDeactivated(user: { deactivatedAt: Date | null }): boolean {
+    return Boolean(user.deactivatedAt);
   }
 
   /**
@@ -91,12 +110,13 @@ export class AuthService {
   }
 
   /**
-   * Register a new user and organization
+   * Register a new user. Self-service sign-up ALWAYS creates a new, isolated
+   * organization owned by the registrant — joining an existing organization
+   * is only possible through a team invite issued by that organization.
    */
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+    const email = this.normalizeEmail(dto.email);
+    const existing = await this.prisma.user.findUnique({ where: { email } });
 
     if (existing) {
       throw new ConflictException('A user with this email already exists');
@@ -104,27 +124,27 @@ export class AuthService {
 
     const passwordHash = await this.hashPassword(dto.password);
 
-    // Find or create organization
-    let org = await this.prisma.organization.findFirst({
-      where: dto.orgSlug ? { slug: dto.orgSlug } : undefined,
-    });
-
-    if (!org) {
-      const orgName = dto.orgName || `${dto.name}'s Organization`;
-      const orgSlug = dto.orgSlug || orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      org = await this.prisma.organization.create({
-        data: { name: orgName, slug: orgSlug },
-      });
+    const orgName = (dto.orgName || `${dto.name}'s Organization`).trim();
+    const baseSlug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'workspace';
+    let orgSlug = baseSlug;
+    while (await this.prisma.organization.findUnique({ where: { slug: orgSlug } })) {
+      orgSlug = `${baseSlug}-${crypto.randomBytes(3).toString('hex')}`;
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        orgId: org.id,
-        email: dto.email,
-        name: dto.name,
-        passwordHash,
-        role: 'OWNER',
-      },
+    const { org, user } = await this.prisma.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: { name: orgName, slug: orgSlug },
+      });
+      const user = await tx.user.create({
+        data: {
+          orgId: org.id,
+          email,
+          name: dto.name,
+          passwordHash,
+          role: 'OWNER',
+        },
+      });
+      return { org, user };
     });
 
     const payload: TokenPayload = {
@@ -136,7 +156,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(payload);
 
-    this.logger.log(`User registered: ${user.email} (${user.role}) in org ${org.name}`);
+    this.logger.log(`User registered: ${user.id} (${user.role}) in org ${org.id}`);
 
     return {
       user: {
@@ -156,7 +176,7 @@ export class AuthService {
    */
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: this.normalizeEmail(dto.email) },
       include: { organization: true },
     });
 
@@ -164,15 +184,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Check if account has been deactivated
-    const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${user.id}`);
-    if (isDeactivated) {
-      throw new UnauthorizedException('This account has been deactivated. Please contact your organization administrator or support to request reactivation.');
-    }
-
     const isValid = await this.verifyPassword(dto.password, user.passwordHash);
     if (!isValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Only reveal deactivation status once the password has been proven
+    if (this.isDeactivated(user)) {
+      throw new UnauthorizedException('This account has been deactivated. Please contact your organization administrator or support to request reactivation.');
     }
 
     const payload: TokenPayload = {
@@ -184,7 +203,7 @@ export class AuthService {
 
     const tokens = this.generateTokens(payload);
 
-    this.logger.log(`User logged in: ${user.email}`);
+    this.logger.log(`User logged in: ${user.id}`);
 
     return {
       user: {
@@ -203,54 +222,47 @@ export class AuthService {
    * Refresh access token using refresh token
    */
   async refresh(refreshToken: string) {
+    let payload: TokenPayload;
     try {
-      const payload = this.jwtService.verify<TokenPayload>(refreshToken, {
+      payload = this.jwtService.verify<TokenPayload>(refreshToken, {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      // Check if account has been deactivated
-      const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${payload.sub}`);
-      if (isDeactivated) {
-        throw new UnauthorizedException('Account has been deactivated. Refresh token revoked.');
-      }
-
-      const newPayload: TokenPayload = {
-        sub: user.id,
-        email: user.email,
-        orgId: user.orgId,
-        role: user.role,
-      };
-
-      return this.generateTokens(newPayload);
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-  }
-
-  /**
-   * Validate JWT payload (used by JwtStrategy)
-   */
-  async validateUser(payload: TokenPayload) {
-    // Check if account has been deactivated
-    const isDeactivated = await this.redisService.getCache(`spendguard:account_deactivated:${payload.sub}`);
-    if (isDeactivated) {
-      throw new UnauthorizedException('Account has been deactivated. Access revoked.');
     }
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
 
+    if (!user || this.isDeactivated(user)) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Re-read role/org from DB so role changes take effect on refresh
+    return this.generateTokens({
+      sub: user.id,
+      email: user.email,
+      orgId: user.orgId,
+      role: user.role,
+    });
+  }
+
+  /**
+   * Validate JWT payload (used by JwtStrategy). Role and org are taken from
+   * the database, not the token, so revocations/role changes apply immediately.
+   */
+  async validateUser(payload: TokenPayload) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+
+    if (this.isDeactivated(user)) {
+      throw new UnauthorizedException('Account has been deactivated. Access revoked.');
     }
 
     return {
@@ -263,34 +275,61 @@ export class AuthService {
   }
 
   /**
+   * Verifies a user access token outside the passport pipeline (e.g. the
+   * gateway, which accepts either a gateway key or a dashboard session).
+   * Returns null when the token is not a valid, active user session.
+   */
+  async verifyAccessToken(token: string) {
+    try {
+      const payload = this.jwtService.verify<TokenPayload>(token, {
+        secret: this.configService.get<string>('jwt.accessSecret'),
+      });
+      return await this.validateUser(payload);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Request password recovery token.
    * To prevent email enumeration, this returns a generic success message regardless of existence.
    */
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
+      where: { email: this.normalizeEmail(dto.email) },
     });
 
-    if (user) {
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const payload = JSON.stringify({ userId: user.id, email: user.email });
-      // Store in Redis with 1-hour expiration
-      await this.redisService.setCache(`spendguard:pwd_reset:${resetToken}`, payload, 3600);
-      this.logger.log(`Password reset token issued for user ${user.id}. SMTP delivery pending service configuration.`);
-      
-      return {
-        success: true,
-        message: 'If this email is associated with an account, instructions have been sent.',
-        deliveryStatus: 'simulated_pending_smtp_integration',
-        resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
-      };
-    }
-
-    return {
+    const generic = {
       success: true,
       message: 'If this email is associated with an account, instructions have been sent.',
       deliveryStatus: 'simulated_pending_smtp_integration',
     };
+
+    if (!user) return generic;
+
+    const resetToken = await this.issuePasswordToken(user.id, user.email, 3600);
+    this.logger.log(`Password reset token issued for user ${user.id}. SMTP delivery pending service configuration.`);
+
+    return {
+      ...generic,
+      resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
+    };
+  }
+
+  /**
+   * Issues a one-time password-set token (used by reset and by team invites).
+   */
+  async issuePasswordToken(userId: string, email: string, ttlSeconds: number): Promise<string> {
+    if (!this.redisService.isConnected) {
+      throw new BadRequestException('Password token service is temporarily unavailable. Please try again shortly.');
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.redisService.setCache(
+      `spendguard:pwd_reset:${token}`,
+      JSON.stringify({ userId, email }),
+      ttlSeconds,
+    );
+    return token;
   }
 
   /**
@@ -306,6 +345,9 @@ export class AuthService {
       throw new BadRequestException('Password reset token is invalid, expired, or has already been used.');
     }
 
+    // Invalidate first so a token can never be replayed, even on concurrent requests
+    await this.redisService.delCache(`spendguard:pwd_reset:${dto.token}`);
+
     let parsed: { userId: string; email: string };
     try {
       parsed = JSON.parse(cachedData);
@@ -319,8 +361,6 @@ export class AuthService {
       data: { passwordHash: newHash },
     });
 
-    // Invalidate the token immediately (one-time usage)
-    await this.redisService.delCache(`spendguard:pwd_reset:${dto.token}`);
     this.logger.log(`Password successfully updated for user ${parsed.userId}.`);
 
     return {
@@ -343,7 +383,7 @@ export class AuthService {
     }
 
     const deactivationRecord = await this.redisService.getCache(`spendguard:account_deactivated:${userId}`);
-    const isDeactivated = Boolean(deactivationRecord);
+    const isDeactivated = this.isDeactivated(user);
     let parsedDeactivation: any = null;
     if (deactivationRecord) {
       try {
@@ -353,7 +393,7 @@ export class AuthService {
 
     // Retrieve organization member counts to verify ownership constraints
     const orgMembers = await this.prisma.user.findMany({
-      where: { orgId: user.orgId },
+      where: { orgId: user.orgId, deactivatedAt: null },
       select: { id: true, role: true },
     });
 
@@ -413,7 +453,7 @@ export class AuthService {
     // 2. Organization ownership constraints check
     if (user.role === 'OWNER') {
       const allMembers = await this.prisma.user.findMany({
-        where: { orgId: user.orgId },
+        where: { orgId: user.orgId, deactivatedAt: null },
         select: { id: true, role: true },
       });
       const otherMembers = allMembers.filter((m) => m.id !== user.id);
@@ -427,20 +467,25 @@ export class AuthService {
       }
     }
 
-    // 3. Mark account as deactivated in Redis with 30-day recovery grace period
+    // 3. Durable deactivation flag (enforced by login, refresh and every JWT validation)
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { deactivatedAt: new Date() },
+    });
+
     const deactivationRecord = {
       userId: user.id,
-      email: user.email,
       orgId: user.orgId,
       reason: dto.reason || 'User requested deactivation',
       deactivatedAt: new Date().toISOString(),
       recoveryAllowedUntil: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
     };
 
+    // Descriptive details only — enforcement does not depend on Redis
     await this.redisService.setCache(
       `spendguard:account_deactivated:${user.id}`,
       JSON.stringify(deactivationRecord),
-      30 * 24 * 3600 // 30-day retention
+      30 * 24 * 3600,
     );
 
     // 4. Invalidate sessions in Redis
@@ -464,7 +509,7 @@ export class AuthService {
       this.logger.error(`Failed to record audit log for deactivation: ${err.message}`);
     }
 
-    this.logger.warn(`User account deactivated: ${user.email} (${user.id}) in org ${user.orgId}`);
+    this.logger.warn(`User account deactivated: ${user.id} in org ${user.orgId}`);
 
     return {
       success: true,

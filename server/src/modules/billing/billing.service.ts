@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 
@@ -32,10 +32,21 @@ export class BillingService {
    */
   async createCheckoutSession(params: {
     orgId: string;
-    tier: 'starter' | 'growth' | 'enterprise';
+    tier: 'starter' | 'growth';
     successUrl: string;
     cancelUrl: string;
   }) {
+    const priceMap: Record<'starter' | 'growth', number> = {
+      starter: 3900,  // $39.00/mo
+      growth: 19900,  // $199.00/mo
+    };
+    const unitAmount = priceMap[params.tier];
+    if (!unitAmount) {
+      throw new BadRequestException(`Tier '${params.tier}' is not available for self-serve checkout`);
+    }
+    const withParam = (url: string, key: string, value: string) =>
+      `${url}${url.includes('?') ? '&' : '?'}${key}=${value}`;
+
     let StripePackage: any = null;
     try {
       StripePackage = require('stripe');
@@ -46,12 +57,6 @@ export class BillingService {
     if (StripePackage && !this.isStubMode && this.stripeKey) {
       try {
         const stripe = new StripePackage(this.stripeKey);
-        const priceMap: Record<string, number> = {
-          starter: 3900,  // $39.00/mo
-          growth: 19900,  // $199.00/mo
-        };
-        const unitAmount = priceMap[params.tier] || 3900;
-
         const session = await stripe.checkout.sessions.create({
           payment_method_types: ['card'],
           mode: 'subscription',
@@ -73,7 +78,7 @@ export class BillingService {
             orgId: params.orgId,
             tier: params.tier,
           },
-          success_url: `${params.successUrl}&session_id={CHECKOUT_SESSION_ID}`,
+          success_url: withParam(params.successUrl, 'session_id', '{CHECKOUT_SESSION_ID}'),
           cancel_url: params.cancelUrl,
         });
 
@@ -83,13 +88,15 @@ export class BillingService {
           isStub: false,
         };
       } catch (err: any) {
-        this.logger.error(`Stripe checkout creation error: ${err.message}. Using safe stub fallback.`);
+        // A configured-but-failing Stripe must not silently pretend checkout succeeded
+        this.logger.error(`Stripe checkout creation error: ${err.message}`);
+        throw new BadGatewayException('Payment provider is unavailable. Please try again shortly.');
       }
     }
 
     this.logger.log(`[STUB] Creating checkout session for org ${params.orgId}, tier: ${params.tier}`);
     return {
-      checkoutUrl: `${params.successUrl}?session_id=stub_session_${Date.now()}`,
+      checkoutUrl: withParam(params.successUrl, 'session_id', `stub_session_${Date.now()}`),
       sessionId: `stub_session_${Date.now()}`,
       isStub: true,
     };
@@ -140,6 +147,12 @@ export class BillingService {
         this.logger.error(`Stripe webhook signature verification failed: ${err.message}`);
         return { received: false, error: err.message, isStub: false };
       }
+    }
+
+    if (!this.isStubMode) {
+      // Stripe is live: never accept unsigned / unverifiable webhook payloads
+      this.logger.warn('Rejected Stripe webhook without a verifiable signature');
+      return { received: false, error: 'Missing or unverifiable Stripe signature', isStub: false };
     }
 
     this.logger.log('[STUB] Webhook received in stub mode — no processing.');

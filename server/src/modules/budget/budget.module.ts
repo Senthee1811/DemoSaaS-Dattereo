@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { BudgetService } from './budget.service';
 import { BudgetReconciliationProcessor } from './budget-reconciliation.processor';
+import { BudgetReconciliationScheduler } from './budget-reconciliation.scheduler';
 
 @Global()
 @Module({
@@ -19,7 +20,7 @@ import { BudgetReconciliationProcessor } from './budget-reconciliation.processor
       }),
     }),
   ],
-  providers: [BudgetService, BudgetReconciliationProcessor],
+  providers: [BudgetService, BudgetReconciliationProcessor, BudgetReconciliationScheduler],
   exports: [BudgetService],
 })
 export class BudgetModule {}

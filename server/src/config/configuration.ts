@@ -62,9 +62,44 @@ function validateRequiredEnvVars(): void {
   }
 }
 
+/** Values that have been published in this repository and must never protect real data. */
+const KNOWN_DEFAULT_SECRETS = new Set([
+  'spendguard-jwt-access-secret-32b-min!',
+  'spendguard-jwt-refresh-secret-32b-min!',
+  'spendguard-master-encryption-key-32b!',
+]);
+
+/**
+ * In production, refuse to boot with weak or publicly known secrets.
+ * In development, only warn so local setup stays frictionless.
+ */
+function validateSecretStrength(): void {
+  const logger = new Logger('ConfigValidation');
+  const isProd = process.env.NODE_ENV === 'production';
+  const problems: string[] = [];
+
+  for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'ENCRYPTION_MASTER_KEY']) {
+    const value = process.env[key] || '';
+    if (KNOWN_DEFAULT_SECRETS.has(value)) problems.push(`${key} is a published default value`);
+    else if (value.length < 32) problems.push(`${key} must be at least 32 characters`);
+  }
+  if (process.env.JWT_ACCESS_SECRET && process.env.JWT_ACCESS_SECRET === process.env.JWT_REFRESH_SECRET) {
+    problems.push('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
+  }
+
+  if (problems.length === 0) return;
+  const text = `Insecure secret configuration:\n  - ${problems.join('\n  - ')}\nGenerate values with: node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`;
+  if (isProd) {
+    logger.error(text);
+    throw new Error('Refusing to start in production with insecure secrets.');
+  }
+  logger.warn(text);
+}
+
 export default (): AppConfig => {
   // Validate on first load
   validateRequiredEnvVars();
+  validateSecretStrength();
 
   return {
     nodeEnv: process.env.NODE_ENV || 'development',

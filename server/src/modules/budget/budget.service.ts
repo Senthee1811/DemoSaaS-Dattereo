@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 
+/** Prefix for blocks applied automatically by the budget engine (vs. manual admin freezes). */
+export const AUTO_BLOCK_PREFIX = 'Budget Cap Exceeded:';
+
 export interface BudgetGuardrailResult {
   canProceed: boolean;
   isHardBlocked: boolean;
@@ -89,7 +92,7 @@ export class BudgetService {
 
       // Fail-closed threshold enforcement
       if (project.budgetHardBlockEnabled && currentMonthlySpend >= budgetMonthly) {
-        const reason = `Budget Exceeded: Monthly cap of $${budgetMonthly.toFixed(2)} reached ($${currentMonthlySpend.toFixed(2)} spent)`;
+        const reason = `${AUTO_BLOCK_PREFIX} Monthly cap of $${budgetMonthly.toFixed(2)} reached ($${currentMonthlySpend.toFixed(2)} spent)`;
         
         // Auto-update project isBlocked in DB
         await this.prisma.project.update({
@@ -198,7 +201,26 @@ export class BudgetService {
       const utilizationPct = budgetMonthly > 0 ? (totalCommitted / budgetMonthly) * 100 : 0;
 
       if (!success && project.budgetHardBlockEnabled) {
-        const reason = `Budget Cap Exceeded: Committed spend ($${totalCommitted.toFixed(2)}) + estimated request cost ($${maxEstimatedCost.toFixed(4)}) exceeds monthly cap of $${budgetMonthly.toFixed(2)}.`;
+        const capReached = currentSpend >= budgetMonthly;
+
+        if (!capReached) {
+          // Only THIS request's worst-case cost doesn't fit in the remaining budget.
+          // Reject it, but don't freeze the project: smaller requests can still fit,
+          // and freezing here would flap (reconciliation lifts it) and spam alerts.
+          const remaining = Math.max(0, budgetMonthly - totalCommitted);
+          return {
+            canProceed: false,
+            isHardBlocked: false,
+            blockReason: `Request worst-case cost ($${maxEstimatedCost.toFixed(4)}) exceeds the remaining monthly budget ($${remaining.toFixed(4)}). Lower max_tokens or raise the project budget.`,
+            budgetMonthly,
+            currentMonthlySpend: currentSpend,
+            utilizationPct,
+          };
+        }
+
+        // Actual settled spend has reached the cap: freeze the project until the
+        // month rolls over or an admin raises the budget.
+        const reason = `${AUTO_BLOCK_PREFIX} Monthly spend ($${currentSpend.toFixed(4)}) reached the cap of $${budgetMonthly.toFixed(2)}.`;
 
         await this.prisma.project.update({
           where: { id: projectId },
@@ -229,7 +251,10 @@ export class BudgetService {
         budgetMonthly,
         currentMonthlySpend: currentSpend,
         utilizationPct,
-        reservedAmount: maxEstimatedCost,
+        // If the Lua reservation was refused (over budget, hard-block disabled) the
+        // request proceeds as soft-overage with NOTHING reserved. Reconciling a
+        // non-existent reservation would otherwise release other requests' holds.
+        reservedAmount: success ? maxEstimatedCost : 0,
       };
     } catch (err: any) {
       this.logger.error(`reserveCapacity failed: ${err.message}. Fail-closed active.`);
@@ -358,6 +383,21 @@ export class BudgetService {
     const trueSpend = Number(aggregate._sum.costEstimate || 0);
     await this.redisService.setProjectSpend(projectId, trueSpend);
 
-    this.logger.log(`Reconciled spend for project ${projectId}: $${trueSpend.toFixed(4)}`);
+    // Lift automatic budget blocks once spend is back under the cap
+    // (new billing month, or an admin raised the budget). Manual freezes are untouched.
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (
+      project?.isBlocked &&
+      project.blockReason?.startsWith(AUTO_BLOCK_PREFIX) &&
+      trueSpend < Number(project.budgetMonthly)
+    ) {
+      await this.prisma.project.update({
+        where: { id: projectId },
+        data: { isBlocked: false, blockReason: null },
+      });
+      this.logger.log(`Lifted automatic budget block for project ${projectId}`);
+    }
+
+    this.logger.debug(`Reconciled spend for project ${projectId}: $${trueSpend.toFixed(4)}`);
   }
 }

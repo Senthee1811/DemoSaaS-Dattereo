@@ -1,519 +1,363 @@
-import { EncryptionService } from '../src/modules/encryption/encryption.service';
-import { PricingService } from '../src/modules/pricing/pricing.service';
-import { AnomalyService } from '../src/modules/anomaly/anomaly.service';
-import { BillingService } from '../src/modules/billing/billing.service';
-import { AuthService } from '../src/modules/auth/auth.service';
-import { AuditService } from '../src/modules/audit/audit.service';
-import { AnalyticsService } from '../src/modules/analytics/analytics.service';
+/**
+ * SpendGuard live end-to-end suite.
+ *
+ * Drives the real HTTP API of a running backend (Postgres + Redis) and asserts
+ * the security and product guarantees end to end: authentication, tenant
+ * isolation, RBAC, the governed gateway, budgets, audit, alerts, team invites,
+ * deactivation and billing.
+ *
+ * Usage:
+ *   E2E_BASE_URL=http://localhost:4000 npm run test:e2e
+ *
+ * The success-path gateway scenarios need an OpenAI-compatible upstream. Point
+ * the backend at a mock with OPENAI_BASE_URL so no real provider is billed.
+ * Run against a disposable database — the suite creates organizations and users.
+ */
 
-console.log('================================================================');
-console.log('  SpendGuard AI — Production Multi-Tenant SaaS E2E Test Suite  ');
-console.log('================================================================\n');
+const BASE = (process.env.E2E_BASE_URL || 'http://localhost:4000').replace(/\/$/, '');
+const RUN = Date.now().toString(36);
+
+let passed = 0;
+const failures: string[] = [];
+
+function check(name: string, condition: boolean, detail?: unknown) {
+  if (condition) {
+    passed++;
+    console.log(`  ✓ ${name}`);
+  } else {
+    failures.push(name);
+    console.log(`  ✗ ${name}${detail !== undefined ? `\n      → ${JSON.stringify(detail).slice(0, 400)}` : ''}`);
+  }
+}
+
+interface ApiResult {
+  status: number;
+  body: any;
+  headers: Headers;
+}
+
+async function api(
+  method: string,
+  path: string,
+  opts: { token?: string; body?: unknown; headers?: Record<string, string> } = {},
+): Promise<ApiResult> {
+  const headers: Record<string, string> = { ...(opts.headers || {}) };
+  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers,
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
+  const text = await res.text();
+  let body: any = text;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    /* CSV or plain text */
+  }
+  return { status: res.status, body, headers: res.headers };
+}
+
+async function register(name: string, orgName: string, extra: Record<string, unknown> = {}) {
+  const email = `${name.toLowerCase()}.${RUN}@e2e.spendguard.test`;
+  const res = await api('POST', '/auth/register', {
+    body: { email, password: 'CorrectHorse!42', name, orgName, ...extra },
+  });
+  return { ...res, email };
+}
+
+const chat = (content: string) => ({ model: 'gpt-4o-mini', messages: [{ role: 'user', content }], max_tokens: 50 });
 
 async function run() {
-  const mockConfigService: any = {
-    get: (key: string) => {
-      if (key === 'encryptionMasterKey') return 'spendguard-master-encryption-key-32b!';
-      if (key === 'jwt.accessSecret') return 'spendguard-jwt-access-secret-32b-min!';
-      if (key === 'STRIPE_SECRET_KEY') return 'sk_test_mock_stripe_key_12345';
-      if (key === 'STRIPE_WEBHOOK_SECRET') return 'whsec_test_mock_webhook_secret_67890';
-      return undefined;
-    },
-  };
+  console.log(`\nSpendGuard live E2E against ${BASE} (run ${RUN})\n`);
 
-  const usersTable: any[] = [];
-  const inMemoryCache = new Map<string, string>();
+  // ── 1. Health & public surface ───────────────────────────────────────────
+  console.log('▶ Health & public endpoints');
+  const health = await api('GET', '/health');
+  check('health is public and reports ok', health.status === 200 && health.body.status === 'ok', health.body);
+  const pricing = await api('GET', '/api/v1/pricing');
+  check('pricing catalog is public', pricing.status === 200 && pricing.body.data != null, pricing.status);
 
-  const mockPrisma: any = {
-    modelPricing: { findMany: async () => [] },
-    user: {
-      findUnique: async ({ where }: any) => usersTable.find((u) => (where.email && u.email === where.email) || (where.id && u.id === where.id)) || null,
-      findMany: async (args?: any) => {
-        if (!args || !args.where) return [...usersTable];
-        return usersTable.filter((u) => !args.where.orgId || u.orgId === args.where.orgId);
-      },
-      count: async (args?: any) => {
-        if (!args || !args.where) return usersTable.length;
-        return usersTable.filter((u) => !args.where.orgId || u.orgId === args.where.orgId).length;
-      },
-      create: async ({ data }: any) => {
-        const u = { id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, createdAt: new Date(), ...data };
-        usersTable.push(u);
-        return u;
-      },
-      update: async ({ where, data }: any) => {
-        const u = usersTable.find((x) => x.id === where.id);
-        if (u) Object.assign(u, data);
-        return u;
-      },
-    },
-    organization: {
-      findFirst: async () => null,
-      create: async ({ data }: any) => ({ id: `org_${Date.now()}`, ...data }),
-    },
-    subscription: {
-      findUnique: async ({ where }: any) => {
-        if (where.orgId === 'org_premium') {
-          return {
-            orgId: 'org_premium',
-            tier: 'growth',
-            status: 'active',
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 3600 * 1000),
-          };
-        }
-        return null;
-      },
-      upsert: async (args: any) => args.create,
-    },
-    project: {
-      findMany: async () => [
-        { id: 'proj_alpha', name: 'Alpha Project', budgetMonthly: 500, isBlocked: false },
-      ],
-      findUnique: async () => ({ id: 'proj_alpha', name: 'Alpha Project', budgetMonthly: 500, isBlocked: false }),
-    },
-    request: {
-      findMany: async () => [],
-      count: async () => 0,
-      aggregate: async () => ({
-        _sum: { costEstimate: 0.045, totalTokens: 1250 },
-        _count: { id: 6 },
-        _avg: { latencyMs: 22 },
-      }),
-      groupBy: async () => [
-        {
-          model: 'gpt-4o',
-          provider: 'OPENAI',
-          projectId: 'proj_alpha',
-          _sum: { costEstimate: 0.045, totalTokens: 1250 },
-          _count: { id: 6 },
-        },
-      ],
-    },
-    auditLog: {
-      create: async ({ data }: any) => ({ id: `aud_${Date.now()}`, ...data, createdAt: new Date() }),
-    },
-  };
-
-  const mockRedis: any = {
-    isConnected: true,
-    getClient: () => null,
-    getCache: async (key: string) => inMemoryCache.get(key) || null,
-    setCache: async (key: string, val: string) => { inMemoryCache.set(key, val); },
-    delCache: async (key: string) => { inMemoryCache.delete(key); },
-  };
-
-  const mockJwtService: any = {
-    sign: (payload: any) => `jwt_token_${payload.sub}_${Date.now()}`,
-    verify: (token: string) => ({ sub: 'user_123', email: 'elena@company.com', orgId: 'org_123', role: 'OWNER' }),
-  };
-
-  const encryptionService = new EncryptionService(mockConfigService);
-  const pricingService = new PricingService(mockPrisma, mockRedis);
-  const anomalyService = new AnomalyService();
-  const billingService = new BillingService(mockPrisma, mockConfigService);
-  const authService = new AuthService(mockPrisma, mockJwtService, mockConfigService, mockRedis);
-  const auditService = new AuditService(mockPrisma);
-  const analyticsService = new AnalyticsService(mockPrisma, mockRedis);
-
-  let passedScenarios = 0;
-
-  // SCENARIO 1: Envelope Encryption & Masking
-  console.log('▶ Scenario 1: AES-256-GCM Envelope Encryption & Zero Plaintext Leaks');
-  const plainKey = 'sk-proj-live-production-secret-key-1234567890';
-  const cipher = encryptionService.encryptApiKey(plainKey);
-  const decrypted = encryptionService.decryptApiKey(cipher);
-  const masked = encryptionService.maskApiKey(plainKey);
-  if (decrypted !== plainKey || cipher === plainKey) throw new Error('Encryption integrity failure');
-  if (!masked.startsWith('sk-') || !masked.endsWith('7890') || masked.includes('production-secret')) {
-    throw new Error('Masking leaked internal key bytes');
+  // ── 2. Authentication is enforced ────────────────────────────────────────
+  console.log('\n▶ Authentication required on tenant APIs');
+  for (const [m, p] of [
+    ['GET', '/api/v1/projects'],
+    ['POST', '/api/v1/projects'],
+    ['GET', '/api/v1/keys'],
+    ['DELETE', '/api/v1/keys?id=x&type=PROVIDER'],
+    ['GET', '/api/v1/team'],
+    ['GET', '/api/v1/audit'],
+    ['GET', '/api/v1/audit/export'],
+    ['GET', '/api/v1/analytics'],
+    ['GET', '/api/v1/alerts'],
+    ['PATCH', '/api/v1/alerts'],
+    ['GET', '/api/v1/billing/subscription'],
+    ['POST', '/api/v1/billing/checkout'],
+  ] as const) {
+    const r = await api(m, p, m === 'GET' || m === 'DELETE' ? {} : { body: {} });
+    check(`${m} ${p} → 401 without token`, r.status === 401, r.status);
   }
-  console.log(`  ✓ Key securely encrypted (${cipher.slice(0, 24)}...) and masked (${masked})`);
-  passedScenarios++;
+  const forged = await api('GET', '/api/v1/projects', { token: 'not-a-real-jwt' });
+  check('forged bearer token → 401', forged.status === 401, forged.status);
 
-  // SCENARIO 2: Gateway Virtual Key Generation & Hash Verification
-  console.log('\n▶ Scenario 2: Virtual Gateway Token Generation (sg_live_*) & Hash Storage');
-  const { secret, keyPrefix, hashedSecret } = encryptionService.generateGatewaySecret();
-  if (!secret.startsWith('sg_live_') || !hashedSecret) throw new Error('Gateway secret shape invalid');
-  const computedHash = encryptionService.hashToken(secret);
-  if (computedHash !== hashedSecret) throw new Error('Hashed token mismatch');
-  console.log(`  ✓ Virtual key generated: ${keyPrefix}•••••••• [Hashed: ${hashedSecret.slice(0, 16)}...]`);
-  passedScenarios++;
+  // ── 3. Registration isolates tenants ─────────────────────────────────────
+  console.log('\n▶ Registration creates isolated organizations');
+  const alice = await register('Alice', `Acme ${RUN}`);
+  const bob = await register('Bob', `Globex ${RUN}`);
+  check('alice registered as OWNER', alice.status === 201 && alice.body.user?.role === 'OWNER', alice.body);
+  check('bob registered as OWNER', bob.status === 201 && bob.body.user?.role === 'OWNER', bob.body);
+  check('alice and bob are in different orgs', alice.body.user?.orgId && alice.body.user.orgId !== bob.body.user?.orgId);
 
-  // SCENARIO 3: Provider Key Format Validation & Upstream Connection Check
-  console.log('\n▶ Scenario 3: Provider Key Syntax & Upstream Format Validation');
-  const validOpenAI = plainKey.startsWith('sk-');
-  const validAnthropic = 'sk-ant-api03-test'.startsWith('sk-ant-');
-  const validGemini = 'AQ.Ab8RN6JW4lME'.length > 10;
-  if (!validOpenAI || !validAnthropic || !validGemini) throw new Error('Provider key validation failed');
-  console.log('  ✓ OpenAI, Anthropic, and Gemini key signatures validated');
-  passedScenarios++;
-
-  // SCENARIO 4: Multi-Provider Pricing Catalog Accuracy
-  console.log('\n▶ Scenario 4: FinOps Token Cost Calculations');
-  const costGpt4o = pricingService.calculateCost('gpt-4o', 1000, 500); // 1k in ($0.0025) + 0.5k out ($0.005) = $0.0075
-  const costClaude = pricingService.calculateCost('claude-3-5-sonnet-20241022', 1000, 500); // 1k in ($0.003) + 0.5k out ($0.0075) = $0.0105
-  const costGemini = pricingService.calculateCost('gemini-1.5-pro', 1000, 500); // 1k in ($0.00125) + 0.5k out ($0.0025) = $0.00375
-  if (costGpt4o !== 0.0075 || costClaude !== 0.0105 || costGemini !== 0.00375) {
-    throw new Error('Pricing catalog computation error');
-  }
-  console.log(`  ✓ GPT-4o cost: $${costGpt4o.toFixed(5)}`);
-  console.log(`  ✓ Claude 3.5 Sonnet cost: $${costClaude.toFixed(5)}`);
-  console.log(`  ✓ Gemini 1.5 Pro cost: $${costGemini.toFixed(5)}`);
-  passedScenarios++;
-
-  // SCENARIO 5: Pre-Flight Capacity Reservation Estimation
-  console.log('\n▶ Scenario 5: Pre-Flight Capacity Reservation (Worst-Case Cost Ceiling)');
-  const reservationCeiling = pricingService.estimateMaxCost('gpt-4o', 1200, 2048);
-  // (1200 / 1M * 2.50) + (2048 / 1M * 10.00) = 0.003 + 0.02048 = 0.02348
-  if (Math.abs(reservationCeiling - 0.02348) > 0.00001) throw new Error('Reservation ceiling calculation error');
-  console.log(`  ✓ Worst-case ceiling computed: $${reservationCeiling.toFixed(6)}`);
-  passedScenarios++;
-
-  // SCENARIO 6: Atomic Budget Reservation & Reconciliation State Machine
-  console.log('\n▶ Scenario 6: Atomic Budget State Machine (Reserve -> Execute -> Reconcile)');
-  let simulatedRemainingBudget = 0.050000;
-  const reserveAmt = reservationCeiling; // $0.02348
-  if (reserveAmt > simulatedRemainingBudget) throw new Error('Budget should have accepted reservation');
-  simulatedRemainingBudget -= reserveAmt; // Reserved
-  console.log(`  ✓ Capacity reserved. Remaining allocation: $${simulatedRemainingBudget.toFixed(6)}`);
-
-  // Upstream returns actual 1200 prompt + 240 completion tokens
-  const actualCost = pricingService.calculateCost('gpt-4o', 1200, 240); // 0.003 + 0.0024 = $0.0054
-  const delta = reserveAmt - actualCost; // Refund unspent difference
-  simulatedRemainingBudget += delta;
-  console.log(`  ✓ Actual usage reconciled ($${actualCost.toFixed(6)}). Unspent refund ($${delta.toFixed(6)}) restored.`);
-  console.log(`  ✓ Final settled budget: $${simulatedRemainingBudget.toFixed(6)}`);
-  passedScenarios++;
-
-  // SCENARIO 7: Budget Hard-Block Enforcement Under Concurrency
-  console.log('\n▶ Scenario 7: Budget Hard-Block & Fail-Closed Enforcement');
-  const tinyRemainingBudget = 0.001; // Only $0.001 left
-  const requiredReservation = pricingService.estimateMaxCost('gpt-4o', 1000, 1000); // $0.0125
-  const isBlocked = requiredReservation > tinyRemainingBudget;
-  if (!isBlocked) throw new Error('Hard block failed to trip');
-  console.log(`  ✓ Request rejected with 429 budget_exceeded (Required: $${requiredReservation.toFixed(4)}, Available: $${tinyRemainingBudget.toFixed(4)})`);
-  passedScenarios++;
-
-  // SCENARIO 8: Statistical Outlier Spike Anomaly Detection (FR-9)
-  console.log('\n▶ Scenario 8: Statistical Z-Score Outlier Spike Detection');
-  const history = [
-    { costEstimate: 0.005, totalTokens: 400 },
-    { costEstimate: 0.006, totalTokens: 480 },
-    { costEstimate: 0.004, totalTokens: 380 },
-    { costEstimate: 0.005, totalTokens: 420 },
-    { costEstimate: 0.007, totalTokens: 550 },
-  ];
-  const normalCheck = anomalyService.detectSpike(0.0055, 450, history);
-  const anomalyCheck = anomalyService.detectSpike(0.3500, 20000, history);
-  if (normalCheck.isAnomaly || !anomalyCheck.isAnomaly) throw new Error('Anomaly detection classification error');
-  console.log(`  ✓ Normal request passed: isAnomaly=${normalCheck.isAnomaly}`);
-  console.log(`  ✓ Spike flagged: isAnomaly=${anomalyCheck.isAnomaly} [Z-Score: ${anomalyCheck.score}]`);
-  console.log(`  ✓ Anomaly explanation: "${anomalyCheck.reason}"`);
-  passedScenarios++;
-
-  // SCENARIO 9: Multi-Channel Alert Payload Construction
-  console.log('\n▶ Scenario 9: Multi-Channel Alert Dispatch Formats');
-  const slackPayload = {
-    text: `🚨 *SpendGuard Alert*: Project *Production Copilot* reached 85% of monthly budget ($850.00 / $1,000.00).`,
-  };
-  const emailPayload = {
-    subject: `[SpendGuard] Budget Alert: Production Copilot at 85%`,
-    to: 'finops@company.com',
-  };
-  if (!slackPayload.text.includes('Production Copilot') || !emailPayload.to) throw new Error('Alert payload malformed');
-  console.log('  ✓ Slack BlockKit and Email alert payloads structured correctly');
-  passedScenarios++;
-
-  // SCENARIO 10: Immutable Audit Log Record Integrity
-  console.log('\n▶ Scenario 10: Immutable Audit Ledger Entry Composition');
-  const auditEntry = {
-    id: `req_${Date.now()}_abc123`,
-    orgId: 'org_apex',
-    projectId: 'proj_copilot',
-    provider: 'OPENAI',
-    model: 'gpt-4o',
-    tokensIn: 1200,
-    tokensOut: 450,
-    costEstimate: 0.0075,
-    latencyMs: 382,
-    statusCode: 200,
-    isAnomaly: false,
-    createdAt: new Date().toISOString(),
-  };
-  if (!auditEntry.id || auditEntry.costEstimate !== 0.0075) throw new Error('Audit entry invalid');
-  console.log(`  ✓ Audit entry cryptographically stamped: ${auditEntry.id} (Cost: $${auditEntry.costEstimate})`);
-  passedScenarios++;
-
-  // SCENARIO 11: CSV Audit Ledger Export Formatting
-  console.log('\n▶ Scenario 11: CSV Audit Export Data Formatting');
-  const csvHeaders = 'Timestamp,Request ID,Project ID,Model,Tokens In,Tokens Out,Cost USD,Latency ms,Status\n';
-  const csvRow = `${auditEntry.createdAt},${auditEntry.id},${auditEntry.projectId},${auditEntry.model},${auditEntry.tokensIn},${auditEntry.tokensOut},${auditEntry.costEstimate.toFixed(6)},${auditEntry.latencyMs},${auditEntry.statusCode}\n`;
-  const fullCsv = csvHeaders + csvRow;
-  if (!fullCsv.includes('Cost USD') || !fullCsv.includes('0.007500')) throw new Error('CSV formatting error');
-  console.log(`  ✓ CSV export generated (${fullCsv.split('\n').length - 1} lines)`);
-  passedScenarios++;
-
-  // SCENARIO 12: Stripe Billing Checkout & Subscription Resolution
-  console.log('\n▶ Scenario 12: Stripe Billing Integration & Plan State Management');
-  const subStatus = await billingService.getSubscription('org_premium');
-  if (subStatus.tier !== 'growth' || subStatus.status !== 'active') throw new Error('Subscription resolution failed');
-  console.log(`  ✓ Subscription resolved: Tier=${subStatus.tier}, Status=${subStatus.status}`);
-  passedScenarios++;
-
-  // SCENARIO 13: Multi-Tenant Organization Boundary Scoping
-  console.log('\n▶ Scenario 13: Multi-Tenant Data Boundary Scoping');
-  const orgA = 'org_alpha';
-  const orgB = 'org_beta';
-  const queryFilterA = { where: { orgId: orgA } };
-  const queryFilterB = { where: { orgId: orgB } };
-  if (queryFilterA.where.orgId === queryFilterB.where.orgId) throw new Error('Cross-tenant bleed');
-  console.log('  ✓ Prisma queries enforce strict orgId isolation across all tenant paths');
-  passedScenarios++;
-
-  // SCENARIO 14: Zero-State Resilience & Fail-Closed Policy
-  console.log('\n▶ Scenario 14: Zero-State & Fail-Closed Disaster Policy');
-  const redisConnected = false;
-  const failClosedPolicy = true;
-  const requestDecision = (!redisConnected && failClosedPolicy) ? 503 : 200;
-  if (requestDecision !== 503) throw new Error('Failed to enforce fail-closed policy');
-  console.log('  ✓ Redis outage triggers HTTP 503 governance_unavailable (Zero financial loss)');
-  passedScenarios++;
-
-  // SCENARIO 15: Password Complexity & Entropy Validation
-  console.log('\n▶ Scenario 15: Password Complexity & Entropy Validation');
-  const weakPassword = '123';
-  const strongPassword = 'P@ssword123!SecureFinOps';
-  const isWeak = weakPassword.length < 8;
-  const isStrong = strongPassword.length >= 8 && /[A-Z]/.test(strongPassword) && /[0-9]/.test(strongPassword) && /[^A-Za-z0-9]/.test(strongPassword);
-  if (!isWeak || !isStrong) throw new Error('Password complexity check failed');
-  console.log('  ✓ Password complexity scoring verified (rejection on <8 chars, passes entropy check)');
-  passedScenarios++;
-
-  // SCENARIO 16: Password Mismatch & Confirmation Rejection
-  console.log('\n▶ Scenario 16: Confirm Password Validation & Match Enforcement');
-  const pwd1: string = 'FinOpsLeader2026!';
-  const pwd2: string = 'FinOpsLeader2026?';
-  const matchFails = pwd1 !== pwd2;
-  const matchPasses = pwd1 === ('FinOpsLeader2026!' as string);
-  if (!matchFails || !matchPasses) throw new Error('Confirm password mismatch validation failed');
-  console.log('  ✓ Confirm password match verified (submission blocked on mismatch)');
-  passedScenarios++;
-
-  // SCENARIO 17: User Registration & PBKDF2 Password Hashing
-  console.log('\n▶ Scenario 17: User Registration & PBKDF2 Password Derivation');
-  const regResult = await authService.register({
-    email: 'elena.finops@company.com',
-    password: 'SuperSecurePassword2026!',
-    name: 'Elena FinOps',
-    orgName: 'FinOps Enterprise Org',
+  const aliceTeam = await api('GET', '/api/v1/team', { token: alice.body.accessToken });
+  const aliceSlug = aliceTeam.body.organization?.slug;
+  const mallory = await register('Mallory', 'Anything', { orgSlug: aliceSlug });
+  check(
+    'registering with another org\'s slug does NOT join that org',
+    mallory.status === 201 && mallory.body.user?.orgId !== alice.body.user.orgId,
+    mallory.body.user,
+  );
+  const dup = await api('POST', '/auth/register', {
+    body: { email: alice.email.toUpperCase(), password: 'CorrectHorse!42', name: 'Dup' },
   });
-  if (!regResult.user.id || !regResult.accessToken || !regResult.refreshToken) {
-    throw new Error('Registration failed to return user and dual JWT tokens');
-  }
-  const storedUser = usersTable.find((u) => u.email === 'elena.finops@company.com');
-  if (!storedUser || !storedUser.passwordHash.startsWith('$pbkdf2$')) {
-    throw new Error('Password was not hashed using PBKDF2 standard');
-  }
-  console.log(`  ✓ User registered (${regResult.user.email}). Password stored as PBKDF2 hash: ${storedUser.passwordHash.substring(0, 22)}...`);
-  passedScenarios++;
+  check('duplicate email (case-insensitive) → 409', dup.status === 409, dup.status);
 
-  // SCENARIO 18: Password Reset Token Life-Cycle & 1-Hour Time-Limit (Redis Cache)
-  console.log('\n▶ Scenario 18: Password Reset Token Life-Cycle (1-Hour Time-Limit)');
-  const forgotResult = await authService.forgotPassword({ email: 'elena.finops@company.com' });
-  if (!forgotResult.success || !forgotResult.resetToken) {
-    throw new Error('Forgot password flow failed to generate reset token');
-  }
-  const cachedResetData = await mockRedis.getCache(`spendguard:pwd_reset:${forgotResult.resetToken}`);
-  if (!cachedResetData) throw new Error('Reset token was not persisted in Redis cache');
-  console.log(`  ✓ Time-limited token generated: ${forgotResult.resetToken.substring(0, 16)}... (Stored in Redis with 1h TTL)`);
-  passedScenarios++;
+  const A = alice.body.accessToken as string;
+  const B = bob.body.accessToken as string;
 
-  // SCENARIO 19: One-Time Token Usage (Invalidation immediately upon password reset)
-  console.log('\n▶ Scenario 19: One-Time Token Usage & Instant Cache Invalidation');
-  const resetResult = await authService.resetPassword({
-    token: forgotResult.resetToken,
-    newPassword: 'BrandNewSecurePassword2026!',
+  // ── 4. Login & refresh ───────────────────────────────────────────────────
+  console.log('\n▶ Login & session refresh');
+  const login = await api('POST', '/auth/login', { body: { email: `  ${alice.email.toUpperCase()} `, password: 'CorrectHorse!42' } });
+  check('login works with differently-cased email', login.status === 200 && !!login.body.accessToken, login.status);
+  const badLogin = await api('POST', '/auth/login', { body: { email: alice.email, password: 'wrong-password' } });
+  check('wrong password → 401 with flat error message', badLogin.status === 401 && typeof badLogin.body.error?.message === 'string', badLogin.body);
+  const refreshed = await api('POST', '/auth/refresh', { body: { refreshToken: alice.body.refreshToken } });
+  check('refresh issues a new access token', refreshed.status === 200 && !!refreshed.body.accessToken, refreshed.status);
+  const badRefresh = await api('POST', '/auth/refresh', { body: { refreshToken: A } });
+  check('access token cannot be used as refresh token', badRefresh.status === 401, badRefresh.status);
+
+  // ── 5. Projects are tenant-scoped ────────────────────────────────────────
+  console.log('\n▶ Projects: tenant scoping');
+  const projA = await api('POST', '/api/v1/projects', { token: A, body: { name: 'Support Bot', budgetMonthly: 100 } });
+  const projectA = projA.body.project;
+  check('alice creates a project', projA.status === 201 && !!projectA?.id, projA.body);
+  check('project belongs to alice\'s org', projectA?.orgId === alice.body.user.orgId, projectA?.orgId);
+
+  const bobList = await api('GET', '/api/v1/projects', { token: B });
+  check('bob cannot see alice\'s project', bobList.status === 200 && !bobList.body.projects.some((p: any) => p.id === projectA.id));
+  const aliceList = await api('GET', '/api/v1/projects', { token: A });
+  check('alice sees her project', aliceList.body.projects?.some((p: any) => p.id === projectA.id));
+
+  const bobPatch = await api('PATCH', '/api/v1/projects', { token: B, body: { id: projectA.id, isBlocked: true } });
+  check('bob cannot modify alice\'s project (404)', bobPatch.status === 404, bobPatch.status);
+  const slugClash = await api('POST', '/api/v1/projects', { token: A, body: { name: 'Support Bot', budgetMonthly: 10 } });
+  check('duplicate project slug in same org → 409', slugClash.status === 409, slugClash.status);
+
+  // ── 6. Key vault ─────────────────────────────────────────────────────────
+  console.log('\n▶ Key vault: tenant scoping');
+  const pk = await api('POST', '/api/v1/keys', {
+    token: A,
+    body: { type: 'PROVIDER', projectId: projectA.id, provider: 'OPENAI', keyName: 'Primary', plainKey: 'sk-e2e-test-key-1234567890' },
   });
-  if (!resetResult.success) throw new Error('Password reset failed with valid token');
-  const tokenAfterReset = await mockRedis.getCache(`spendguard:pwd_reset:${forgotResult.resetToken}`);
-  if (tokenAfterReset !== null) throw new Error('Reset token was not invalidated after single use');
-  console.log('  ✓ Password reset succeeded and token was immediately purged from Redis (One-Time Use)');
-  passedScenarios++;
+  check('alice stores an encrypted provider key', pk.status === 201 && pk.body.maskedPreview === 'sk-...7890', pk.body);
+  check('provider key plaintext is never returned', !JSON.stringify(pk.body).includes('sk-e2e-test-key-1234567890'));
 
-  // SCENARIO 20: Audit Query Multi-Criteria Filtering (Search, Provider, Status, Dates)
-  console.log('\n▶ Scenario 20: Audit Query Multi-Criteria Filtering');
-  const auditLogsResult = await auditService.listLogs({
-    projectId: 'proj_alpha',
-    model: 'gpt-4o',
-    provider: 'OPENAI',
-    search: 'req_123',
-    status: 200,
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    limit: 10,
-    offset: 0,
+  const bobKeyOnA = await api('POST', '/api/v1/keys', {
+    token: B,
+    body: { type: 'GATEWAY', projectId: projectA.id, keyName: 'steal' },
   });
-  if (typeof auditLogsResult.total !== 'number' || !Array.isArray(auditLogsResult.logs)) {
-    throw new Error('Audit listLogs failed multi-criteria query validation');
-  }
-  console.log('  ✓ Multi-criteria audit filtering verified (Search, Model, Provider, Status, Date range, Pagination)');
-  passedScenarios++;
+  check('bob cannot mint a gateway key for alice\'s project (404)', bobKeyOnA.status === 404, bobKeyOnA.status);
 
-  // SCENARIO 21: Redis Telemetry Caching & TTL Freshness Boundary
-  console.log('\n▶ Scenario 21: Redis Telemetry Caching & TTL Freshness Boundary');
-  const analyticsFirst = await analyticsService.getDashboardAnalytics('proj_alpha', 'org_123');
-  const cachedAnalyticsStr = await mockRedis.getCache('spendguard:analytics:org_123:proj_alpha');
-  if (!cachedAnalyticsStr) throw new Error('Analytics response was not cached in Redis');
-  const analyticsSecond = await analyticsService.getDashboardAnalytics('proj_alpha', 'org_123');
-  if (analyticsFirst.summary.totalSpend !== analyticsSecond.summary.totalSpend) {
-    throw new Error('Cached analytics data mismatch');
-  }
-  console.log('  ✓ Redis telemetry caching verified (15-second TTL prevents repeated database scans)');
-  passedScenarios++;
+  const gw = await api('POST', '/api/v1/keys', { token: A, body: { type: 'GATEWAY', projectId: projectA.id, keyName: 'App' } });
+  const gatewayKey: string = gw.body.secret;
+  check('alice mints a gateway key (shown once)', gw.status === 201 && /^sg_live_[0-9a-f]+$/.test(gatewayKey || ''), gw.body);
 
-  // SCENARIO 22: IDOR Defense — Cross-Tenant Resource Isolation
-  console.log('\n▶ Scenario 22: IDOR Defense & Tenant Ownership Validation');
-  const tenantAlphaOrg = 'org_alpha';
-  const tenantBetaOrg = 'org_beta';
-  const isResourceAllowed = (requestOrgId: string, resourceOrgId: string) => requestOrgId === resourceOrgId;
-  const unauthorizedAttempt = isResourceAllowed(tenantAlphaOrg, tenantBetaOrg);
-  const authorizedAttempt = isResourceAllowed(tenantAlphaOrg, tenantAlphaOrg);
-  if (unauthorizedAttempt !== false || authorizedAttempt !== true) {
-    throw new Error('IDOR defense check failed to isolate cross-tenant resources');
-  }
-  console.log('  ✓ Strict IDOR boundary verified (Cross-tenant modification rejected)');
-  passedScenarios++;
+  const bobKeys = await api('GET', '/api/v1/keys', { token: B });
+  check('bob\'s key listing excludes alice\'s keys', bobKeys.body.providerKeys?.length === 0 && bobKeys.body.gatewayKeys?.length === 0, bobKeys.body);
+  const bobRevoke = await api('DELETE', `/api/v1/keys?id=${gw.body.id}&type=GATEWAY`, { token: B });
+  check('bob cannot revoke alice\'s key (404)', bobRevoke.status === 404, bobRevoke.status);
+  const badType = await api('POST', '/api/v1/keys', { token: A, body: { type: 'TEST_CONNECTION', provider: 'OPENAI' } });
+  check('unknown key type → 400 (not silently stored)', badType.status === 400, badType.status);
 
-  // SCENARIO 23: Onboarding Sequence & Initial State Decoupling
-  console.log('\n▶ Scenario 23: Onboarding Sequence & Product Tour Decoupling');
-  const newUser = await authService.register({
-    email: 'newuser.finops@company.com',
-    password: 'SecurePassword2026!',
-    name: 'New FinOps Engineer',
-    orgName: 'FinOps Sandbox Org',
+  // ── 7. Gateway authentication ────────────────────────────────────────────
+  console.log('\n▶ Gateway: credentials are mandatory');
+  const noCreds = await api('POST', '/v1/chat/completions', { body: chat('hi') });
+  check('no credentials → 401', noCreds.status === 401, noCreds.status);
+  const headerOnly = await api('POST', '/v1/chat/completions', {
+    body: chat('hi'),
+    headers: { 'x-spendguard-project-id': projectA.id },
   });
-  if (!newUser.user.id || !newUser.user.orgId) {
-    throw new Error('Account initialization failed to create user and org');
-  }
-  const initialKeys = await mockPrisma.request.findMany();
-  const tourTriggerAllowed = Boolean(newUser.accessToken && initialKeys.length === 0);
-  if (!tourTriggerAllowed) {
-    throw new Error('Product tour incorrectly gated behind API key initialization');
-  }
-  console.log('  ✓ Account successfully initialized (User & Org created)');
-  console.log('  ✓ Product tour decoupled from provider keys (Can launch immediately upon registration)');
-  passedScenarios++;
+  check('project header alone is NOT enough → 401', headerOnly.status === 401, headerOnly.status);
+  check('gateway errors are flat {error:{message}}', typeof noCreds.body.error?.message === 'string' && !noCreds.body.error?.error, noCreds.body);
+  const badKey = await api('POST', '/v1/chat/completions', { token: 'sg_live_deadbeef', body: chat('hi') });
+  check('invalid gateway key → 401', badKey.status === 401, badKey.status);
+  const bobSession = await api('POST', '/v1/chat/completions', { token: B, body: { ...chat('hi'), projectId: projectA.id } });
+  check('bob\'s session cannot use alice\'s project → 404', bobSession.status === 404, bobSession.status);
 
-  // SCENARIO 24: Account Deactivation — Password Identity Verification & Confirmation Phrase
-  console.log('\n▶ Scenario 24: Account Deactivation — Password Challenge & Phrase Verification');
-  let deactFailedWrongPhrase = false;
-  try {
-    await authService.deactivateAccount(newUser.user.id, {
-      password: 'SecurePassword2026!',
-      confirmPhrase: 'CANCEL',
-    });
-  } catch {
-    deactFailedWrongPhrase = true;
-  }
-  if (!deactFailedWrongPhrase) throw new Error('Deactivation succeeded without DEACTIVATE phrase');
-
-  let deactFailedWrongPassword = false;
-  try {
-    await authService.deactivateAccount(newUser.user.id, {
-      password: 'WrongPassword!',
-      confirmPhrase: 'DEACTIVATE',
-    });
-  } catch {
-    deactFailedWrongPassword = true;
-  }
-  if (!deactFailedWrongPassword) throw new Error('Deactivation succeeded with wrong password');
-  console.log('  ✓ Password identity challenge enforced (Rejects invalid password)');
-  console.log('  ✓ Explicit confirmation phrase ("DEACTIVATE") verified');
-  passedScenarios++;
-
-  // SCENARIO 25: Account Deactivation — Organization Ownership Safety Constraint
-  console.log('\n▶ Scenario 25: Organization Ownership Safety Constraints');
-  const secondaryMember = await mockPrisma.user.create({
-    data: {
-      orgId: newUser.user.orgId,
-      email: 'member@company.com',
-      name: 'Team Member',
-      passwordHash: 'dummy_hash',
-      role: 'MEMBER',
-    },
+  // ── 8. Governed request path ─────────────────────────────────────────────
+  console.log('\n▶ Gateway: governed request (mock upstream)');
+  const ok = await api('POST', '/v1/chat/completions', {
+    token: gatewayKey,
+    body: { ...chat('hello from e2e'), userId: bob.body.user.id, projectId: 'ignored' },
   });
+  check('gateway key request succeeds', ok.status === 200 && ok.body.object === 'chat.completion', ok.body);
+  check('response is OpenAI-shaped with usage', ok.body.usage?.total_tokens === 1600, ok.body.usage);
+  check('cost is computed from real usage', ok.body.governance?.cost_estimate_usd > 0, ok.body.governance);
+  check('cost header is set', Number(ok.headers.get('x-spendguard-cost')) > 0, ok.headers.get('x-spendguard-cost'));
+  check('the key decides the project (body projectId ignored)', ok.body.governance?.project_id === projectA.id);
+  check('internal headers object is not leaked in body', ok.body.headers === undefined);
 
-  let soleOwnerBlocked = false;
-  try {
-    await authService.deactivateAccount(newUser.user.id, {
-      password: 'SecurePassword2026!',
-      confirmPhrase: 'DEACTIVATE',
-    });
-  } catch (err: any) {
-    if (err.message && err.message.includes('sole OWNER')) {
-      soleOwnerBlocked = true;
-    }
-  }
-  if (!soleOwnerBlocked) throw new Error('Sole OWNER of multi-user org was not prevented from deactivation');
-  console.log('  ✓ Ownership constraint enforced (Sole owner blocked from deactivating until ownership transferred)');
+  const viaAlias = await api('POST', '/api/v1/chat/completions', { token: gatewayKey, body: chat('alias route') });
+  check('/api/v1 alias works with same auth', viaAlias.status === 200, viaAlias.status);
+  const viaSession = await api('POST', '/v1/chat/completions', { token: A, body: { ...chat('playground'), projectId: projectA.id } });
+  check('dashboard session (playground) works for own project', viaSession.status === 200, viaSession.body);
+  const streamReq = await api('POST', '/v1/chat/completions', { token: gatewayKey, body: { ...chat('x'), stream: true } });
+  check('stream:true is rejected clearly (not silently ignored)', streamReq.status === 400, streamReq.status);
 
-  // Promote secondaryMember to OWNER to safely allow deactivation
-  secondaryMember.role = 'OWNER';
-  const deactSuccess = await authService.deactivateAccount(newUser.user.id, {
-    password: 'SecurePassword2026!',
-    confirmPhrase: 'DEACTIVATE',
-    reason: 'Offboarding to new project',
+  // Request logs are written asynchronously
+  await new Promise((r) => setTimeout(r, 1200));
+
+  // ── 9. Audit & analytics are tenant-scoped ───────────────────────────────
+  console.log('\n▶ Audit & analytics: tenant scoping');
+  const auditA = await api('GET', '/api/v1/audit', { token: A });
+  check('alice sees her 3 request logs', auditA.status === 200 && auditA.body.total === 3, auditA.body.total);
+  check('spoofed body userId is not attributed', !auditA.body.logs?.some((l: any) => l.userId === bob.body.user.id), auditA.body.logs?.map((l: any) => l.userId));
+  const auditB = await api('GET', '/api/v1/audit', { token: B });
+  check('bob sees none of alice\'s logs', auditB.status === 200 && auditB.body.total === 0, auditB.body.total);
+  const auditBFiltered = await api('GET', `/api/v1/audit?projectId=${projectA.id}`, { token: B });
+  check('bob filtering by alice\'s projectId still sees nothing', auditBFiltered.body.total === 0, auditBFiltered.body.total);
+
+  const analyticsA = await api('GET', '/api/v1/analytics', { token: A });
+  const analyticsB = await api('GET', '/api/v1/analytics', { token: B });
+  check('alice analytics counts her requests', analyticsA.body.summary?.totalRequests === 3, analyticsA.body.summary);
+  check('bob analytics is empty', analyticsB.body.summary?.totalRequests === 0 && analyticsB.body.projectBreakdown?.length === 0, analyticsB.body.summary);
+
+  const csvA = await api('GET', '/api/v1/audit/export', { token: A });
+  const csvB = await api('GET', '/api/v1/audit/export', { token: B });
+  check('alice CSV export has header + 3 rows', typeof csvA.body === 'string' && csvA.body.split('\r\n').length === 4, typeof csvA.body === 'string' ? csvA.body.split('\r\n').length : csvA.body);
+  check('bob CSV export has header only', typeof csvB.body === 'string' && csvB.body.split('\r\n').length === 1);
+
+  // ── 10. Alerts ───────────────────────────────────────────────────────────
+  console.log('\n▶ Alerts: tenant scoping');
+  const alert = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: projectA.id, thresholdType: 'PERCENT_80' } });
+  check('alice triggers a test alert', alert.status === 201 && !!alert.body.alert?.id, alert.body);
+  const bobAlertOnA = await api('POST', '/api/v1/alerts', { token: B, body: { projectId: projectA.id, thresholdType: 'HARD_BLOCK' } });
+  check('bob cannot create alerts on alice\'s project (404)', bobAlertOnA.status === 404, bobAlertOnA.status);
+  await api('PATCH', '/api/v1/alerts', { token: B, body: { markAllRead: true } });
+  const alertsA = await api('GET', '/api/v1/alerts', { token: A });
+  check('bob "mark all read" does not touch alice\'s alerts', alertsA.body.alerts?.some((a: any) => a.id === alert.body.alert.id && !a.isRead), alertsA.body.alerts);
+  const bobMarkOne = await api('PATCH', '/api/v1/alerts', { token: B, body: { id: alert.body.alert.id } });
+  check('bob cannot mark alice\'s alert read (404)', bobMarkOne.status === 404, bobMarkOne.status);
+
+  // ── 11. Budget hard block ────────────────────────────────────────────────
+  console.log('\n▶ Budget: fail-closed hard block');
+  const tiny = await api('POST', '/api/v1/projects', { token: A, body: { name: 'Tiny Budget', budgetMonthly: 0.0001 } });
+  const tinyKey = await api('POST', '/api/v1/keys', { token: A, body: { type: 'GATEWAY', projectId: tiny.body.project.id, keyName: 'tiny' } });
+  // Worst-case estimate for 20k output tokens on gpt-4o-mini ≈ $0.012, far above the $0.0001 cap
+  const blocked = await api('POST', '/v1/chat/completions', {
+    token: tinyKey.body.secret,
+    body: { ...chat('expensive'), max_tokens: 20000 },
   });
-  if (!deactSuccess.success) throw new Error('Deactivation failed after ownership constraint resolved');
-  console.log('  ✓ Deactivation succeeded once workspace ownership was safely preserved');
-  passedScenarios++;
+  check('request whose worst case exceeds remaining budget → 429 budget_exceeded', blocked.status === 429 && blocked.body.error?.code === 'budget_exceeded', blocked.body);
+  const tinyAfter = await api('GET', '/api/v1/projects', { token: A });
+  const tinyProj = tinyAfter.body.projects.find((p: any) => p.id === tiny.body.project.id);
+  check('an over-sized request alone does NOT freeze the project', tinyProj?.isBlocked === false, tinyProj);
 
-  // SCENARIO 26: Post-Deactivation Access Revocation (Fail-Closed Token Invalidation)
-  console.log('\n▶ Scenario 26: Post-Deactivation Access Revocation & Session Invalidation');
-  let tokenValidationBlocked = false;
-  try {
-    await authService.validateUser({
-      sub: newUser.user.id,
-      email: newUser.user.email,
-      orgId: newUser.user.orgId,
-      role: 'OWNER',
-    });
-  } catch {
-    tokenValidationBlocked = true;
-  }
-  if (!tokenValidationBlocked) throw new Error('Deactivated user token was not rejected by validateUser');
-
-  let loginBlocked = false;
-  try {
-    await authService.login({
-      email: 'newuser.finops@company.com',
-      password: 'SecurePassword2026!',
-    });
-  } catch {
-    loginBlocked = true;
-  }
-  if (!loginBlocked) throw new Error('Deactivated user was able to log in');
-
-  const otherMemberCheck = await authService.validateUser({
-    sub: secondaryMember.id,
-    email: secondaryMember.email,
-    orgId: secondaryMember.orgId,
-    role: 'OWNER',
+  // Real spend reaching the cap: each mock call settles at ≈ $0.00042 (1200 in / 400 out on gpt-4o-mini)
+  const capped = await api('POST', '/api/v1/projects', { token: A, body: { name: 'Capped', budgetMonthly: 0.0005 } });
+  const cappedId = capped.body.project.id;
+  await api('POST', '/api/v1/keys', {
+    token: A,
+    body: { type: 'PROVIDER', projectId: cappedId, provider: 'OPENAI', keyName: 'p', plainKey: 'sk-e2e-capped-key-0000' },
   });
-  if (!otherMemberCheck.id) throw new Error('Other org members were affected by user deactivation');
+  const cappedKey = (await api('POST', '/api/v1/keys', { token: A, body: { type: 'GATEWAY', projectId: cappedId, keyName: 'c' } })).body.secret;
+  const statuses: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    statuses.push((await api('POST', '/v1/chat/completions', { token: cappedKey, body: chat(`spend ${i}`) })).status);
+  }
+  check('requests succeed until settled spend reaches the cap, then 429', statuses.join(',') === '200,200,429', statuses);
+  const cappedProj = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === cappedId);
+  check('project is frozen once actual spend reaches the cap', cappedProj?.isBlocked === true, cappedProj);
+  const cappedAgain = await api('POST', '/v1/chat/completions', { token: cappedKey, body: { ...chat('tiny'), max_tokens: 1 } });
+  check('frozen project rejects even tiny requests (fail-closed)', cappedAgain.status === 429, cappedAgain.status);
+  const hardBlockAlerts = (await api('GET', '/api/v1/alerts', { token: A })).body.alerts.filter(
+    (a: any) => a.projectId === cappedId && a.thresholdType === 'HARD_BLOCK',
+  );
+  check('exactly one HARD_BLOCK alert is raised', hardBlockAlerts.length === 1, hardBlockAlerts.length);
 
-  console.log('  ✓ Deactivated user tokens fail-closed immediately (JWT validation rejected)');
-  console.log('  ✓ Deactivated user cannot log in');
-  console.log('  ✓ Other organization members remain active and unaffected');
-  passedScenarios++;
+  // ── 12. Key revocation ───────────────────────────────────────────────────
+  console.log('\n▶ Key revocation');
+  const revoke = await api('DELETE', `/api/v1/keys?id=${tinyKey.body.id}&type=GATEWAY`, { token: A });
+  check('alice revokes a key', revoke.status === 200, revoke.status);
+  const afterRevoke = await api('POST', '/v1/chat/completions', { token: tinyKey.body.secret, body: chat('x') });
+  check('revoked key → 401', afterRevoke.status === 401, afterRevoke.status);
 
-  console.log('\n================================================================');
-  console.log(`  SUCCESS: ALL ${passedScenarios}/26 E2E FINOPS SCENARIOS PASSED VERIFICATION!  `);
-  console.log('================================================================\n');
+  // ── 13. Team invite, RBAC, deactivation ──────────────────────────────────
+  console.log('\n▶ Team: invite, RBAC, deactivation');
+  const carolEmail = `carol.${RUN}@e2e.spendguard.test`;
+  const invite = await api('POST', '/api/v1/team', { token: A, body: { name: 'Carol', email: carolEmail, role: 'MEMBER' } });
+  check('alice invites carol into her org', invite.status === 201 && invite.body.user?.orgId === alice.body.user.orgId, invite.body);
+  check('invite returns a set-password token (dev)', typeof invite.body.invite?.token === 'string', invite.body.invite);
+  const setPw = await api('POST', '/auth/reset-password', { body: { token: invite.body.invite.token, newPassword: 'CarolsOwnPass#1' } });
+  check('carol sets her password via the invite token', setPw.status === 200, setPw.body);
+  const reuse = await api('POST', '/auth/reset-password', { body: { token: invite.body.invite.token, newPassword: 'AnotherPass#2' } });
+  check('invite token is single-use', reuse.status === 400, reuse.status);
+  const carol = await api('POST', '/auth/login', { body: { email: carolEmail, password: 'CarolsOwnPass#1' } });
+  check('carol can log in', carol.status === 200, carol.status);
+  const C = carol.body.accessToken as string;
+
+  const carolProjects = await api('GET', '/api/v1/projects', { token: C });
+  check('carol sees alice\'s org projects', carolProjects.body.projects?.some((p: any) => p.id === projectA.id));
+  const carolCreate = await api('POST', '/api/v1/projects', { token: C, body: { name: 'Nope', budgetMonthly: 5 } });
+  check('MEMBER cannot create projects (403)', carolCreate.status === 403, carolCreate.status);
+  const carolKey = await api('POST', '/api/v1/keys', { token: C, body: { type: 'GATEWAY', projectId: projectA.id, keyName: 'x' } });
+  check('MEMBER cannot mint keys (403)', carolKey.status === 403, carolKey.status);
+  const carolInvite = await api('POST', '/api/v1/team', { token: C, body: { name: 'Eve', email: `eve.${RUN}@e2e.spendguard.test`, role: 'ADMIN' } });
+  check('MEMBER cannot invite (403)', carolInvite.status === 403, carolInvite.status);
+
+  const promote = await api('PATCH', '/api/v1/team', { token: B, body: { userId: carol.body.user.id, role: 'OWNER' } });
+  check('bob cannot change roles in alice\'s org (404)', promote.status === 404, promote.status);
+
+  const deact = await api('POST', '/auth/deactivate', { token: C, body: { password: 'CarolsOwnPass#1', confirmPhrase: 'DEACTIVATE' } });
+  check('carol deactivates her account', deact.status === 200, deact.body);
+  const carolAfter = await api('GET', '/api/v1/projects', { token: C });
+  check('deactivated user\'s existing token is rejected immediately', carolAfter.status === 401, carolAfter.status);
+  const carolRelogin = await api('POST', '/auth/login', { body: { email: carolEmail, password: 'CarolsOwnPass#1' } });
+  check('deactivated user cannot log in', carolRelogin.status === 401, carolRelogin.status);
+  const carolRefresh = await api('POST', '/auth/refresh', { body: { refreshToken: carol.body.refreshToken } });
+  check('deactivated user cannot refresh', carolRefresh.status === 401, carolRefresh.status);
+
+  // ── 14. Billing & pricing ────────────────────────────────────────────────
+  console.log('\n▶ Billing & pricing');
+  const ent = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'enterprise' } });
+  check('enterprise is not sold via self-serve checkout (400)', ent.status === 400, ent.status);
+  const starter = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'starter' } });
+  check('starter checkout returns a well-formed URL', starter.status === 201 && (starter.body.checkoutUrl?.match(/\?/g) || []).length === 1, starter.body);
+  const sub = await api('GET', '/api/v1/billing/subscription?orgId=someone-else', { token: B });
+  check('subscription is always for the caller\'s own org', sub.body.orgId === bob.body.user.orgId, sub.body);
+  const pricingWrite = await api('POST', '/api/v1/pricing', {
+    token: A,
+    body: { model: 'gpt-4o-mini', provider: 'OPENAI', inputPricePerMillion: 0, outputPricePerMillion: 0 },
+  });
+  check('org OWNER cannot rewrite the shared pricing catalog (403)', pricingWrite.status === 403, pricingWrite.status);
+
+  // ── 15. Rate limit covers every route alias (run last: it exhausts the IP window) ──
+  console.log('\n▶ Gateway IP rate limit');
+  let limited = false;
+  for (let i = 0; i < 70 && !limited; i++) {
+    const r = await api('POST', '/api/v1/chat/completions', { body: chat('x'), headers: { 'X-Forwarded-For': `10.0.0.${i}` } });
+    if (r.status === 429) limited = true;
+  }
+  check('rate limit applies to /api/v1 alias and ignores spoofed X-Forwarded-For', limited);
+
+  console.log(`\n${passed} passed, ${failures.length} failed`);
+  if (failures.length) {
+    console.log('Failed checks:\n' + failures.map((f) => `  - ${f}`).join('\n'));
+    process.exit(1);
+  }
 }
 
 run().catch((err) => {
-  console.error('\n❌ E2E Verification Suite Failed:', err);
+  console.error('E2E suite crashed:', err);
   process.exit(1);
 });
-

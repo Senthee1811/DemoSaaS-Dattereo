@@ -1,15 +1,27 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PricingService } from './pricing.service';
-import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '@/modules/auth/guards/roles.guard';
-import { Roles } from '@/modules/auth/decorators/roles.decorator';
+import { Public } from '@/modules/auth/decorators/public.decorator';
+import { CurrentUser, AuthenticatedUser } from '@/modules/auth/decorators/current-user.decorator';
+
+/**
+ * The pricing catalog is shared by every tenant, so writes are restricted to
+ * platform operators (PLATFORM_ADMIN_EMAILS), not to any organization OWNER.
+ */
+function isPlatformAdmin(email: string): boolean {
+  const admins = (process.env.PLATFORM_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return admins.includes((email || '').toLowerCase());
+}
 
 @ApiTags('Model Pricing')
 @Controller('api/v1/pricing')
 export class PricingController {
   constructor(private readonly pricingService: PricingService) {}
 
+  @Public()
   @Get()
   @ApiOperation({ summary: 'List all supported model rates and configurations' })
   getPricingCatalog() {
@@ -21,11 +33,10 @@ export class PricingController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('OWNER', 'ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upsert or override dynamic model pricing rate (Admin only)' })
+  @ApiOperation({ summary: 'Upsert or override dynamic model pricing rate (platform admins only)' })
   async updatePricing(
+    @CurrentUser() user: AuthenticatedUser,
     @Body()
     body: {
       model: string;
@@ -36,6 +47,9 @@ export class PricingController {
       contextWindow?: number;
     },
   ) {
+    if (!isPlatformAdmin(user.email)) {
+      throw new ForbiddenException('Only platform administrators can change the shared pricing catalog.');
+    }
     const updated = await this.pricingService.upsertModelPrice(body);
     return {
       status: 'success',

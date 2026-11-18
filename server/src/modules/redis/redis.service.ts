@@ -2,11 +2,18 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
+/** Reconnect backoff: 200 ms, 400 ms, ... capped at 5 s. Never gives up. */
+export function redisRetryDelayMs(times: number): number {
+  return Math.min(times * 200, 5000);
+}
+
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private _isConnected = false;
+  /** Log one error per outage instead of one per reconnect attempt. */
+  private outageLogged = false;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -21,27 +28,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         port,
         password: password || undefined,
         maxRetriesPerRequest: 3,
-        retryStrategy: (times) => {
-          if (times > 5) {
-            this.logger.error('Redis connection failed after 5 retries. Fail-closed policy active.');
-            return null; // Stop retrying
-          }
-          return Math.min(times * 200, 2000);
-        },
+        // Retry forever with capped backoff. Giving up left the gateway at 503
+        // until the backend was restarted, even after Redis came back.
+        retryStrategy: (times) => redisRetryDelayMs(times),
         lazyConnect: true,
       });
 
-      this.client.on('connect', () => {
+      // Only 'ready' means commands can run. Until then getClient() returns null
+      // and the gateway fails closed (503 governance_unavailable).
+      this.client.on('ready', () => {
         this._isConnected = true;
-        this.logger.log('Connected to Redis');
+        this.outageLogged = false;
+        this.logger.log('Redis ready');
       });
 
       this.client.on('error', (err) => {
         this._isConnected = false;
-        this.logger.warn(`Redis connection error: ${err.message}. Fail-closed policy enforced.`);
+        if (!this.outageLogged) {
+          this.outageLogged = true;
+          this.logger.error(`Redis connection error: ${err.message}. Fail-closed policy enforced; reconnecting.`);
+        }
       });
 
       this.client.on('close', () => {
+        this._isConnected = false;
+      });
+
+      this.client.on('reconnecting', () => {
         this._isConnected = false;
       });
 

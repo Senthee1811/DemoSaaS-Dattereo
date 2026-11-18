@@ -20,7 +20,9 @@
     "test:cov": "jest --coverage",
     "test:e2e": "ts-node -r tsconfig-paths/register test/e2e-scenarios.ts",
     "prisma:migrate:dev": "prisma migrate dev",
-    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
+    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "test:redis-outage": "ts-node -r tsconfig-paths/register test/redis-outage.ts",
+    "mock:upstream": "ts-node test/mock-upstream.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.3",

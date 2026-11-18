@@ -55,3 +55,19 @@ describe('Phase 1 hardening', () => {
     });
   });
 });
+
+describe('2. Redis reconnect backoff', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { redisRetryDelayMs } = require('../src/modules/redis/redis.service');
+
+  it('never gives up (always returns a delay) and caps at 5 s', () => {
+    for (const times of [1, 5, 6, 25, 1000, 100000]) {
+      const d = redisRetryDelayMs(times);
+      expect(typeof d).toBe('number');
+      expect(d).toBeGreaterThan(0);
+      expect(d).toBeLessThanOrEqual(5000);
+    }
+    expect(redisRetryDelayMs(1)).toBe(200);
+    expect(redisRetryDelayMs(1000)).toBe(5000);
+  });
+});

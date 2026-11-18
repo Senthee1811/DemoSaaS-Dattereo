@@ -71,6 +71,7 @@ const chat = (content: string) => ({ model: 'gpt-4o-mini', messages: [{ role: 'u
 
 async function run() {
   console.log(`\nSpendGuard live E2E against ${BASE} (run ${RUN})\n`);
+  mockAtStart = await mockStats();
 
   // ── 1. Health & public surface ───────────────────────────────────────────
   console.log('▶ Health & public endpoints');
@@ -341,6 +342,9 @@ async function run() {
   });
   check('org OWNER cannot rewrite the shared pricing catalog (403)', pricingWrite.status === 403, pricingWrite.status);
 
+  // ── Phase 1 hardening ────────────────────────────────────────────────────
+  await phase1(A);
+
   // ── 15. Rate limit covers every route alias (run last: it exhausts the IP window) ──
   console.log('\n▶ Gateway IP rate limit');
   let limited = false;
@@ -354,6 +358,53 @@ async function run() {
   if (failures.length) {
     console.log('Failed checks:\n' + failures.map((f) => `  - ${f}`).join('\n'));
     process.exit(1);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 hardening checks. They need the backend started with
+//   OPENAI_BASE_URL=<mock>/v1  and  OPENAI_API_KEY=sk-platform-...  (a platform key
+// that must NEVER be used for tenant traffic), and the mock upstream reachable at
+// E2E_MOCK_URL so the suite can count upstream calls.
+// ─────────────────────────────────────────────────────────────────────────────
+const MOCK = (process.env.E2E_MOCK_URL || 'http://localhost:4555').replace(/\/$/, '');
+
+let mockAtStart = { calls: 0, platformKeyCalls: 0, byModel: {} as Record<string, number> };
+
+async function mockStats(): Promise<{ calls: number; platformKeyCalls: number; byModel: Record<string, number> }> {
+  const res = await fetch(`${MOCK}/__stats`);
+  return res.json();
+}
+
+async function newProject(token: string, name: string, budgetMonthly: number, extra: Record<string, unknown> = {}) {
+  const p = await api('POST', '/api/v1/projects', { token, body: { name: `${name} ${RUN}`, budgetMonthly, ...extra } });
+  return p.body.project as { id: string };
+}
+
+async function addProviderKey(token: string, projectId: string) {
+  await api('POST', '/api/v1/keys', {
+    token,
+    body: { type: 'PROVIDER', projectId, provider: 'OPENAI', keyName: 'p', plainKey: `sk-e2e-tenant-${projectId.slice(0, 8)}` },
+  });
+}
+
+async function newGatewayKey(token: string, projectId: string, extra: Record<string, unknown> = {}) {
+  const k = await api('POST', '/api/v1/keys', { token, body: { type: 'GATEWAY', projectId, keyName: 'k', ...extra } });
+  return k.body as { id: string; secret: string };
+}
+
+async function phase1(A: string) {
+  // ── P1-1. No platform provider-key fallback ──────────────────────────────
+  console.log('\n▶ Phase 1 · provider keys: no platform fallback');
+  {
+    const proj = await newProject(A, 'No Provider Key', 10);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await api('POST', '/v1/chat/completions', { token: key.secret, body: chat('who pays?') });
+    const after = await mockStats();
+    check('project without provider key → 400 missing_provider_key', r.status === 400 && r.body.error?.code === 'missing_provider_key', r.body);
+    check('missing provider key → 0 upstream calls', after.calls === before.calls, { before, after });
+    check('platform OPENAI_API_KEY is never sent upstream (whole run)', after.platformKeyCalls === mockAtStart.platformKeyCalls, { mockAtStart, after });
   }
 }
 

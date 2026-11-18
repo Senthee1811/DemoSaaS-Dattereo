@@ -161,6 +161,7 @@ model GatewayApiKey {
   createdAt        DateTime  @default(now()) @map("created_at")
 
   project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requests         Request[]
 
   @@index([projectId])
   @@index([hashedSecret])
@@ -171,6 +172,8 @@ model Request {
   id              String       @id
   projectId       String       @map("project_id")
   userId          String?      @map("user_id")
+  /// Gateway key that made the request (null for dashboard-session requests). Per-key spend reconciles from this.
+  gatewayKeyId    String?      @map("gateway_key_id")
   provider        ProviderType
   model           String
   tokensIn        Int          @map("tokens_in")
@@ -189,10 +192,12 @@ model Request {
 
   project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  gatewayKey      GatewayApiKey? @relation(fields: [gatewayKeyId], references: [id], onDelete: SetNull)
   auditLogs       AuditLog[]
 
   @@index([projectId, createdAt])
   @@index([userId])
+  @@index([gatewayKeyId, createdAt])
   @@index([model])
   @@index([createdAt])
   @@map("requests")

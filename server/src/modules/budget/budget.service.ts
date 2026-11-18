@@ -14,8 +14,17 @@ export interface BudgetGuardrailResult {
   currentMonthlySpend: number;
   utilizationPct: number;
   reservedAmount?: number;
+  /** Machine-readable reason when blocked by a cap other than the project's monthly budget. */
+  blockCode?: 'key_budget_exceeded';
   /** Present when the request may proceed; settle or release it by request ID. */
   hold?: BudgetHold;
+}
+
+/** The gateway key a request came through (absent for dashboard-session requests). */
+export interface GatewayKeyLimits {
+  id: string;
+  /** The key's own monthly USD budget; null = only the project budget applies. */
+  budgetMonthly: number | null;
 }
 
 /** A request's budget hold: identified by the request ID, spread over one or more buckets. */
@@ -157,6 +166,7 @@ export class BudgetService {
     projectId: string,
     requestId: string,
     maxEstimatedCost: number,
+    gatewayKey?: GatewayKeyLimits,
   ): Promise<BudgetGuardrailResult> {
     try {
       const project = await this.prisma.project.findUnique({
@@ -187,8 +197,16 @@ export class BudgetService {
 
       const budgetMonthly = Number(project.budgetMonthly);
 
-      // Atomic per-request hold via Redis Lua script (expired holds are dropped first)
-      const buckets = [this.redisService.projectMonthBucket(projectId, budgetMonthly)];
+      // Atomic per-request hold via Redis Lua script (expired holds are dropped first).
+      // Every cap is checked in the same script: the project's monthly budget and,
+      // for gateway-key traffic, the key's own monthly budget. With hard-block off
+      // the project bucket is tracked but uncapped (soft overage).
+      const buckets = [
+        this.redisService.projectMonthBucket(projectId, project.budgetHardBlockEnabled ? budgetMonthly : null),
+      ];
+      if (gatewayKey) {
+        buckets.push(this.redisService.keyMonthBucket(gatewayKey.id, gatewayKey.budgetMonthly));
+      }
       const reservation = await this.redisService.reserveHold(requestId, maxEstimatedCost, buckets);
 
       // Fail-closed if Redis is disconnected or failed
@@ -198,6 +216,20 @@ export class BudgetService {
           canProceed: false,
           isHardBlocked: true,
           blockReason: 'Governance engine unavailable (Redis unreachable). Fail-closed policy enforced.',
+          budgetMonthly,
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      }
+
+      if (reservation.status === 'rejected' && reservation.failedBucket?.name === 'key_monthly') {
+        const cap = reservation.failedBucket.cap ?? 0;
+        const remaining = Math.max(0, cap - reservation.spend - reservation.held);
+        return {
+          canProceed: false,
+          isHardBlocked: false,
+          blockCode: 'key_budget_exceeded',
+          blockReason: `This API key's monthly budget of ${cap.toFixed(4)} would be exceeded (worst-case cost ${maxEstimatedCost.toFixed(4)}, remaining ${remaining.toFixed(4)}).`,
           budgetMonthly,
           currentMonthlySpend: 0,
           utilizationPct: 100,
@@ -406,6 +438,26 @@ export class BudgetService {
     });
 
     const ledgerSpend = Number(aggregate._sum.costEstimate || 0);
+
+    // Per-key monthly spend, from the same ledger, under the same in-flight guard
+    const [keys, perKey] = await Promise.all([
+      this.prisma.gatewayApiKey.findMany({ where: { projectId }, select: { id: true } }),
+      this.prisma.request.groupBy({
+        by: ['gatewayKeyId'],
+        where: { projectId, createdAt: { gte: firstDayOfMonth }, isBlocked: false, gatewayKeyId: { not: null } },
+        _sum: { costEstimate: true },
+      }),
+    ]);
+    const keySums = new Map(perKey.map((r) => [r.gatewayKeyId, Number(r._sum.costEstimate || 0)]));
+    for (const k of keys) {
+      await this.redisService.reconcileBucketSpend(
+        this.redisService.keyMonthBucket(k.id, null, now),
+        projectId,
+        keySums.get(k.id) ?? 0,
+        seqBefore,
+        now,
+      );
+    }
     // Atomically: drop expired holds, then set spend to the ledger sum only if
     // nothing is in flight; otherwise only ever raise it (repairs a Redis flush).
     const reconciled = await this.redisService.reconcileProjectSpend(projectId, ledgerSpend, seqBefore, now);

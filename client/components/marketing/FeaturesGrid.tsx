@@ -15,7 +15,7 @@ const FEATURES = [
     icon: ShieldCheck,
     badge: 'Atomic Pre-Flight Guardrails',
     title: 'Fail-Closed Budget Protection',
-    description: 'Enforce monthly or weekly spending limits per project using atomic Redis Lua scripts. Triggers warnings at 80% and blocks requests before overages happen.',
+    description: 'Enforce monthly spending limits per project and per API key using atomic Redis Lua scripts. Triggers warnings at 80% and blocks requests before overages happen.',
     highlight: 'Deterministic overage prevention under concurrent load',
   },
   {

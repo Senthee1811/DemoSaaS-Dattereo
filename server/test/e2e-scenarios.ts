@@ -494,7 +494,11 @@ async function phase1(A: string) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { BudgetService } = require('../src/modules/budget/budget.service');
     const pid = `e2e-recon-${RUN}`;
-    const ledgerSaysOnly = { request: { aggregate: async () => ({ _sum: { costEstimate: 0.1 } }) }, project: { findUnique: async () => null } };
+    const ledgerSaysOnly = {
+      request: { aggregate: async () => ({ _sum: { costEstimate: 0.1 } }), groupBy: async () => [] },
+      gatewayApiKey: { findMany: async () => [] },
+      project: { findUnique: async () => null },
+    };
     const budget = new BudgetService(ledgerSaysOnly, redis);
     const rb = redis.projectMonthBucket(pid, 10);
     await redis.getClient()!.set(rb.spendKey, '0.5');
@@ -508,6 +512,40 @@ async function phase1(A: string) {
     check('reconciliation re-derives spend from the ledger once idle', afterIdle === 0.1, afterIdle);
   } finally {
     await redis.onModuleDestroy();
+  }
+
+  // ── P1-7. Per-key budget, per-key TPM, no phantom weekly budget ─────────
+  console.log('\n▶ Phase 1 · limits that are shown are enforced');
+  {
+    const proj = await newProject(A, 'Key Limits', 100);
+    await addProviderKey(A, proj.id);
+    const big = { model: 'gpt-4o', messages: [{ role: 'user', content: 'x'.repeat(4800) }], max_tokens: 400 }; // 1600 tokens, $0.007
+
+    const cheapKey = await newGatewayKey(A, proj.id, { budgetMonthly: 0.001 });
+    const before = await mockStats();
+    const overKeyBudget = await api('POST', '/v1/chat/completions', { token: cheapKey.secret, body: big });
+    const after = await mockStats();
+    check('key with $0.001 monthly budget + $0.007 request → 429', overKeyBudget.status === 429 && overKeyBudget.body.error?.code === 'key_budget_exceeded', overKeyBudget.body);
+    check('key budget block → 0 upstream calls', after.calls === before.calls, { before, after });
+    const otherKey = await newGatewayKey(A, proj.id);
+    const sameProjectOtherKey = await api('POST', '/v1/chat/completions', { token: otherKey.secret, body: big });
+    check('another key on the same project is not affected by that key\'s budget', sameProjectOtherKey.status === 200, sameProjectOtherKey.status);
+
+    const tpmKey = await newGatewayKey(A, proj.id, { rateLimitTpm: 100 });
+    const overTpm = await api('POST', '/v1/chat/completions', { token: tpmKey.secret, body: big });
+    check('key with 100 TPM + 1,600-token request → 429 tpm_exceeded', overTpm.status === 429 && overTpm.body.error?.code === 'tpm_exceeded', overTpm.body);
+
+    // TPM counts actual usage after settlement: each mock call really uses 1,600 tokens
+    // although the pre-call estimate is ~51 (1 prompt token + max_tokens 50). With a
+    // 1,610 TPM cap the 2nd call fits only if the counter was NOT corrected (51+51).
+    const tpmTight = await newGatewayKey(A, proj.id, { rateLimitTpm: 1610 });
+    const t1 = await api('POST', '/v1/chat/completions', { token: tpmTight.secret, body: chat('a') });
+    const t2 = await api('POST', '/v1/chat/completions', { token: tpmTight.secret, body: chat('b') });
+    check('TPM is corrected to actual tokens after settlement (2nd call over 1,610 TPM → 429)', t1.status === 200 && t2.status === 429 && t2.body.error?.code === 'tpm_exceeded', [t1.status, t2.status, t2.body?.error?.code]);
+
+    const created = await api('POST', '/api/v1/projects', { token: A, body: { name: `Weekly ${RUN}`, budgetMonthly: 10, budgetWeekly: 0.001 } });
+    const listedWeekly = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === created.body.project?.id);
+    check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
   }
 }
 

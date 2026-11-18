@@ -47,17 +47,46 @@ export class GatewayService {
     const maxTokens = req.maxTokens ?? 1000;
     const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
 
-    // 1. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
-    const budgetGuard = await this.budgetService.reserveCapacity(req.projectId, reqId, maxEstimatedCost);
+    // 1a. Per-key tokens-per-minute: admit (prompt estimate + max_tokens) before the call
+    const estimatedTokens = promptTokens + maxTokens;
+    let tpm: { counterKey: string } | null = null;
+    if (req.gatewayKey?.rateLimitTpm) {
+      const admitted = await this.redisService.reserveTpm(req.gatewayKey.id, estimatedTokens, req.gatewayKey.rateLimitTpm);
+      if (admitted && !admitted.allowed) {
+        throw new HttpException(
+          {
+            error: {
+              message: `SpendGuard key token rate limit exceeded: ${req.gatewayKey.rateLimitTpm} tokens per minute (this request may use up to ${estimatedTokens}).`,
+              type: 'rate_limit_exceeded',
+              code: 'tpm_exceeded',
+            },
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      // admitted === null: Redis is down; the budget hold below fails closed.
+      tpm = admitted;
+    }
+    const releaseTpm = () => (tpm ? this.redisService.adjustTpm(tpm.counterKey, -estimatedTokens) : Promise.resolve());
+
+    // 1b. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
+    //     (project monthly cap and, for key traffic, the key's monthly cap)
+    const budgetGuard = await this.budgetService.reserveCapacity(
+      req.projectId,
+      reqId,
+      maxEstimatedCost,
+      req.gatewayKey ? { id: req.gatewayKey.id, budgetMonthly: req.gatewayKey.budgetMonthly } : undefined,
+    );
 
     if (!budgetGuard.canProceed) {
+      await releaseTpm();
       // Log blocked attempt into audit ledger (async)
       this.logBlockedRequest(reqId, req, provider, budgetGuard).catch(err =>
         this.logger.warn(`Could not log blocked request: ${err.message}`),
       );
 
       const isGovernanceUnavailable = budgetGuard.blockReason?.includes('Governance engine unavailable');
-      const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : 'budget_exceeded';
+      const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : (budgetGuard.blockCode ?? 'budget_exceeded');
       const httpStatus = isGovernanceUnavailable
         ? HttpStatus.SERVICE_UNAVAILABLE   // 503 for infra failure
         : HttpStatus.TOO_MANY_REQUESTS;    // 429 for budget exceeded
@@ -116,6 +145,7 @@ export class GatewayService {
     } catch (upstreamErr) {
       // Release this request's hold so failures do not drain the project cap
       await this.budgetService.releaseHold(hold);
+      await releaseTpm();
       throw upstreamErr;
     }
 
@@ -131,6 +161,8 @@ export class GatewayService {
     // below this charge while its ledger row is still being written.
     await this.budgetService.markPendingPersist(req.projectId, reqId, startedAt);
     const settled = await this.budgetService.settleHold(hold, costEstimate);
+    // TPM counts what was actually used, not the pre-call estimate
+    if (tpm) await this.redisService.adjustTpm(tpm.counterKey, adapterResult.totalTokens - estimatedTokens);
     if (!settled) {
       // Redis lost mid-request: the hold expires on its own and the scheduled
       // DB reconciliation restores the true spend counter from the ledger.
@@ -219,6 +251,7 @@ export class GatewayService {
         id: reqId,
         projectId: req.projectId,
         userId: req.userId || null,
+        gatewayKeyId: req.gatewayKey?.id ?? null,
         provider: provider as any,
         model: req.model,
         tokensIn: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
@@ -253,6 +286,7 @@ export class GatewayService {
         createdAt: startedAt,
         projectId: req.projectId,
         userId: req.userId || null,
+        gatewayKeyId: req.gatewayKey?.id ?? null,
         provider: provider as any,
         model: req.model,
         tokensIn: adapterResult.promptTokens,

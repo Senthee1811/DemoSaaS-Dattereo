@@ -13,6 +13,7 @@ import {
   PRUNE_HOLDS_LUA,
   RECONCILE_SPEND_LUA,
   LEDGER_PENDING_TTL_MS,
+  TPM_RESERVE_LUA,
 } from './budget-holds.lua';
 
 export type { BudgetBucket, HoldReservation } from './budget-holds.lua';
@@ -270,6 +271,54 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Bucket for a gateway key's monthly spend (cap = the key's monthly budget, null = none). */
+  keyMonthBucket(gatewayKeyId: string, cap: number | null, at = new Date()): BudgetBucket {
+    const month = this.monthKey(at);
+    return {
+      name: 'key_monthly',
+      spendKey: `spendguard:key-spend:${gatewayKeyId}:${month}`,
+      holdsKey: `spendguard:key-holds:${gatewayKeyId}:${month}`,
+      holdsExpKey: `spendguard:key-holds-exp:${gatewayKeyId}:${month}`,
+      cap,
+      keyTtlSec: this.monthTtlSec(at),
+    };
+  }
+
+  // ── Per-key tokens-per-minute ─────────────────────────────────────────────
+
+  /**
+   * Admit `tokens` (prompt estimate + max_tokens) against the key's per-minute
+   * budget. Returns the counter key to correct later, or null if Redis is down.
+   */
+  async reserveTpm(
+    gatewayKeyId: string,
+    tokens: number,
+    limit: number,
+    at = new Date(),
+  ): Promise<{ allowed: boolean; counterKey: string; count: number } | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    const counterKey = `spendguard:tpm:${gatewayKeyId}:${Math.floor(at.getTime() / 60000)}`;
+    try {
+      const res: any = await client.eval(TPM_RESERVE_LUA, 1, counterKey, String(Math.ceil(tokens)), String(limit));
+      return { allowed: Number(res[0]) === 1, counterKey, count: Number(res[1]) };
+    } catch (err: any) {
+      this.logger.warn(`TPM check failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  /** Correct a TPM counter (actual - estimate after settlement, or -estimate on release). */
+  async adjustTpm(counterKey: string, delta: number): Promise<void> {
+    const client = this.getClient();
+    if (!client || !delta) return;
+    try {
+      await client.multi().incrby(counterKey, Math.round(delta)).expire(counterKey, 120).exec();
+    } catch (err: any) {
+      this.logger.warn(`TPM correction failed: ${err.message}`);
+    }
+  }
+
   /** Bucket for a project's monthly spend. */
   projectMonthBucket(projectId: string, cap: number | null, at = new Date()): BudgetBucket {
     const month = this.monthKey(at);
@@ -334,9 +383,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     seqBeforeDbRead: string,
     at: Date,
   ): Promise<{ spend: number; lowered: boolean } | null> {
+    return this.reconcileBucketSpend(this.projectMonthBucket(projectId, null, at), projectId, dbSum, seqBeforeDbRead, at);
+  }
+
+  /**
+   * Reconcile any bucket (project or key) of a project against its ledger sum.
+   * The project's pending-persist set and ledger sequence guard every bucket.
+   */
+  async reconcileBucketSpend(
+    bucket: BudgetBucket,
+    projectId: string,
+    dbSum: number,
+    seqBeforeDbRead: string,
+    at: Date,
+  ): Promise<{ spend: number; lowered: boolean } | null> {
     const client = this.getClient();
     if (!client) return null;
-    const bucket = this.projectMonthBucket(projectId, null, at);
     const { pendingKey, seqKey } = this.ledgerKeys(projectId, at);
     try {
       const res: any = await client.eval(

@@ -174,3 +174,18 @@ end
 redis.call('SET', KEYS[1], tostring(final), 'EX', tonumber(ARGV[3]))
 return {tostring(final), lowered}
 `;
+
+/**
+ * Per-key tokens-per-minute admission. KEYS: minute counter. ARGV: tokens, limit.
+ * Admits and counts only if counter + tokens <= limit. Returns {allowed (1/0), count}.
+ */
+export const TPM_RESERVE_LUA = `
+local cur = tonumber(redis.call('GET', KEYS[1]) or '0')
+local amount = tonumber(ARGV[1])
+if cur + amount > tonumber(ARGV[2]) then
+  return {0, cur}
+end
+local n = redis.call('INCRBY', KEYS[1], amount)
+redis.call('EXPIRE', KEYS[1], 120)
+return {1, n}
+`;

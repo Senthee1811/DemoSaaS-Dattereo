@@ -1,6 +1,7 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ProviderAdapter, GatewayChatRequest, AdapterExecutionResult } from './provider.adapter.interface';
 import { PricingService } from '@/modules/pricing/pricing.service';
+import { resolveProviderKey } from './provider-key.util';
 
 @Injectable()
 export class OpenAIAdapter implements ProviderAdapter {
@@ -9,24 +10,9 @@ export class OpenAIAdapter implements ProviderAdapter {
   constructor(private readonly pricingService: PricingService) {}
 
   async execute(req: GatewayChatRequest, decryptedApiKey?: string): Promise<AdapterExecutionResult> {
-    const effectiveKey = (decryptedApiKey && decryptedApiKey.startsWith('sk-') && !decryptedApiKey.includes('demo'))
-      ? decryptedApiKey
-      : (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-') && !process.env.OPENAI_API_KEY.includes('demo'))
-        ? process.env.OPENAI_API_KEY
-        : undefined;
-
-    if (!effectiveKey) {
-      throw new HttpException(
-        {
-          error: {
-            message: 'OpenAI API key is not configured for this project. Please add your OpenAI key in Project Settings -> Key Vault.',
-            type: 'provider_key_not_configured',
-            code: 'missing_provider_key',
-          },
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    // Only the project's own key. The platform env key is a dev-only opt-in
+    // (ALLOW_PLATFORM_PROVIDER_KEY=true and NODE_ENV !== 'production').
+    const effectiveKey = resolveProviderKey('OpenAI', decryptedApiKey, 'OPENAI_API_KEY', (k) => k.startsWith('sk-') && !k.includes('demo'));
 
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);

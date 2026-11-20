@@ -41,6 +41,7 @@ export class AuditController {
       blockedOnly: blockedOnly === 'true',
       limit: Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 50,
       offset: Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0,
+      role: user.role,
     });
   }
 

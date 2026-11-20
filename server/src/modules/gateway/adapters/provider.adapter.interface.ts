@@ -13,6 +13,12 @@ export interface GatewayChatRequest {
   stream?: boolean;
   clientIp?: string;
   clientSdk?: string;
+  /** Present when the request authenticated with a gateway key: that key's own limits. */
+  gatewayKey?: {
+    id: string;
+    budgetMonthly: number | null;
+    rateLimitTpm: number | null;
+  };
 }
 
 export interface AdapterExecutionResult {

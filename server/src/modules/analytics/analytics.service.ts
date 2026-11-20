@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { utcMonthStart } from '@/common/billing-period';
 
 @Injectable()
 export class AnalyticsService {
@@ -27,7 +28,7 @@ export class AnalyticsService {
     if (projectId) where.projectId = projectId;
 
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfMonth = utcMonthStart(now);
 
     // 1. Spend Summary
     const [monthAgg, anomalyCount, blockedCount, totalProjects] = await Promise.all([
@@ -57,9 +58,9 @@ export class AnalyticsService {
     const budgetUtilizationPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpend / totalBudget) * 100)) : 0;
 
     // 2. Past 7-Day Velocity (Guaranteed continuous 7 data points)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    // UTC days, matching the toISOString() day buckets below
+    const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const sevenDaysAgo = new Date(todayUtc - 6 * 86400_000);
 
     const pastRequests = await this.prisma.request.findMany({
       where: {
@@ -74,8 +75,7 @@ export class AnalyticsService {
 
     // Initialize 7 days
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      const d = new Date(todayUtc - i * 86400_000);
       const dateStr = d.toISOString().slice(0, 10);
       dayMap[dateStr] = { date: dateStr, spend: 0, tokens: 0, requests: 0 };
     }

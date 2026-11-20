@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, BadGatewayException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, BadGatewayException, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 
@@ -23,7 +23,7 @@ export class BillingService {
     this.isStubMode = !this.stripeKey;
 
     if (this.isStubMode) {
-      this.logger.warn('Billing service running in STUB mode (no STRIPE_SECRET_KEY). Checkout flows will return mock data.');
+      this.logger.warn('Billing is not configured (no STRIPE_SECRET_KEY). Checkout returns 503 billing_not_configured.');
     }
   }
 
@@ -94,12 +94,17 @@ export class BillingService {
       }
     }
 
-    this.logger.log(`[STUB] Creating checkout session for org ${params.orgId}, tier: ${params.tier}`);
-    return {
-      checkoutUrl: withParam(params.successUrl, 'session_id', `stub_session_${Date.now()}`),
-      sessionId: `stub_session_${Date.now()}`,
-      isStub: true,
-    };
+    // No payment provider: say so. Never redirect to ?checkout=success for a purchase that didn't happen.
+    throw new HttpException(
+      {
+        error: {
+          message: 'Billing is not configured on this deployment, so plans cannot be purchased yet.',
+          type: 'billing_unavailable',
+          code: 'billing_not_configured',
+        },
+      },
+      HttpStatus.SERVICE_UNAVAILABLE,
+    );
   }
 
   /**

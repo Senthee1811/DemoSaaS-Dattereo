@@ -71,6 +71,7 @@ const chat = (content: string) => ({ model: 'gpt-4o-mini', messages: [{ role: 'u
 
 async function run() {
   console.log(`\nSpendGuard live E2E against ${BASE} (run ${RUN})\n`);
+  mockAtStart = await mockStats();
 
   // ── 1. Health & public surface ───────────────────────────────────────────
   console.log('▶ Health & public endpoints');
@@ -332,7 +333,13 @@ async function run() {
   const ent = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'enterprise' } });
   check('enterprise is not sold via self-serve checkout (400)', ent.status === 400, ent.status);
   const starter = await api('POST', '/api/v1/billing/checkout', { token: A, body: { tier: 'starter' } });
-  check('starter checkout returns a well-formed URL', starter.status === 201 && (starter.body.checkoutUrl?.match(/\?/g) || []).length === 1, starter.body);
+  if (process.env.E2E_STRIPE_CONFIGURED === 'true') {
+    check('starter checkout returns a well-formed URL', starter.status === 201 && (starter.body.checkoutUrl?.match(/\?/g) || []).length === 1, starter.body);
+  } else {
+    // Phase 1: without Stripe, checkout must say so instead of faking a success redirect.
+    // (The well-formed success_url guarantee is unit-tested with a mocked Stripe.)
+    check('starter checkout without Stripe → 503 billing_not_configured (no fake success)', starter.status === 503 && starter.body.error?.code === 'billing_not_configured', starter.body);
+  }
   const sub = await api('GET', '/api/v1/billing/subscription?orgId=someone-else', { token: B });
   check('subscription is always for the caller\'s own org', sub.body.orgId === bob.body.user.orgId, sub.body);
   const pricingWrite = await api('POST', '/api/v1/pricing', {
@@ -340,6 +347,9 @@ async function run() {
     body: { model: 'gpt-4o-mini', provider: 'OPENAI', inputPricePerMillion: 0, outputPricePerMillion: 0 },
   });
   check('org OWNER cannot rewrite the shared pricing catalog (403)', pricingWrite.status === 403, pricingWrite.status);
+
+  // ── Phase 1 hardening ────────────────────────────────────────────────────
+  await phase1(A);
 
   // ── 15. Rate limit covers every route alias (run last: it exhausts the IP window) ──
   console.log('\n▶ Gateway IP rate limit');
@@ -355,6 +365,269 @@ async function run() {
     console.log('Failed checks:\n' + failures.map((f) => `  - ${f}`).join('\n'));
     process.exit(1);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 hardening checks. They need the backend started with
+//   OPENAI_BASE_URL=<mock>/v1  and  OPENAI_API_KEY=sk-platform-...  (a platform key
+// that must NEVER be used for tenant traffic), and the mock upstream reachable at
+// E2E_MOCK_URL so the suite can count upstream calls.
+// ─────────────────────────────────────────────────────────────────────────────
+const MOCK = (process.env.E2E_MOCK_URL || 'http://localhost:4555').replace(/\/$/, '');
+
+let mockAtStart = { calls: 0, platformKeyCalls: 0, byModel: {} as Record<string, number> };
+
+async function mockStats(): Promise<{ calls: number; platformKeyCalls: number; byModel: Record<string, number> }> {
+  const res = await fetch(`${MOCK}/__stats`);
+  return res.json();
+}
+
+async function newProject(token: string, name: string, budgetMonthly: number, extra: Record<string, unknown> = {}) {
+  const p = await api('POST', '/api/v1/projects', { token, body: { name: `${name} ${RUN}`, budgetMonthly, ...extra } });
+  return p.body.project as { id: string };
+}
+
+async function addProviderKey(token: string, projectId: string) {
+  await api('POST', '/api/v1/keys', {
+    token,
+    body: { type: 'PROVIDER', projectId, provider: 'OPENAI', keyName: 'p', plainKey: `sk-e2e-tenant-${projectId.slice(0, 8)}` },
+  });
+}
+
+async function newGatewayKey(token: string, projectId: string, extra: Record<string, unknown> = {}) {
+  const k = await api('POST', '/api/v1/keys', { token, body: { type: 'GATEWAY', projectId, keyName: 'k', ...extra } });
+  return k.body as { id: string; secret: string };
+}
+
+async function phase1(A: string) {
+  // ── P1-1. No platform provider-key fallback ──────────────────────────────
+  console.log('\n▶ Phase 1 · provider keys: no platform fallback');
+  {
+    const proj = await newProject(A, 'No Provider Key', 10);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await api('POST', '/v1/chat/completions', { token: key.secret, body: chat('who pays?') });
+    const after = await mockStats();
+    check('project without provider key → 400 missing_provider_key', r.status === 400 && r.body.error?.code === 'missing_provider_key', r.body);
+    check('missing provider key → 0 upstream calls', after.calls === before.calls, { before, after });
+    check('platform OPENAI_API_KEY is never sent upstream (whole run)', after.platformKeyCalls === mockAtStart.platformKeyCalls, { mockAtStart, after });
+  }
+
+  // ── P1-3. Models with no price are rejected ──────────────────────────────
+  console.log('\n▶ Phase 1 · pricing: unpriced models rejected');
+  {
+    const proj = await newProject(A, 'Unpriced Model', 10);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await api('POST', '/v1/chat/completions', {
+      token: key.secret,
+      body: { model: 'o1-pro-imaginary', messages: [{ role: 'user', content: 'price me' }], max_tokens: 50 },
+    });
+    const after = await mockStats();
+    check('unpriced model → 400 model_not_priced', r.status === 400 && r.body.error?.code === 'model_not_priced', r.body);
+    check('unpriced model → 0 upstream calls', after.calls === before.calls, { before, after });
+    await new Promise((res) => setTimeout(res, 500));
+    const listed = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === proj.id);
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}`, { token: A });
+    check('unpriced model → no spend recorded', Number(listed?.currentMonthlySpend) === 0 && audit.body.total === 0, { spend: listed?.currentMonthlySpend, rows: audit.body.total });
+  }
+
+  // ── P1-4. Per-request budget holds ───────────────────────────────────────
+  console.log('\n▶ Phase 1 · budget holds: per request, cannot leak');
+  {
+    // (a) 30 parallel requests, each exactly $0.007 worst case AND actual
+    //     (gpt-4o: 1200 prompt tokens ≈ 4800 chars + max_tokens 400; mock bills 1200/400).
+    const proj = await newProject(A, 'Concurrency', 0.05);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const body = { model: 'gpt-4o', messages: [{ role: 'user', content: 'x'.repeat(4800) }], max_tokens: 400 };
+    const results = await Promise.all(
+      Array.from({ length: 30 }, () => api('POST', '/v1/chat/completions', { token: key.secret, body })),
+    );
+    const ok = results.filter((r) => r.status === 200).length;
+    const budget429 = results.filter((r) => r.status === 429 && r.body.error?.code === 'budget_exceeded').length;
+    check('30 parallel $0.007 requests on a $0.05 cap → exactly 7 succeed', ok === 7 && budget429 === 23, { ok, budget429, statuses: results.map((r) => r.status) });
+    await new Promise((res) => setTimeout(res, 800));
+    const listed = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === proj.id);
+    check('concurrent spend stays ≤ cap', Number(listed?.currentMonthlySpend) <= 0.05 + 1e-9, listed?.currentMonthlySpend);
+  }
+
+  // (b) and (c) drive the real Lua scripts against the suite's Redis.
+  const redis = await connectRedis();
+  try {
+    const bucket = redis.projectMonthBucket(`e2e-holds-${RUN}`, 0.05);
+    const leaked = await redis.reserveHold(`leak-${RUN}`, 0.04, [bucket], 2000); // never settled: simulated crash
+    const blockedWhileHeld = await redis.reserveHold(`big1-${RUN}`, 0.02, [bucket]);
+    // Steady traffic for longer than the leaked hold's lifetime
+    for (let i = 0; i < 12; i++) {
+      const id = `tick-${RUN}-${i}`;
+      await redis.reserveHold(id, 0.0001, [bucket]);
+      await redis.settleHold(id, 0.0001, [bucket]);
+      await new Promise((res) => setTimeout(res, 250));
+    }
+    const afterExpiry = await redis.reserveHold(`big2-${RUN}`, 0.02, [bucket]);
+    check('leaked hold counts while active', leaked?.status === 'reserved' && blockedWhileHeld?.status === 'rejected', { leaked, blockedWhileHeld });
+    check('leaked hold stops counting after its expiry despite steady traffic', afterExpiry?.status === 'reserved', afterExpiry);
+
+    const b2 = redis.projectMonthBucket(`e2e-dbl-${RUN}`, 1);
+    await redis.reserveHold(`dbl-${RUN}`, 0.01, [b2]);
+    const s1 = await redis.settleHold(`dbl-${RUN}`, 0.007, [b2]);
+    const s2 = await redis.settleHold(`dbl-${RUN}`, 0.007, [b2]);
+    await redis.releaseHold(`dbl-${RUN}`, [b2]);
+    const spend = Number(await redis.getClient()!.get(b2.spendKey));
+    check('double settle of one request ID charges once', s1?.applied === true && s2?.applied === false && Math.abs(spend - 0.007) < 1e-9, { s1, s2, spend });
+    const holdsLeft = await redis.pruneExpiredHolds(b2);
+    check('settle removes the hold', holdsLeft === 0, holdsLeft);
+
+    // ── P1-5. Ledger row is written before the response ────────────────────
+    console.log('\n▶ Phase 1 · ledger: written before the response');
+    const proj = await newProject(A, 'Ledger Parity', 50);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const N = 12;
+    const res = await Promise.all(
+      Array.from({ length: N }, (_, i) => api('POST', '/v1/chat/completions', { token: key.secret, body: chat(`ledger ${i}`) })),
+    );
+    // No sleep: once every response is back, every row must already be in Postgres.
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}&limit=100`, { token: A });
+    const dbSum = (audit.body.logs || []).reduce((s: number, l: any) => s + Number(l.costEstimate), 0);
+    const redisSpend = Number(await redis.getClient()!.get(redis.projectMonthBucket(proj.id, null).spendKey));
+    check(`after ${N} gateway requests every ledger row exists on response`, res.every((r) => r.status === 200) && audit.body.total === N, { statuses: res.map((r) => r.status), rows: audit.body.total });
+    check('DB sum of costEstimate equals the Redis spend counter', Math.abs(dbSum - redisSpend) < 1e-9 && dbSum > 0, { dbSum, redisSpend });
+
+    // Reconciliation must never lower Redis spend while a request is in flight.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { BudgetService } = require('../src/modules/budget/budget.service');
+    const pid = `e2e-recon-${RUN}`;
+    const ledgerSaysOnly = {
+      request: { aggregate: async () => ({ _sum: { costEstimate: 0.1 } }), groupBy: async () => [] },
+      gatewayApiKey: { findMany: async () => [] },
+      project: { findUnique: async () => null },
+    };
+    const budget = new BudgetService(ledgerSaysOnly, redis);
+    const rb = redis.projectMonthBucket(pid, 10);
+    await redis.getClient()!.set(rb.spendKey, '0.5');
+    await redis.reserveHold(`recon-${RUN}`, 0.01, [rb]);
+    await budget.reconcileProjectSpend(pid);
+    const whileHeld = Number(await redis.getClient()!.get(rb.spendKey));
+    await redis.releaseHold(`recon-${RUN}`, [rb]);
+    await budget.reconcileProjectSpend(pid);
+    const afterIdle = Number(await redis.getClient()!.get(rb.spendKey));
+    check('reconciliation does not lower Redis spend while holds are active', whileHeld === 0.5, whileHeld);
+    check('reconciliation re-derives spend from the ledger once idle', afterIdle === 0.1, afterIdle);
+  } finally {
+    await redis.onModuleDestroy();
+  }
+
+  // ── P1-7. Per-key budget, per-key TPM, no phantom weekly budget ─────────
+  console.log('\n▶ Phase 1 · limits that are shown are enforced');
+  {
+    const proj = await newProject(A, 'Key Limits', 100);
+    await addProviderKey(A, proj.id);
+    const big = { model: 'gpt-4o', messages: [{ role: 'user', content: 'x'.repeat(4800) }], max_tokens: 400 }; // 1600 tokens, $0.007
+
+    const cheapKey = await newGatewayKey(A, proj.id, { budgetMonthly: 0.001 });
+    const before = await mockStats();
+    const overKeyBudget = await api('POST', '/v1/chat/completions', { token: cheapKey.secret, body: big });
+    const after = await mockStats();
+    check('key with $0.001 monthly budget + $0.007 request → 429', overKeyBudget.status === 429 && overKeyBudget.body.error?.code === 'key_budget_exceeded', overKeyBudget.body);
+    check('key budget block → 0 upstream calls', after.calls === before.calls, { before, after });
+    const otherKey = await newGatewayKey(A, proj.id);
+    const sameProjectOtherKey = await api('POST', '/v1/chat/completions', { token: otherKey.secret, body: big });
+    check('another key on the same project is not affected by that key\'s budget', sameProjectOtherKey.status === 200, sameProjectOtherKey.status);
+
+    const tpmKey = await newGatewayKey(A, proj.id, { rateLimitTpm: 100 });
+    const overTpm = await api('POST', '/v1/chat/completions', { token: tpmKey.secret, body: big });
+    check('key with 100 TPM + 1,600-token request → 429 tpm_exceeded', overTpm.status === 429 && overTpm.body.error?.code === 'tpm_exceeded', overTpm.body);
+
+    // TPM counts actual usage after settlement: each mock call really uses 1,600 tokens
+    // although the pre-call estimate is ~51 (1 prompt token + max_tokens 50). With a
+    // 1,610 TPM cap the 2nd call fits only if the counter was NOT corrected (51+51).
+    const tpmTight = await newGatewayKey(A, proj.id, { rateLimitTpm: 1610 });
+    const t1 = await api('POST', '/v1/chat/completions', { token: tpmTight.secret, body: chat('a') });
+    const t2 = await api('POST', '/v1/chat/completions', { token: tpmTight.secret, body: chat('b') });
+    check('TPM is corrected to actual tokens after settlement (2nd call over 1,610 TPM → 429)', t1.status === 200 && t2.status === 429 && t2.body.error?.code === 'tpm_exceeded', [t1.status, t2.status, t2.body?.error?.code]);
+
+    const created = await api('POST', '/api/v1/projects', { token: A, body: { name: `Weekly ${RUN}`, budgetMonthly: 10, budgetWeekly: 0.001 } });
+    const listedWeekly = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === created.body.project?.id);
+    // ── P1-8. Per-IP limit is abuse protection only, above key limits ──────
+    console.log('\n▶ Phase 1 · per-IP gateway limit does not undercut key RPM');
+    // TPM raised so only the per-IP limit could cause a 429 here (70 x 1,600 actual tokens > default 100k TPM)
+    const serverApp = await newGatewayKey(A, proj.id, { rateLimitRpm: 1200, rateLimitTpm: 1000000 });
+    const statuses: number[] = [];
+    const codes: string[] = [];
+    for (let i = 0; i < 70; i++) {
+      const r = await api('POST', '/v1/chat/completions', { token: serverApp.secret, body: { ...chat(`burst ${i}`), max_tokens: 5 } });
+      statuses.push(r.status);
+      if (r.status === 429) codes.push(r.body.error?.code);
+    }
+    const perIp429 = codes.filter((c) => c === 'rate_limit_exceeded').length;
+    check('key at 1,200 RPM: 70 requests in a minute from one IP → 0 per-IP 429s', perIp429 === 0 && statuses.every((s) => s === 200), { perIp429, statuses: statuses.join(',') });
+
+    // ── P1-9. Test alerts are honest about delivery ─────────────────────────
+    const fake = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: proj.id, thresholdType: 'ANOMALY_DETECTED', channel: 'SLACK' } });
+    const fa = fake.body.alert;
+    check('test alert is recorded IN_APP/RECORDED (nothing was delivered), no invented spike stats', fake.status === 201 && fa?.channel === 'IN_APP' && fa?.status === 'RECORDED' && !/3\.4x|7-day/.test(fa?.message || ''), fa);
+    check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
+  }
+
+  // ── P1-10. Prompt privacy ────────────────────────────────────────────────
+  console.log('\n▶ Phase 1 · prompt privacy');
+  {
+    const secret = `SECRET-PROMPT-${RUN}`;
+    const proj = await newProject(A, 'Private By Default', 10);
+    await addProviderKey(A, proj.id);
+    const key = await newGatewayKey(A, proj.id);
+    const r = await api('POST', '/v1/chat/completions', { token: key.secret, body: chat(secret) });
+    const audit = await api('GET', `/api/v1/audit?projectId=${proj.id}`, { token: A });
+    check('default project: request succeeds and is audited', r.status === 200 && audit.body.total === 1, { status: r.status, total: audit.body.total });
+    check('default project: audit log contains no prompt text', !JSON.stringify(audit.body).includes(secret) && audit.body.logs?.[0]?.promptPreview == null, audit.body.logs?.[0]);
+
+    const optIn = await newProject(A, 'Logs Content', 10, { logRequestContent: true });
+    await addProviderKey(A, optIn.id);
+    const optKey = await newGatewayKey(A, optIn.id);
+    const secret2 = `OPTIN-PROMPT-${RUN}`;
+    await api('POST', '/v1/chat/completions', { token: optKey.secret, body: chat(secret2) });
+    const ownerView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: A });
+    check('logRequestContent=true: OWNER sees the stored preview', ownerView.body.logs?.[0]?.promptPreview?.includes(secret2), ownerView.body.logs?.[0]);
+
+    const memberEmail = `dana.${RUN}@e2e.spendguard.test`;
+    const inv = await api('POST', '/api/v1/team', { token: A, body: { name: 'Dana', email: memberEmail, role: 'MEMBER' } });
+    await api('POST', '/auth/reset-password', { body: { token: inv.body.invite?.token, newPassword: 'DanasOwnPass#1' } });
+    const dana = await api('POST', '/auth/login', { body: { email: memberEmail, password: 'DanasOwnPass#1' } });
+    const memberView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: dana.body.accessToken });
+    check('MEMBER never receives prompt/response previews', memberView.status === 200 && memberView.body.total === 1 && !JSON.stringify(memberView.body).includes(secret2), memberView.body.logs?.[0]);
+  }
+
+  // ── P1-11. Auth routes are rate limited ──────────────────────────────────
+  console.log('\n▶ Phase 1 · auth rate limits');
+  {
+    const victim = await register('Victim', `Victim ${RUN}`);
+    const attempts: ApiResult[] = [];
+    for (let i = 0; i < 6; i++) {
+      attempts.push(await api('POST', '/auth/login', { body: { email: victim.email, password: `wrong-${i}` } }));
+    }
+    const statuses = attempts.map((r) => r.status);
+    const last = attempts[5];
+    check('6 failed logins for one email in a minute → first 5 are 401, 6th is 429', statuses.slice(0, 5).every((s) => s === 401) && last.status === 429, statuses);
+    check('auth 429 uses the flat error shape', typeof last.body.error?.message === 'string' && last.body.error?.code === 'auth_rate_limited', last.body);
+  }
+}
+
+/** A RedisService connected to the same Redis as the backend under test. */
+async function connectRedis() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { RedisService } = require('../src/modules/redis/redis.service');
+  const cfg: Record<string, unknown> = {
+    'redis.host': process.env.E2E_REDIS_HOST || 'localhost',
+    'redis.port': Number(process.env.E2E_REDIS_PORT || 6379),
+    'redis.password': process.env.E2E_REDIS_PASSWORD || undefined,
+  };
+  const svc = new RedisService({ get: (k: string) => cfg[k] });
+  await svc.onModuleInit();
+  for (let i = 0; i < 50 && !svc.isConnected; i++) await new Promise((r) => setTimeout(r, 100));
+  return svc as import('../src/modules/redis/redis.service').RedisService;
 }
 
 run().catch((err) => {

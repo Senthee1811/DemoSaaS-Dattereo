@@ -1,12 +1,35 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { utcMonthKey, utcNextMonthStart, ttlUntil } from '@/common/billing-period';
+import {
+  BudgetBucket,
+  HoldReservation,
+  FINALIZED_MARKER_TTL_SEC,
+  budgetHoldTtlMs,
+  RESERVE_HOLD_LUA,
+  SETTLE_HOLD_LUA,
+  RELEASE_HOLD_LUA,
+  PRUNE_HOLDS_LUA,
+  RECONCILE_SPEND_LUA,
+  LEDGER_PENDING_TTL_MS,
+  TPM_RESERVE_LUA,
+} from './budget-holds.lua';
+
+export type { BudgetBucket, HoldReservation } from './budget-holds.lua';
+
+/** Reconnect backoff: 200 ms, 400 ms, ... capped at 5 s. Never gives up. */
+export function redisRetryDelayMs(times: number): number {
+  return Math.min(times * 200, 5000);
+}
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis | null = null;
   private _isConnected = false;
+  /** Log one error per outage instead of one per reconnect attempt. */
+  private outageLogged = false;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -21,27 +44,33 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         port,
         password: password || undefined,
         maxRetriesPerRequest: 3,
-        retryStrategy: (times) => {
-          if (times > 5) {
-            this.logger.error('Redis connection failed after 5 retries. Fail-closed policy active.');
-            return null; // Stop retrying
-          }
-          return Math.min(times * 200, 2000);
-        },
+        // Retry forever with capped backoff. Giving up left the gateway at 503
+        // until the backend was restarted, even after Redis came back.
+        retryStrategy: (times) => redisRetryDelayMs(times),
         lazyConnect: true,
       });
 
-      this.client.on('connect', () => {
+      // Only 'ready' means commands can run. Until then getClient() returns null
+      // and the gateway fails closed (503 governance_unavailable).
+      this.client.on('ready', () => {
         this._isConnected = true;
-        this.logger.log('Connected to Redis');
+        this.outageLogged = false;
+        this.logger.log('Redis ready');
       });
 
       this.client.on('error', (err) => {
         this._isConnected = false;
-        this.logger.warn(`Redis connection error: ${err.message}. Fail-closed policy enforced.`);
+        if (!this.outageLogged) {
+          this.outageLogged = true;
+          this.logger.error(`Redis connection error: ${err.message}. Fail-closed policy enforced; reconnecting.`);
+        }
       });
 
       this.client.on('close', () => {
+        this._isConnected = false;
+      });
+
+      this.client.on('reconnecting', () => {
         this._isConnected = false;
       });
 
@@ -99,11 +128,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = this.getSpendKey(projectId);
       await client.incrbyfloat(key, amount);
 
-      // Set TTL to end of current month + 1 day buffer
-      const now = new Date();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const ttlSeconds = Math.ceil((endOfMonth.getTime() - now.getTime()) / 1000) + 86400;
-      await client.expire(key, ttlSeconds);
+      // TTL: end of the current UTC month + 1 day buffer
+      await client.expire(key, ttlUntil(utcNextMonthStart()));
     } catch (err: any) {
       this.logger.warn(`Failed to increment spend in Redis: ${err.message}`);
     }
@@ -120,10 +146,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = this.getSpendKey(projectId);
       await client.set(key, amount.toString());
 
-      const now = new Date();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const ttlSeconds = Math.ceil((endOfMonth.getTime() - now.getTime()) / 1000) + 86400;
-      await client.expire(key, ttlSeconds);
+      await client.expire(key, ttlUntil(utcNextMonthStart()));
     } catch (err: any) {
       this.logger.warn(`Failed to set spend in Redis: ${err.message}`);
     }
@@ -144,154 +167,279 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Atomic Budget Reservation (Lua Script)
-   * Evaluates (currentSpend + currentReserved + estimatedAmount <= budgetCap) atomically.
-   * If valid, increments reserved_key and sets a 5-minute TTL to prevent leaks.
-   */
-  async reserveBudget(
-    projectId: string,
-    estimatedAmount: number,
-    budgetCap: number,
-  ): Promise<{ success: boolean; currentSpend: number; currentReserved: number } | null> {
-    const client = this.getClient();
-    if (!client) return null; // Caller must fail-closed
-
-    const spendKey = this.getSpendKey(projectId);
-    const reservedKey = this.getReservedKey(projectId);
-
-    const luaScript = `
-      local spend_key = KEYS[1]
-      local reserved_key = KEYS[2]
-      local estimated = tonumber(ARGV[1])
-      local cap = tonumber(ARGV[2])
-
-      local current_spend = tonumber(redis.call('get', spend_key) or '0')
-      local current_reserved = tonumber(redis.call('get', reserved_key) or '0')
-
-      if (current_spend + current_reserved + estimated) > cap then
-        return {0, tostring(current_spend), tostring(current_reserved)}
-      else
-        local new_reserved = redis.call('incrbyfloat', reserved_key, estimated)
-        redis.call('expire', reserved_key, 300)
-        return {1, tostring(current_spend), tostring(new_reserved)}
-      end
-    `;
-
-    try {
-      const result: any = await client.eval(
-        luaScript,
-        2,
-        spendKey,
-        reservedKey,
-        estimatedAmount.toString(),
-        budgetCap.toString(),
-      );
-
-      const allowed = Number(result[0]) === 1;
-      const currentSpend = parseFloat(result[1]);
-      const currentReserved = parseFloat(result[2]);
-
-      return {
-        success: allowed,
-        currentSpend,
-        currentReserved,
-      };
-    } catch (err: any) {
-      this.logger.error(`Failed to execute atomic budget reservation: ${err.message}`);
-      return null;
-    }
-  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Per-request budget holds
+  //
+  // A "bucket" is one spend counter with its own cap (project/month today; item 7
+  // adds key/month and project/week). Each bucket stores its holds individually:
+  //   <holdsKey>     HASH  requestId -> held amount (USD)
+  //   <holdsExpKey>  ZSET  requestId -> expiry (epoch ms)
+  // so a hold leaked by a crash expires on its own schedule instead of sharing
+  // one TTL that every new request resets.
+  // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Atomic Budget Reconciliation (Lua Script)
-   * Releases estimated reservation from reserved_key and adds verified actualCost to spend_key.
+   * Atomically, for every bucket: drop expired holds, then check
+   * spend + active holds + amount <= cap. If every bucket fits, record the hold
+   * in all of them; otherwise record nothing and report the first bucket that
+   * failed. Re-reserving an ID that already holds is a no-op ('duplicate').
+   * Returns null when Redis is unavailable (caller must fail closed).
    */
-  async reconcileBudget(
-    projectId: string,
-    estimatedAmount: number,
-    actualCost: number,
-  ): Promise<{ newSpend: number; newReserved: number } | null> {
+  async reserveHold(
+    requestId: string,
+    amount: number,
+    buckets: BudgetBucket[],
+    holdTtlMs = budgetHoldTtlMs(),
+  ): Promise<HoldReservation | null> {
     const client = this.getClient();
     if (!client) return null;
 
-    const spendKey = this.getSpendKey(projectId);
-    const reservedKey = this.getReservedKey(projectId);
-
-    const now = new Date();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const ttlSeconds = Math.ceil((endOfMonth.getTime() - now.getTime()) / 1000) + 86400;
-
-    const luaScript = `
-      local spend_key = KEYS[1]
-      local reserved_key = KEYS[2]
-      local estimated = tonumber(ARGV[1])
-      local actual = tonumber(ARGV[2])
-      local ttl = tonumber(ARGV[3])
-
-      local current_reserved = tonumber(redis.call('get', reserved_key) or '0')
-      local new_reserved = math.max(0, current_reserved - estimated)
-      if new_reserved == 0 then
-        redis.call('del', reserved_key)
-      else
-        redis.call('set', reserved_key, tostring(new_reserved), 'EX', 300)
-      end
-
-      local new_spend = redis.call('incrbyfloat', spend_key, actual)
-      redis.call('expire', spend_key, ttl)
-
-      return {tostring(new_spend), tostring(new_reserved)}
-    `;
+    const keys = buckets.flatMap((b) => [b.spendKey, b.holdsKey, b.holdsExpKey]);
+    const args = [
+      requestId,
+      String(amount),
+      String(Math.max(1, Math.floor(holdTtlMs))),
+      ...buckets.flatMap((b) => [String(b.cap ?? -1), String(b.keyTtlSec)]),
+    ];
 
     try {
-      const result: any = await client.eval(
-        luaScript,
-        2,
-        spendKey,
-        reservedKey,
-        estimatedAmount.toString(),
-        actualCost.toString(),
-        ttlSeconds.toString(),
-      );
-
+      const res: any = await client.eval(RESERVE_HOLD_LUA, keys.length, ...keys, ...args);
+      const code = Number(res[0]);
       return {
-        newSpend: parseFloat(result[0]),
-        newReserved: parseFloat(result[1]),
+        status: code === 1 ? 'reserved' : code === 2 ? 'duplicate' : 'rejected',
+        failedBucket: code === 0 ? buckets[Number(res[1]) - 1] : undefined,
+        spend: parseFloat(res[2]),
+        held: parseFloat(res[3]),
       };
     } catch (err: any) {
-      this.logger.error(`Failed to reconcile budget in Redis: ${err.message}`);
+      this.logger.error(`Atomic budget hold failed: ${err.message}`);
       return null;
     }
   }
 
   /**
-   * Release reserved capacity when request fails or times out.
+   * Settle a hold with the verified actual cost: removes the hold from every
+   * bucket and adds `actualCost` to every bucket's spend. Idempotent per
+   * request ID — only the first settle/release for an ID has any effect.
+   * Returns null when Redis is unavailable.
    */
-  async releaseReservation(projectId: string, estimatedAmount: number): Promise<void> {
+  async settleHold(
+    requestId: string,
+    actualCost: number,
+    buckets: BudgetBucket[],
+  ): Promise<{ applied: boolean; spend: number } | null> {
     const client = this.getClient();
-    if (!client) return;
+    if (!client) return null;
 
-    const reservedKey = this.getReservedKey(projectId);
-
-    const luaScript = `
-      local reserved_key = KEYS[1]
-      local estimated = tonumber(ARGV[1])
-
-      local current_reserved = tonumber(redis.call('get', reserved_key) or '0')
-      local new_reserved = math.max(0, current_reserved - estimated)
-      if new_reserved == 0 then
-        redis.call('del', reserved_key)
-      else
-        redis.call('set', reserved_key, tostring(new_reserved), 'EX', 300)
-      end
-      return tostring(new_reserved)
-    `;
+    const keys = [this.finalizedKey(requestId), ...buckets.flatMap((b) => [b.spendKey, b.holdsKey, b.holdsExpKey])];
+    const args = [requestId, String(actualCost), String(FINALIZED_MARKER_TTL_SEC), ...buckets.map((b) => String(b.keyTtlSec))];
 
     try {
-      await client.eval(luaScript, 1, reservedKey, estimatedAmount.toString());
+      const res: any = await client.eval(SETTLE_HOLD_LUA, keys.length, ...keys, ...args);
+      return { applied: Number(res[0]) === 1, spend: parseFloat(res[1]) };
     } catch (err: any) {
-      this.logger.warn(`Failed to release reservation in Redis: ${err.message}`);
+      this.logger.error(`Budget hold settlement failed for ${requestId}: ${err.message}`);
+      return null;
     }
+  }
+
+  /** Release a hold without charging (upstream failure). Idempotent per request ID. */
+  async releaseHold(requestId: string, buckets: BudgetBucket[]): Promise<boolean> {
+    const client = this.getClient();
+    if (!client) return false;
+
+    const keys = [this.finalizedKey(requestId), ...buckets.flatMap((b) => [b.holdsKey, b.holdsExpKey])];
+    try {
+      await client.eval(RELEASE_HOLD_LUA, keys.length, ...keys, requestId, String(FINALIZED_MARKER_TTL_SEC));
+      return true;
+    } catch (err: any) {
+      this.logger.warn(`Failed to release budget hold ${requestId}: ${err.message}`);
+      return false;
+    }
+  }
+
+  /** Remove expired holds from a bucket and return how many active holds remain (null if Redis is down). */
+  async pruneExpiredHolds(bucket: BudgetBucket): Promise<number | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      const res: any = await client.eval(PRUNE_HOLDS_LUA, 2, bucket.holdsKey, bucket.holdsExpKey);
+      return Number(res);
+    } catch (err: any) {
+      this.logger.warn(`Failed to prune expired holds: ${err.message}`);
+      return null;
+    }
+  }
+
+  /** Bucket for a gateway key's monthly spend (cap = the key's monthly budget, null = none). */
+  keyMonthBucket(gatewayKeyId: string, cap: number | null, at = new Date()): BudgetBucket {
+    const month = this.monthKey(at);
+    return {
+      name: 'key_monthly',
+      spendKey: `spendguard:key-spend:${gatewayKeyId}:${month}`,
+      holdsKey: `spendguard:key-holds:${gatewayKeyId}:${month}`,
+      holdsExpKey: `spendguard:key-holds-exp:${gatewayKeyId}:${month}`,
+      cap,
+      keyTtlSec: this.monthTtlSec(at),
+    };
+  }
+
+  // ── Per-key tokens-per-minute ─────────────────────────────────────────────
+
+  /**
+   * Admit `tokens` (prompt estimate + max_tokens) against the key's per-minute
+   * budget. Returns the counter key to correct later, or null if Redis is down.
+   */
+  async reserveTpm(
+    gatewayKeyId: string,
+    tokens: number,
+    limit: number,
+    at = new Date(),
+  ): Promise<{ allowed: boolean; counterKey: string; count: number } | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    const counterKey = `spendguard:tpm:${gatewayKeyId}:${Math.floor(at.getTime() / 60000)}`;
+    try {
+      const res: any = await client.eval(TPM_RESERVE_LUA, 1, counterKey, String(Math.ceil(tokens)), String(limit));
+      return { allowed: Number(res[0]) === 1, counterKey, count: Number(res[1]) };
+    } catch (err: any) {
+      this.logger.warn(`TPM check failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  /** Correct a TPM counter (actual - estimate after settlement, or -estimate on release). */
+  async adjustTpm(counterKey: string, delta: number): Promise<void> {
+    const client = this.getClient();
+    if (!client || !delta) return;
+    try {
+      await client.multi().incrby(counterKey, Math.round(delta)).expire(counterKey, 120).exec();
+    } catch (err: any) {
+      this.logger.warn(`TPM correction failed: ${err.message}`);
+    }
+  }
+
+  /** Bucket for a project's monthly spend. */
+  projectMonthBucket(projectId: string, cap: number | null, at = new Date()): BudgetBucket {
+    const month = this.monthKey(at);
+    return {
+      name: 'project_monthly',
+      spendKey: `spendguard:spend:${projectId}:${month}`,
+      holdsKey: `spendguard:holds:${projectId}:${month}`,
+      holdsExpKey: `spendguard:holds-exp:${projectId}:${month}`,
+      cap,
+      keyTtlSec: this.monthTtlSec(at),
+    };
+  }
+
+  // ── Ledger persistence tracking (settled in Redis, row not yet in Postgres) ──
+
+  /** Mark a request as settled-but-not-persisted. Call BEFORE settling the hold. */
+  async markPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    const { pendingKey, seqKey, ttl } = this.ledgerKeys(projectId, at);
+    try {
+      const nowMs = Date.now();
+      await client
+        .multi()
+        .zadd(pendingKey, nowMs + LEDGER_PENDING_TTL_MS, requestId)
+        .incr(seqKey)
+        .expire(pendingKey, ttl)
+        .expire(seqKey, ttl)
+        .exec();
+    } catch (err: any) {
+      this.logger.warn(`Failed to mark request ${requestId} pending persist: ${err.message}`);
+    }
+  }
+
+  /** The request's ledger row is in Postgres. */
+  async clearPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    const client = this.getClient();
+    if (!client) return;
+    const { pendingKey, seqKey } = this.ledgerKeys(projectId, at);
+    try {
+      await client.multi().zrem(pendingKey, requestId).incr(seqKey).exec();
+    } catch (err: any) {
+      this.logger.warn(`Failed to clear pending persist for ${requestId}: ${err.message}`);
+    }
+  }
+
+  /** Ledger activity counter; read it BEFORE aggregating the DB and pass it to reconcileProjectSpend. */
+  async getLedgerSeq(projectId: string, at: Date): Promise<string | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      return (await client.get(this.ledgerKeys(projectId, at).seqKey)) ?? '0';
+    } catch {
+      return null;
+    }
+  }
+
+  /** See RECONCILE_SPEND_LUA. Returns null if Redis is unavailable. */
+  async reconcileProjectSpend(
+    projectId: string,
+    dbSum: number,
+    seqBeforeDbRead: string,
+    at: Date,
+  ): Promise<{ spend: number; lowered: boolean } | null> {
+    return this.reconcileBucketSpend(this.projectMonthBucket(projectId, null, at), projectId, dbSum, seqBeforeDbRead, at);
+  }
+
+  /**
+   * Reconcile any bucket (project or key) of a project against its ledger sum.
+   * The project's pending-persist set and ledger sequence guard every bucket.
+   */
+  async reconcileBucketSpend(
+    bucket: BudgetBucket,
+    projectId: string,
+    dbSum: number,
+    seqBeforeDbRead: string,
+    at: Date,
+  ): Promise<{ spend: number; lowered: boolean } | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    const { pendingKey, seqKey } = this.ledgerKeys(projectId, at);
+    try {
+      const res: any = await client.eval(
+        RECONCILE_SPEND_LUA,
+        5,
+        bucket.spendKey,
+        bucket.holdsKey,
+        bucket.holdsExpKey,
+        pendingKey,
+        seqKey,
+        String(dbSum),
+        seqBeforeDbRead,
+        String(bucket.keyTtlSec),
+      );
+      return { spend: parseFloat(res[0]), lowered: Number(res[1]) === 1 };
+    } catch (err: any) {
+      this.logger.warn(`Spend reconciliation failed for project ${projectId}: ${err.message}`);
+      return null;
+    }
+  }
+
+  private ledgerKeys(projectId: string, at: Date) {
+    const month = this.monthKey(at);
+    return {
+      pendingKey: `spendguard:ledger-pending:${projectId}:${month}`,
+      seqKey: `spendguard:ledger-seq:${projectId}:${month}`,
+      ttl: this.monthTtlSec(at),
+    };
+  }
+
+  private finalizedKey(requestId: string): string {
+    return `spendguard:hold-final:${requestId}`;
+  }
+
+  private monthKey(at: Date): string {
+    return utcMonthKey(at);
+  }
+
+  /** Seconds until the end of the UTC month plus a one-day buffer. */
+  private monthTtlSec(at: Date): number {
+    return ttlUntil(utcNextMonthStart(at), at);
   }
 
   /**
@@ -333,14 +481,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private getSpendKey(projectId: string): string {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return `spendguard:spend:${projectId}:${monthKey}`;
-  }
-
-  private getReservedKey(projectId: string): string {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return `spendguard:reserved:${projectId}:${monthKey}`;
+    return this.projectMonthBucket(projectId, null).spendKey;
   }
 }

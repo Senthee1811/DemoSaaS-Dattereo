@@ -8,7 +8,6 @@ import {
   FeaturesGrid, 
   HowItWorks, 
   PricingSection, 
-  TestimonialsSection, 
   FaqSection, 
   CtaBanner, 
   Footer 
@@ -36,9 +35,6 @@ export default function MarketingLandingPage() {
 
         {/* Transparent Pricing Plans */}
         <PricingSection />
-
-        {/* Customer Social Proof & Testimonials */}
-        <TestimonialsSection />
 
         {/* FAQ Accordion */}
         <FaqSection />

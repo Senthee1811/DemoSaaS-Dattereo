@@ -29,7 +29,6 @@ export interface Project {
   slug: string;
   description?: string;
   budgetMonthly: number;
-  budgetWeekly: number;
   budgetHardBlockEnabled: boolean;
   isBlocked: boolean;
   blockReason?: string;

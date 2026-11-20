@@ -21,7 +21,6 @@ export interface ProjectItem {
   slug: string;
   description?: string;
   budgetMonthly: number;
-  budgetWeekly: number;
   budgetHardBlockEnabled: boolean;
   isBlocked: boolean;
   blockReason?: string;
@@ -87,7 +86,6 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
           description,
           budgetMonthly: Number(budgetMonthly),
-          budgetWeekly: Number(budgetMonthly) / 4,
           budgetHardBlockEnabled
         })
       });
@@ -116,7 +114,6 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         body: JSON.stringify({
           id: editingProject.id,
           budgetMonthly: Number(budgetMonthly),
-          budgetWeekly: Number(budgetMonthly) / 4,
           budgetHardBlockEnabled
         })
       });

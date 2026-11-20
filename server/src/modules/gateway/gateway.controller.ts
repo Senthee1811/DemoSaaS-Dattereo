@@ -13,11 +13,11 @@ import { Request, Response } from 'express';
 import { GatewayService } from './gateway.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
-import { PricingService } from '@/modules/pricing/pricing.service';
+import { PricingService, modelNotPricedError } from '@/modules/pricing/pricing.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { AuthService } from '@/modules/auth/auth.service';
 import { Public } from '@/modules/auth/decorators/public.decorator';
-import { ChatMessage } from './adapters/provider.adapter.interface';
+import { ChatMessage, GatewayChatRequest } from './adapters/provider.adapter.interface';
 
 // An interface (not a class) on purpose: the global ValidationPipe runs with
 // `whitelist: true`, which strips every property of an undecorated DTO class.
@@ -126,6 +126,7 @@ export class GatewayController {
 
     let resolvedProjectId: string;
     let actingUserId: string | undefined;
+    let gatewayKeyLimits: GatewayChatRequest['gatewayKey'];
 
     if (rawKey.startsWith('sg_')) {
       // ---- 1. SpendGuard virtual gateway key ----
@@ -172,6 +173,11 @@ export class GatewayController {
 
       // The key — not any client-supplied header/body field — decides the project
       resolvedProjectId = gwKey.projectId;
+      gatewayKeyLimits = {
+        id: gwKey.id,
+        budgetMonthly: gwKey.budgetMonthly != null ? Number(gwKey.budgetMonthly) : null,
+        rateLimitTpm: gwKey.rateLimitTpm ?? null,
+      };
 
       this.prisma.gatewayApiKey
         .update({ where: { id: gwKey.id }, data: { lastUsedAt: new Date() } })
@@ -204,6 +210,12 @@ export class GatewayController {
       actingUserId = user.id;
     }
 
+    // Reject unpriced models before any budget hold or upstream call: an unknown
+    // model must never be billed at some other model's rate.
+    if (!this.pricingService.isModelPriced(body.model)) {
+      throw modelNotPricedError(body.model);
+    }
+
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const clientSdk = (req.headers['user-agent'] as string) || 'spendguard-sdk';
 
@@ -218,6 +230,7 @@ export class GatewayController {
       stream: false,
       clientIp,
       clientSdk,
+      gatewayKey: gatewayKeyLimits,
     });
 
     const { headers, ...payload } = result;

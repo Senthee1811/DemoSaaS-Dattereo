@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { RedisService } from '@/modules/redis/redis.service';
+import { RedisService, BudgetBucket } from '@/modules/redis/redis.service';
+import { utcMonthStart } from '@/common/billing-period';
 
 /** Prefix for blocks applied automatically by the budget engine (vs. manual admin freezes). */
 export const AUTO_BLOCK_PREFIX = 'Budget Cap Exceeded:';
@@ -13,6 +14,26 @@ export interface BudgetGuardrailResult {
   currentMonthlySpend: number;
   utilizationPct: number;
   reservedAmount?: number;
+  /** Project opted in to storing prompt/response previews (privacy: default false). */
+  logRequestContent?: boolean;
+  /** Machine-readable reason when blocked by a cap other than the project's monthly budget. */
+  blockCode?: 'key_budget_exceeded';
+  /** Present when the request may proceed; settle or release it by request ID. */
+  hold?: BudgetHold;
+}
+
+/** The gateway key a request came through (absent for dashboard-session requests). */
+export interface GatewayKeyLimits {
+  id: string;
+  /** The key's own monthly USD budget; null = only the project budget applies. */
+  budgetMonthly: number | null;
+}
+
+/** A request's budget hold: identified by the request ID, spread over one or more buckets. */
+export interface BudgetHold {
+  requestId: string;
+  amount: number;
+  buckets: BudgetBucket[];
 }
 
 @Injectable()
@@ -145,7 +166,9 @@ export class BudgetService {
    */
   async reserveCapacity(
     projectId: string,
+    requestId: string,
     maxEstimatedCost: number,
+    gatewayKey?: GatewayKeyLimits,
   ): Promise<BudgetGuardrailResult> {
     try {
       const project = await this.prisma.project.findUnique({
@@ -176,12 +199,17 @@ export class BudgetService {
 
       const budgetMonthly = Number(project.budgetMonthly);
 
-      // Execute atomic reservation via Redis Lua script
-      const reservation = await this.redisService.reserveBudget(
-        projectId,
-        maxEstimatedCost,
-        budgetMonthly,
-      );
+      // Atomic per-request hold via Redis Lua script (expired holds are dropped first).
+      // Every cap is checked in the same script: the project's monthly budget and,
+      // for gateway-key traffic, the key's own monthly budget. With hard-block off
+      // the project bucket is tracked but uncapped (soft overage).
+      const buckets = [
+        this.redisService.projectMonthBucket(projectId, project.budgetHardBlockEnabled ? budgetMonthly : null),
+      ];
+      if (gatewayKey) {
+        buckets.push(this.redisService.keyMonthBucket(gatewayKey.id, gatewayKey.budgetMonthly));
+      }
+      const reservation = await this.redisService.reserveHold(requestId, maxEstimatedCost, buckets);
 
       // Fail-closed if Redis is disconnected or failed
       if (!reservation) {
@@ -196,7 +224,23 @@ export class BudgetService {
         };
       }
 
-      const { success, currentSpend, currentReserved } = reservation;
+      if (reservation.status === 'rejected' && reservation.failedBucket?.name === 'key_monthly') {
+        const cap = reservation.failedBucket.cap ?? 0;
+        const remaining = Math.max(0, cap - reservation.spend - reservation.held);
+        return {
+          canProceed: false,
+          isHardBlocked: false,
+          blockCode: 'key_budget_exceeded',
+          blockReason: `This API key's monthly budget of ${cap.toFixed(4)} would be exceeded (worst-case cost ${maxEstimatedCost.toFixed(4)}, remaining ${remaining.toFixed(4)}).`,
+          budgetMonthly,
+          currentMonthlySpend: 0,
+          utilizationPct: 100,
+        };
+      }
+
+      const success = reservation.status !== 'rejected';
+      const currentSpend = reservation.spend;
+      const currentReserved = reservation.held;
       const totalCommitted = currentSpend + currentReserved;
       const utilizationPct = budgetMonthly > 0 ? (totalCommitted / budgetMonthly) * 100 : 0;
 
@@ -252,9 +296,11 @@ export class BudgetService {
         currentMonthlySpend: currentSpend,
         utilizationPct,
         // If the Lua reservation was refused (over budget, hard-block disabled) the
-        // request proceeds as soft-overage with NOTHING reserved. Reconciling a
-        // non-existent reservation would otherwise release other requests' holds.
+        // request proceeds as soft-overage with NOTHING held; settling still charges
+        // the actual cost to every bucket.
         reservedAmount: success ? maxEstimatedCost : 0,
+        hold: { requestId, amount: success ? maxEstimatedCost : 0, buckets },
+        logRequestContent: project.logRequestContent === true,
       };
     } catch (err: any) {
       this.logger.error(`reserveCapacity failed: ${err.message}. Fail-closed active.`);
@@ -270,21 +316,27 @@ export class BudgetService {
   }
 
   /**
-   * Reconcile atomic reservation with verified actual provider token usage.
+   * Settle a request's hold with its verified actual cost. Idempotent per
+   * request ID: a second settle (or a settle after release) changes nothing.
+   * Returns null if Redis was unavailable.
    */
-  async reconcileReservation(
-    projectId: string,
-    estimatedAmount: number,
-    actualCost: number,
-  ): Promise<{ newSpend: number; newReserved: number } | null> {
-    return this.redisService.reconcileBudget(projectId, estimatedAmount, actualCost);
+  async settleHold(hold: BudgetHold, actualCost: number): Promise<{ applied: boolean; spend: number } | null> {
+    return this.redisService.settleHold(hold.requestId, actualCost, hold.buckets);
   }
 
-  /**
-   * Release reserved capacity when request fails or is canceled.
-   */
-  async releaseReservation(projectId: string, estimatedAmount: number): Promise<void> {
-    return this.redisService.releaseReservation(projectId, estimatedAmount);
+  /** Mark a request as settled in Redis but not yet in the ledger (call before settleHold). */
+  async markPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    await this.redisService.markPendingPersist(projectId, requestId, at);
+  }
+
+  /** The request's ledger row has been written. */
+  async clearPendingPersist(projectId: string, requestId: string, at: Date): Promise<void> {
+    await this.redisService.clearPendingPersist(projectId, requestId, at);
+  }
+
+  /** Release a request's hold without charging (upstream failure). Idempotent per request ID. */
+  async releaseHold(hold: BudgetHold): Promise<void> {
+    await this.redisService.releaseHold(hold.requestId, hold.buckets);
   }
 
   /**
@@ -307,7 +359,7 @@ export class BudgetService {
       if (currentSpend >= warningThreshold && currentSpend < budget) {
         // Check if an 80% alert was already sent this month (idempotent)
         const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const firstDayOfMonth = utcMonthStart(now);
 
         const existing = await this.prisma.budgetAlert.findFirst({
           where: {
@@ -353,11 +405,12 @@ export class BudgetService {
           message: params.message,
           channel: params.channel || 'IN_APP',
           isRead: false,
-          status: 'SENT',
+          // No external delivery exists yet: the alert is recorded in-app only
+          status: 'RECORDED',
         },
       });
 
-      this.logger.log(`[ALERT DISPATCHED] ${params.title}: ${params.message}`);
+      this.logger.log(`[ALERT RECORDED in-app] ${params.title}`);
     } catch (err: any) {
       this.logger.error(`Failed to record alert: ${err.message}`);
     }
@@ -369,7 +422,15 @@ export class BudgetService {
    */
   async reconcileProjectSpend(projectId: string): Promise<void> {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfMonth = utcMonthStart(now);
+
+    // Read the ledger activity counter BEFORE the DB, so any request that settles
+    // or persists while we aggregate is detected and spend is not lowered.
+    const seqBefore = await this.redisService.getLedgerSeq(projectId, now);
+    if (seqBefore === null) {
+      this.logger.warn(`Skipping reconciliation for project ${projectId}: Redis unavailable`);
+      return;
+    }
 
     const aggregate = await this.prisma.request.aggregate({
       where: {
@@ -380,8 +441,32 @@ export class BudgetService {
       _sum: { costEstimate: true },
     });
 
-    const trueSpend = Number(aggregate._sum.costEstimate || 0);
-    await this.redisService.setProjectSpend(projectId, trueSpend);
+    const ledgerSpend = Number(aggregate._sum.costEstimate || 0);
+
+    // Per-key monthly spend, from the same ledger, under the same in-flight guard
+    const [keys, perKey] = await Promise.all([
+      this.prisma.gatewayApiKey.findMany({ where: { projectId }, select: { id: true } }),
+      this.prisma.request.groupBy({
+        by: ['gatewayKeyId'],
+        where: { projectId, createdAt: { gte: firstDayOfMonth }, isBlocked: false, gatewayKeyId: { not: null } },
+        _sum: { costEstimate: true },
+      }),
+    ]);
+    const keySums = new Map(perKey.map((r) => [r.gatewayKeyId, Number(r._sum.costEstimate || 0)]));
+    for (const k of keys) {
+      await this.redisService.reconcileBucketSpend(
+        this.redisService.keyMonthBucket(k.id, null, now),
+        projectId,
+        keySums.get(k.id) ?? 0,
+        seqBefore,
+        now,
+      );
+    }
+    // Atomically: drop expired holds, then set spend to the ledger sum only if
+    // nothing is in flight; otherwise only ever raise it (repairs a Redis flush).
+    const reconciled = await this.redisService.reconcileProjectSpend(projectId, ledgerSpend, seqBefore, now);
+    if (!reconciled) return;
+    const trueSpend = reconciled.spend;
 
     // Lift automatic budget blocks once spend is back under the cap
     // (new billing month, or an admin raised the budget). Manual freezes are untouched.

@@ -1,0 +1,140 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: spendguard
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: spendguard_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U spendguard -d spendguard_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://spendguard:ci_password@localhost:5432/spendguard_ci?schema=public
+      # Matches the Dockerfiles (node:20-alpine)
+      NODE_VERSION: '20'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      # ── Server: install, generate, build, unit tests ───────────────────────
+      - name: Server · npm ci
+        working-directory: server
+        run: npm ci
+
+      - name: Server · prisma generate
+        working-directory: server
+        run: npx prisma generate
+
+      - name: Server · build
+        working-directory: server
+        run: npm run build
+
+      - name: Server · unit tests
+        working-directory: server
+        run: npm test -- --ci
+
+      # ── Client: install, typecheck, lint, build ────────────────────────────
+      - name: Client · npm ci
+        working-directory: client
+        run: npm ci
+
+      - name: Client · typecheck
+        working-directory: client
+        run: npx tsc --noEmit
+
+      - name: Client · lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Client · build
+        working-directory: client
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
+
+      # ── Live E2E: Postgres + Redis services, mock upstream, backend ────────
+      - name: Database · migrate
+        working-directory: server
+        run: npx prisma migrate deploy
+
+      - name: Start mock OpenAI upstream
+        working-directory: server
+        run: |
+          MOCK_UPSTREAM_PORT=4555 nohup npm run mock:upstream > ../mock-upstream.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:4555/__stats && exit 0; sleep 1; done
+          cat ../mock-upstream.log; exit 1
+
+      - name: Start backend
+        working-directory: server
+        env:
+          NODE_ENV: test
+          PORT: '4000'
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+          JWT_ACCESS_SECRET: ci-access-secret-not-for-production-0123456789
+          JWT_REFRESH_SECRET: ci-refresh-secret-not-for-production-012345678
+          ENCRYPTION_MASTER_KEY: ci-master-key-not-for-production-0123456789ab
+          OPENAI_BASE_URL: http://localhost:4555/v1
+          # A platform key is set on purpose: tenant traffic must never use it
+          OPENAI_API_KEY: sk-platform-should-never-be-used
+          # Leaves the per-email auth limit as the one under test
+          AUTH_IP_RPM: '30'
+        run: |
+          nohup node dist/src/main.js > ../backend.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:4000/health && exit 0; sleep 1; done
+          cat ../backend.log; exit 1
+
+      - name: E2E suite
+        working-directory: server
+        env:
+          E2E_BASE_URL: http://localhost:4000
+          E2E_MOCK_URL: http://localhost:4555
+          E2E_REDIS_HOST: localhost
+          E2E_REDIS_PORT: '6379'
+        run: npm run test:e2e
+
+      - name: Redis outage recovery
+        working-directory: server
+        env:
+          E2E_BASE_URL: http://localhost:4000
+          E2E_REDIS_STOP_CMD: docker stop ${{ job.services.redis.id }}
+          E2E_REDIS_START_CMD: docker start ${{ job.services.redis.id }}
+        run: npm run test:redis-outage
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          echo '── backend ──'; tail -200 backend.log || true
+          echo '── mock upstream ──'; tail -50 mock-upstream.log || true

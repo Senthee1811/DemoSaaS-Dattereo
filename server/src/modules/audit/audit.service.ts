@@ -45,6 +45,8 @@ export class AuditService {
     blockedOnly?: boolean;
     limit?: number;
     offset?: number;
+    /** Caller's role: MEMBERs never receive prompt/response previews. */
+    role?: string;
   }) {
     const where: any = { project: { orgId: params.orgId } };
     if (params.projectId) where.projectId = params.projectId;
@@ -75,12 +77,17 @@ export class AuditService {
         take: params.limit || 50,
         skip: params.offset || 0,
         include: {
-          project: { select: { name: true } },
+          project: { select: { name: true, logRequestContent: true } },
           user: { select: { name: true, email: true } },
         },
       }),
       this.prisma.request.count({ where }),
     ]);
+
+    // Previews only for OWNER/ADMIN, and only while the project opts in to content
+    // logging (legacy rows stored before the opt-in existed stay hidden).
+    const canSeeContent = (l: (typeof logs)[number]) =>
+      params.role !== undefined && params.role !== 'MEMBER' && l.project?.logRequestContent === true;
 
     return {
       logs: logs.map((l) => ({
@@ -101,8 +108,7 @@ export class AuditService {
         isAnomaly: l.isAnomaly,
         anomalyReason: l.anomalyReason,
         isBlocked: l.isBlocked,
-        promptPreview: l.promptPreview,
-        responsePreview: l.responsePreview,
+        ...(canSeeContent(l) ? { promptPreview: l.promptPreview, responsePreview: l.responsePreview } : {}),
         timestamp: l.createdAt,
       })),
       total,

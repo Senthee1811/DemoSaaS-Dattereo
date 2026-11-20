@@ -1,23 +1,34 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { utcMonthStart, utcIsoWeekStart } from '@/common/billing-period';
 
 export interface CreateProjectDto {
   name: string;
   slug?: string;
   description?: string;
   budgetMonthly: number;
-  budgetWeekly?: number;
   budgetHardBlockEnabled?: boolean;
+  logRequestContent?: boolean;
 }
 
 export interface UpdateProjectDto {
   id: string;
   name?: string;
   budgetMonthly?: number;
-  budgetWeekly?: number;
   budgetHardBlockEnabled?: boolean;
+  logRequestContent?: boolean;
   isBlocked?: boolean;
   blockReason?: string;
+}
+
+/**
+ * Weekly budgets are not enforced, so they are neither accepted nor returned.
+ * (The legacy projects.budget_weekly column is left in place, unused.)
+ */
+function withoutWeeklyBudget<T extends { budgetWeekly?: unknown }>(project: T): Omit<T, 'budgetWeekly'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { budgetWeekly, ...rest } = project;
+  return rest;
 }
 
 @Injectable()
@@ -38,8 +49,8 @@ export class OrganizationsService {
     });
 
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstDayOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const firstDayOfMonth = utcMonthStart(now);
+    const firstDayOfWeek = utcIsoWeekStart(now);
 
     const enriched = await Promise.all(
       projects.map(async (p) => {
@@ -72,8 +83,8 @@ export class OrganizationsService {
           slug: p.slug,
           description: p.description,
           budgetMonthly,
-          budgetWeekly: Number(p.budgetWeekly),
           budgetHardBlockEnabled: p.budgetHardBlockEnabled,
+          logRequestContent: p.logRequestContent,
           isBlocked: p.isBlocked,
           blockReason: p.blockReason,
           currentMonthlySpend,
@@ -98,7 +109,6 @@ export class OrganizationsService {
     if (budgetMonthly <= 0) {
       throw new BadRequestException('Monthly budget must be greater than zero');
     }
-    const budgetWeekly = Number(dto.budgetWeekly) || budgetMonthly / 4;
     const slug = (dto.slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project';
 
     const clash = await this.prisma.project.findUnique({ where: { orgId_slug: { orgId, slug } } });
@@ -113,12 +123,12 @@ export class OrganizationsService {
         slug,
         description: dto.description,
         budgetMonthly,
-        budgetWeekly,
         budgetHardBlockEnabled: dto.budgetHardBlockEnabled !== false,
+        logRequestContent: dto.logRequestContent === true,
       },
     });
 
-    return { project };
+    return { project: withoutWeeklyBudget(project) };
   }
 
   async updateProject(dto: UpdateProjectDto, orgId: string) {
@@ -133,8 +143,8 @@ export class OrganizationsService {
     const dataToUpdate: any = {};
     if (dto.name !== undefined) dataToUpdate.name = dto.name;
     if (dto.budgetMonthly !== undefined) dataToUpdate.budgetMonthly = dto.budgetMonthly;
-    if (dto.budgetWeekly !== undefined) dataToUpdate.budgetWeekly = dto.budgetWeekly;
     if (dto.budgetHardBlockEnabled !== undefined) dataToUpdate.budgetHardBlockEnabled = dto.budgetHardBlockEnabled;
+    if (dto.logRequestContent !== undefined) dataToUpdate.logRequestContent = dto.logRequestContent === true;
     if (dto.isBlocked !== undefined) {
       dataToUpdate.isBlocked = dto.isBlocked;
       dataToUpdate.blockReason = dto.isBlocked ? (dto.blockReason || 'Manual Admin Emergency Freeze') : null;
@@ -145,6 +155,6 @@ export class OrganizationsService {
       data: dataToUpdate,
     });
 
-    return { project: updated };
+    return { project: withoutWeeklyBudget(updated) };
   }
 }

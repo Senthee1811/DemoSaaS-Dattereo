@@ -1,4 +1,13 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import {
+  REQUEST_LEDGER_QUEUE,
+  PERSIST_REQUEST_JOB,
+  PERSIST_REQUEST_JOB_OPTS,
+  LedgerRowJob,
+} from './request-ledger.queue';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
@@ -24,29 +33,60 @@ export class GatewayService {
     private readonly openAIAdapter: OpenAIAdapter,
     private readonly anthropicAdapter: AnthropicAdapter,
     private readonly geminiAdapter: GeminiAdapter,
+    @InjectQueue(REQUEST_LEDGER_QUEUE) private readonly ledgerQueue: Queue,
   ) {}
 
   async processChatCompletion(req: GatewayChatRequest) {
     const startTime = Date.now();
+    const startedAt = new Date(startTime);
+    // One ID for the whole request: budget hold, ledger row and response id.
+    const reqId = `req_${randomUUID()}`;
     const provider = this.pricingService.resolveProvider(req.model);
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);
     const maxTokens = req.maxTokens ?? 1000;
     const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
 
-    // 1. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
-    const budgetGuard = await this.budgetService.reserveCapacity(req.projectId, maxEstimatedCost);
+    // 1a. Per-key tokens-per-minute: admit (prompt estimate + max_tokens) before the call
+    const estimatedTokens = promptTokens + maxTokens;
+    let tpm: { counterKey: string } | null = null;
+    if (req.gatewayKey?.rateLimitTpm) {
+      const admitted = await this.redisService.reserveTpm(req.gatewayKey.id, estimatedTokens, req.gatewayKey.rateLimitTpm);
+      if (admitted && !admitted.allowed) {
+        throw new HttpException(
+          {
+            error: {
+              message: `SpendGuard key token rate limit exceeded: ${req.gatewayKey.rateLimitTpm} tokens per minute (this request may use up to ${estimatedTokens}).`,
+              type: 'rate_limit_exceeded',
+              code: 'tpm_exceeded',
+            },
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      // admitted === null: Redis is down; the budget hold below fails closed.
+      tpm = admitted;
+    }
+    const releaseTpm = () => (tpm ? this.redisService.adjustTpm(tpm.counterKey, -estimatedTokens) : Promise.resolve());
+
+    // 1b. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
+    //     (project monthly cap and, for key traffic, the key's monthly cap)
+    const budgetGuard = await this.budgetService.reserveCapacity(
+      req.projectId,
+      reqId,
+      maxEstimatedCost,
+      req.gatewayKey ? { id: req.gatewayKey.id, budgetMonthly: req.gatewayKey.budgetMonthly } : undefined,
+    );
 
     if (!budgetGuard.canProceed) {
-      const blockedReqId = `req_blk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      
+      await releaseTpm();
       // Log blocked attempt into audit ledger (async)
-      this.logBlockedRequest(blockedReqId, req, provider, budgetGuard).catch(err =>
+      this.logBlockedRequest(reqId, req, provider, budgetGuard).catch(err =>
         this.logger.warn(`Could not log blocked request: ${err.message}`),
       );
 
       const isGovernanceUnavailable = budgetGuard.blockReason?.includes('Governance engine unavailable');
-      const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : 'budget_exceeded';
+      const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : (budgetGuard.blockCode ?? 'budget_exceeded');
       const httpStatus = isGovernanceUnavailable
         ? HttpStatus.SERVICE_UNAVAILABLE   // 503 for infra failure
         : HttpStatus.TOO_MANY_REQUESTS;    // 429 for budget exceeded
@@ -66,7 +106,7 @@ export class GatewayService {
       );
     }
 
-    const reservedAmount = budgetGuard.reservedAmount ?? 0;
+    const hold = budgetGuard.hold!;
 
     // 2. Fetch scoped provider API key from encrypted vault
     let decryptedKey: string | undefined;
@@ -103,10 +143,9 @@ export class GatewayService {
         adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
       }
     } catch (upstreamErr) {
-      // Release reserved budget capacity so failures do not drain the project cap
-      if (reservedAmount > 0) {
-        await this.budgetService.releaseReservation(req.projectId, reservedAmount);
-      }
+      // Release this request's hold so failures do not drain the project cap
+      await this.budgetService.releaseHold(hold);
+      await releaseTpm();
       throw upstreamErr;
     }
 
@@ -118,11 +157,16 @@ export class GatewayService {
     );
 
     // 4. Reconcile atomic reservation with verified actual usage
-    const reconciled = await this.budgetService.reconcileReservation(req.projectId, reservedAmount, costEstimate);
-    if (!reconciled) {
-      // Redis lost mid-request: the reservation auto-expires (5 min TTL) and the
-      // scheduled DB reconciliation restores the true spend counter.
-      this.logger.error(`Spend settlement failed for project ${req.projectId}; reconciliation job will correct it.`);
+    // Marked pending BEFORE settling, so reconciliation can never lower spend
+    // below this charge while its ledger row is still being written.
+    await this.budgetService.markPendingPersist(req.projectId, reqId, startedAt);
+    const settled = await this.budgetService.settleHold(hold, costEstimate);
+    // TPM counts what was actually used, not the pre-call estimate
+    if (tpm) await this.redisService.adjustTpm(tpm.counterKey, adapterResult.totalTokens - estimatedTokens);
+    if (!settled) {
+      // Redis lost mid-request: the hold expires on its own and the scheduled
+      // DB reconciliation restores the true spend counter from the ledger.
+      this.logger.error(`Spend settlement failed for request ${reqId} (project ${req.projectId}); reconciliation job will correct it.`);
     }
 
     // 5. Anomaly Spike Detection
@@ -152,11 +196,8 @@ export class GatewayService {
       });
     }
 
-    // 6. Append-only Immutable Request Logging (async — don't block response)
-    const reqId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-    this.logSuccessfulRequest(reqId, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText)
-      .catch(err => this.logger.warn(`Failed to log request: ${err.message}`));
+    // 6. Append-only ledger row — written BEFORE the response is returned
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText, budgetGuard.logRequestContent === true);
 
     // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;
@@ -210,6 +251,7 @@ export class GatewayService {
         id: reqId,
         projectId: req.projectId,
         userId: req.userId || null,
+        gatewayKeyId: req.gatewayKey?.id ?? null,
         provider: provider as any,
         model: req.model,
         tokensIn: this.pricingService.estimateTokens(req.messages.map(m => m.content).join(' ')),
@@ -221,7 +263,8 @@ export class GatewayService {
         isAnomaly: false,
         anomalyReason: budgetGuard.blockReason || 'Hard-block limit active',
         isBlocked: true,
-        promptPreview: req.messages[0]?.content?.slice(0, 200) || '',
+        // Blocked attempts never store prompt text
+        promptPreview: null,
         responsePreview: 'FAIL_CLOSED_GUARDRAIL_BLOCKED',
       },
     });
@@ -229,6 +272,7 @@ export class GatewayService {
 
   private async logSuccessfulRequest(
     reqId: string,
+    startedAt: Date,
     req: GatewayChatRequest,
     provider: string,
     adapterResult: any,
@@ -236,12 +280,15 @@ export class GatewayService {
     latencyMs: number,
     anomalyResult: any,
     promptText: string,
+    logContent: boolean,
   ) {
-    await this.prisma.request.create({
-      data: {
+    const data = {
         id: reqId,
+        // Same instant as the budget bucket, so ledger month == Redis month
+        createdAt: startedAt,
         projectId: req.projectId,
         userId: req.userId || null,
+        gatewayKeyId: req.gatewayKey?.id ?? null,
         provider: provider as any,
         model: req.model,
         tokensIn: adapterResult.promptTokens,
@@ -253,14 +300,30 @@ export class GatewayService {
         isAnomaly: anomalyResult.isAnomaly,
         anomalyReason: anomalyResult.reason || null,
         isBlocked: false,
-        promptPreview: promptText.slice(0, 300),
-        responsePreview: adapterResult.responseText.slice(0, 300),
+        // Prompt/response text is stored only when the project opted in
+        promptPreview: logContent ? promptText.slice(0, 300) : null,
+        responsePreview: logContent ? adapterResult.responseText.slice(0, 300) : null,
         metadataJson: JSON.stringify({
           clientIp: req.clientIp || '127.0.0.1',
           clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',
           isSimulated: adapterResult.isSimulated,
         }),
-      },
-    });
+    };
+
+    try {
+      await this.prisma.request.create({ data });
+      await this.budgetService.clearPendingPersist(req.projectId, reqId, startedAt);
+    } catch (err: any) {
+      // The provider call succeeded and Redis is charged: the row must not be
+      // dropped. Queue a retry; reconciliation keeps the charge while it is pending.
+      // Log codes only — Prisma messages can echo the row (prompt text).
+      this.logger.error(`Ledger write failed for request ${reqId} (${err?.code ?? err?.name}); queued for retry`);
+      const job: LedgerRowJob = { ...data, createdAt: startedAt.toISOString() };
+      try {
+        await this.ledgerQueue.add(PERSIST_REQUEST_JOB, job, { ...PERSIST_REQUEST_JOB_OPTS, jobId: reqId });
+      } catch (queueErr: any) {
+        this.logger.error(`CRITICAL: could not queue ledger retry for request ${reqId}: ${queueErr?.message}`);
+      }
+    }
   }
 }

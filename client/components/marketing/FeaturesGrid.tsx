@@ -57,13 +57,13 @@ const FEATURES = [
 
 export function FeaturesGrid() {
   return (
-    <section id="features" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+    <section id="features" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto border-t border-parchment-border">
       {/* Section Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-14">
         <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
           Platform Architecture
         </span>
-        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
           Infrastructure Built for FinOps Rigor
         </h2>
         <p className="mt-2 text-sm text-[#555550] font-sans">
@@ -78,19 +78,19 @@ export function FeaturesGrid() {
           return (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-6 border border-[#E5E0D8] shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
+              className="bg-white rounded-2xl p-6 border border-parchment-border shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
             >
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] text-[#141413] border border-[#E5E0D8] flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl bg-parchment-ivory text-inversion-dark border border-parchment-border flex items-center justify-center">
                     <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                   </div>
-                  <span className="text-[10px] font-mono text-[#666660] bg-[#FAF8F5] px-2.5 py-0.5 rounded-full border border-[#E5E0D8]">
+                  <span className="text-[10px] font-mono text-[#666660] bg-parchment-ivory px-2.5 py-0.5 rounded-full border border-parchment-border">
                     {feat.badge}
                   </span>
                 </div>
 
-                <h3 className="font-serif text-base font-normal text-[#141413]">{feat.title}</h3>
+                <h3 className="font-serif text-base font-normal text-inversion-dark">{feat.title}</h3>
 
                 <p className="text-xs text-[#555550] leading-relaxed font-sans">
                   {feat.description}

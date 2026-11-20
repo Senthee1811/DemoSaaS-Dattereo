@@ -15,7 +15,7 @@ interface RequestLog {
 const SAMPLE_REQUESTS: RequestLog[] = [
   {
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-6.2-sol',
     tokens: 1204,
     cost: 0.018,
     project: 'Marketing Project',
@@ -23,7 +23,7 @@ const SAMPLE_REQUESTS: RequestLog[] = [
   },
   {
     provider: 'anthropic',
-    model: 'claude-3-5-sonnet',
+    model: 'claude-sonnet-5-5',
     tokens: 2840,
     cost: 0.042,
     project: 'Payments Copilot',
@@ -31,7 +31,7 @@ const SAMPLE_REQUESTS: RequestLog[] = [
   },
   {
     provider: 'google',
-    model: 'gemini-1.5-pro',
+    model: 'gemini-3.1-pro-preview',
     tokens: 4120,
     cost: 0.015,
     project: 'Doc Analytics',
@@ -39,7 +39,7 @@ const SAMPLE_REQUESTS: RequestLog[] = [
   },
   {
     provider: 'openai',
-    model: 'gpt-4o-mini',
+    model: 'gpt-6-luna',
     tokens: 890,
     cost: 0.003,
     project: 'Support Automation',

@@ -65,7 +65,7 @@ const TOUR_STEPS: TourStep[] = [
     step: 5,
     tab: 'playground',
     title: '5. Model Test Bench',
-    description: 'Test prompts across GPT-4o, Claude 3.5 Sonnet, and Gemini 1.5 Pro. Verify capacity reservations, response latency, and settled cost estimates in real time.',
+    description: 'Test prompts across the models in your catalog. Verify capacity reservations, response latency, and settled cost estimates in real time.',
     badge: 'Workspace',
     icon: FlaskConical,
   },

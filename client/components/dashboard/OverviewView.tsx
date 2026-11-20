@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Calendar,
 } from 'lucide-react';
-import { MODEL_CHART_COLORS } from '@/lib/tokens';
+import { modelChartColor } from '@/lib/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton, ChartSkeleton } from '@/components/ui/LoadingSkeleton';
 import { OnboardingChecklist } from './OnboardingChecklist';
@@ -101,7 +101,7 @@ export function OverviewView({
     .map((m): PieSlice => ({
       name: m.model,
       value: Number(Number(m.spend).toFixed(4)),
-      color: MODEL_CHART_COLORS[m.model] || MODEL_CHART_COLORS.default
+      color: modelChartColor(m.model)
     }));
 
   return (

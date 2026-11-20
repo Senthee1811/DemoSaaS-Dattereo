@@ -12,7 +12,7 @@ export function Hero() {
     curl: `curl -X POST https://gateway.spendguard.ai/v1/chat/completions \\
   -H "Authorization: Bearer sg_live_9bac36..." \\
   -H "X-SpendGuard-Project-Id: proj_production" \\
-  -d '{"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello SpendGuard"}]}'`,
+  -d '{"model": "gpt-6.2-sol", "messages": [{"role": "user", "content": "Hello SpendGuard"}]}'`,
     python: `from openai import OpenAI
 
 client = OpenAI(
@@ -21,7 +21,7 @@ client = OpenAI(
     default_headers={"X-SpendGuard-Project-Id": "proj_production"}
 )
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-5-5",
     messages=[{"role": "user", "content": "Analyze inference spend."}]
 )`,
     node: `import OpenAI from 'openai';
@@ -32,7 +32,7 @@ const client = new OpenAI({
   defaultHeaders: { 'X-SpendGuard-Project-Id': 'proj_production' }
 });
 const response = await client.chat.completions.create({
-  model: 'gpt-4o',
+  model: 'gpt-6.2-sol',
   messages: [{ role: 'user', content: 'Analyze inference spend.' }]
 });`
   };
@@ -44,11 +44,11 @@ const response = await client.chat.completions.create({
   };
 
   return (
-    <section className="relative w-full pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+    <section className="relative w-full pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
       {/* Hero Header — Editorial Composition */}
       <div className="max-w-3xl mx-auto text-center space-y-5">
         {/* Release Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-xs font-mono text-[#555550] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-parchment-border text-xs font-mono text-[#555550] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
           <span>SpendGuard AI · by Dattreo</span>
           <span className="text-[#C4BFB8]">|</span>
@@ -56,7 +56,7 @@ const response = await client.chat.completions.create({
         </div>
 
         {/* Master Headline in Refined Editorial Serif */}
-        <h1 className="font-serif text-4xl sm:text-5xl lg:text-[62px] font-normal tracking-tight text-[#141413] leading-[1.08]">
+        <h1 className="font-serif text-4xl sm:text-5xl lg:text-[62px] font-normal tracking-tight text-inversion-dark leading-[1.08]">
           One gateway. Every model. <br className="hidden sm:inline" />
           <span className="italic font-normal text-[#FF6B35]">Complete cost control.</span>
         </h1>
@@ -78,7 +78,7 @@ const response = await client.chat.completions.create({
 
           <Link
             href="/dashboard"
-            className="w-full sm:w-auto px-7 py-3 rounded-full bg-white hover:bg-[#F7F5F0] text-[#141413] border border-[#E5E0D8] font-semibold text-sm transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-white hover:bg-[#F7F5F0] text-inversion-dark border border-parchment-border font-semibold text-sm transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
           >
             Explore Live Console
           </Link>
@@ -102,7 +102,7 @@ const response = await client.chat.completions.create({
       </div>
 
       {/* Editorial Gateway Console Artefact */}
-      <div className="mt-14 bg-[#141413] rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
+      <div className="mt-14 bg-inversion-dark rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
         {/* Terminal Titlebar */}
         <div className="h-11 px-5 bg-[#1B1B1A] border-b border-[#2A2A28] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ const response = await client.chat.completions.create({
               STATUS: 200 OK
             </span>
             <span>PRE-FLIGHT: 3.2ms</span>
-            <span>MODEL: gpt-4o / claude-3-5</span>
+            <span>MODEL: gpt-6.2-sol / claude-sonnet-5-5</span>
           </div>
           <span className="text-[#888882]">RESERVATION: ATOMIC_LUA_OK</span>
         </div>

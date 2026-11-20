@@ -208,20 +208,12 @@ export class KeysService {
       }
 
       if (provider === 'ANTHROPIC') {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': plainKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-3-5-haiku-20241022',
-            messages: [{ role: 'user', content: 'ping' }],
-            max_tokens: 1,
-          }),
+        // Models-list call: validates the key without spending tokens or depending on
+        // any specific model still being served (the old probe used a retired model).
+        const resp = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+          headers: { 'x-api-key': plainKey, 'anthropic-version': '2023-06-01' },
         });
-        if (resp.ok || resp.status === 400) {
+        if (resp.ok) {
           return { valid: true, message: 'Anthropic Claude connection verified successfully.' };
         }
         const err = await resp.text();

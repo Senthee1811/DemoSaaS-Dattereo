@@ -6,8 +6,8 @@ import { ArrowRight, Terminal, CheckCircle2 } from 'lucide-react';
 
 export function CtaBanner() {
   return (
-    <section className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      <div className="rounded-3xl bg-[#141413] border border-[#2A2A28] text-white p-8 sm:p-14 lg:p-16 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+    <section className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
+      <div className="rounded-3xl bg-inversion-dark border border-[#2A2A28] text-white p-8 sm:p-14 lg:p-16 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#242422] border border-[#333330] text-xs font-mono text-[#D6D6D0]">

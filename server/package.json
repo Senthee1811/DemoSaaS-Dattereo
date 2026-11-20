@@ -22,6 +22,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "test:redis-outage": "ts-node -r tsconfig-paths/register test/redis-outage.ts",
+    "sync:model-catalog": "ts-node -r tsconfig-paths/register scripts/sync-model-catalog.ts",
     "mock:upstream": "ts-node test/mock-upstream.ts"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
+import { PRICING_CATALOG } from '../src/modules/pricing/pricing.catalog';
 
 const prisma = new PrismaClient();
 
@@ -148,21 +149,16 @@ async function main() {
   }
 
   // 4. Seed sample requests (180 requests over past 7 days)
-  const models = [
-    { provider: 'OPENAI' as const, model: 'gpt-4o' },
-    { provider: 'OPENAI' as const, model: 'gpt-4o-mini' },
-    { provider: 'ANTHROPIC' as const, model: 'claude-3-5-sonnet-20241022' },
-    { provider: 'GEMINI' as const, model: 'gemini-1.5-pro' },
-    { provider: 'GEMINI' as const, model: 'gemini-1.5-flash' },
-  ];
+  // Demo traffic uses models from the shared catalog so seeded costs match real pricing
+  const DEMO_MODELS = ['gpt-6.2-sol', 'gpt-6-luna', 'claude-sonnet-5-5', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+  const models = DEMO_MODELS.map((model) => ({ provider: PRICING_CATALOG[model].provider, model }));
 
-  const PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = {
-    'gpt-4o': { inputPer1M: 2.50, outputPer1M: 10.00 },
-    'gpt-4o-mini': { inputPer1M: 0.15, outputPer1M: 0.60 },
-    'claude-3-5-sonnet-20241022': { inputPer1M: 3.00, outputPer1M: 15.00 },
-    'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
-    'gemini-1.5-flash': { inputPer1M: 0.075, outputPer1M: 0.30 },
-  };
+  const PRICING: Record<string, { inputPer1M: number; outputPer1M: number }> = Object.fromEntries(
+    DEMO_MODELS.map((model) => [
+      model,
+      { inputPer1M: PRICING_CATALOG[model].inputPricePerMillion, outputPer1M: PRICING_CATALOG[model].outputPricePerMillion },
+    ]),
+  );
 
   const samplePrompts = [
     'Analyze customer ticket #49102 regarding billing discrepancies.',
@@ -188,7 +184,7 @@ async function main() {
     const tokensOut = isAnomaly ? Math.floor(Math.random() * 8000 + 4000) : Math.floor(Math.random() * 1200 + 100);
     const totalTokens = tokensIn + tokensOut;
 
-    const pricing = PRICING[m.model] || PRICING['gpt-4o-mini'];
+    const pricing = PRICING[m.model];
     const cost = Number(((tokensIn / 1_000_000) * pricing.inputPer1M + (tokensOut / 1_000_000) * pricing.outputPer1M).toFixed(6));
 
     const latency = Math.floor(Math.random() * 750 + 180);
@@ -257,21 +253,15 @@ async function main() {
   console.log('  ✓ Seeded 3 budget alerts');
 
   // Seed Model Pricing Catalog (PRD FR4 & Step 6)
-  const defaultPricingRows = [
-    { model: 'gpt-4o', provider: 'OPENAI' as const, inputPricePerMillion: 2.50, outputPricePerMillion: 10.00, displayName: 'GPT-4o (Omni)', contextWindow: 128000 },
-    { model: 'gpt-4o-mini', provider: 'OPENAI' as const, inputPricePerMillion: 0.15, outputPricePerMillion: 0.60, displayName: 'GPT-4o Mini', contextWindow: 128000 },
-    { model: 'o1', provider: 'OPENAI' as const, inputPricePerMillion: 15.00, outputPricePerMillion: 60.00, displayName: 'o1 (Reasoning)', contextWindow: 200000 },
-    { model: 'o1-mini', provider: 'OPENAI' as const, inputPricePerMillion: 3.00, outputPricePerMillion: 12.00, displayName: 'o1 Mini', contextWindow: 128000 },
-    { model: 'gpt-4-turbo', provider: 'OPENAI' as const, inputPricePerMillion: 10.00, outputPricePerMillion: 30.00, displayName: 'GPT-4 Turbo', contextWindow: 128000 },
-    { model: 'gpt-3.5-turbo', provider: 'OPENAI' as const, inputPricePerMillion: 0.50, outputPricePerMillion: 1.50, displayName: 'GPT-3.5 Turbo', contextWindow: 16385 },
-    { model: 'claude-3-5-sonnet-20241022', provider: 'ANTHROPIC' as const, inputPricePerMillion: 3.00, outputPricePerMillion: 15.00, displayName: 'Claude 3.5 Sonnet (v2)', contextWindow: 200000 },
-    { model: 'claude-3-5-sonnet', provider: 'ANTHROPIC' as const, inputPricePerMillion: 3.00, outputPricePerMillion: 15.00, displayName: 'Claude 3.5 Sonnet', contextWindow: 200000 },
-    { model: 'claude-3-5-haiku-20241022', provider: 'ANTHROPIC' as const, inputPricePerMillion: 0.80, outputPricePerMillion: 4.00, displayName: 'Claude 3.5 Haiku', contextWindow: 200000 },
-    { model: 'claude-3-opus-20240229', provider: 'ANTHROPIC' as const, inputPricePerMillion: 15.00, outputPricePerMillion: 75.00, displayName: 'Claude 3 Opus', contextWindow: 200000 },
-    { model: 'gemini-1.5-pro', provider: 'GEMINI' as const, inputPricePerMillion: 1.25, outputPricePerMillion: 5.00, displayName: 'Gemini 1.5 Pro', contextWindow: 2000000 },
-    { model: 'gemini-1.5-flash', provider: 'GEMINI' as const, inputPricePerMillion: 0.075, outputPricePerMillion: 0.30, displayName: 'Gemini 1.5 Flash', contextWindow: 1000000 },
-    { model: 'gemini-2.0-flash-exp', provider: 'GEMINI' as const, inputPricePerMillion: 0.00, outputPricePerMillion: 0.00, displayName: 'Gemini 2.0 Flash (Exp)', contextWindow: 1000000 },
-  ];
+  const defaultPricingRows = Object.entries(PRICING_CATALOG).map(([model, c]) => ({
+    model,
+    provider: c.provider,
+    inputPricePerMillion: c.inputPricePerMillion,
+    outputPricePerMillion: c.outputPricePerMillion,
+    cachedInputPrice: c.cachedInputPrice,
+    displayName: c.displayName,
+    contextWindow: c.contextWindow,
+  }));
 
   for (const pr of defaultPricingRows) {
     await prisma.modelPricing.upsert({
@@ -281,6 +271,7 @@ async function main() {
         outputPricePerMillion: pr.outputPricePerMillion,
         displayName: pr.displayName,
         contextWindow: pr.contextWindow,
+        cachedInputPrice: pr.cachedInputPrice,
       },
       create: {
         model: pr.model,
@@ -289,6 +280,7 @@ async function main() {
         outputPricePerMillion: pr.outputPricePerMillion,
         displayName: pr.displayName,
         contextWindow: pr.contextWindow,
+        cachedInputPrice: pr.cachedInputPrice,
         isActive: true,
       },
     });

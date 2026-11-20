@@ -29,14 +29,14 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
-      <div className="bg-white rounded-2xl border border-[#E5E0D8] p-8 sm:p-12 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+    <section id="how-it-works" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
+      <div className="bg-white rounded-2xl border border-parchment-border p-8 sm:p-12 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         {/* Header — Editorial */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
             Integration Workflow
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+          <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
             3-Step Developer Integration
           </h2>
           <p className="mt-2 text-sm text-[#555550] font-sans">
@@ -51,19 +51,19 @@ export function HowItWorks() {
             return (
               <div
                 key={idx}
-                className="bg-[#FAF8F5] rounded-xl p-6 border border-[#E5E0D8] flex flex-col justify-between"
+                className="bg-parchment-ivory rounded-xl p-6 border border-parchment-border flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-serif font-normal text-[#FF6B35]">
                       {s.step}
                     </span>
-                    <div className="w-9 h-9 rounded-lg bg-white border border-[#E5E0D8] text-[#141413] flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-lg bg-white border border-parchment-border text-inversion-dark flex items-center justify-center">
                       <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                     </div>
                   </div>
 
-                  <h3 className="font-serif text-base font-normal text-[#141413] mb-2">
+                  <h3 className="font-serif text-base font-normal text-inversion-dark mb-2">
                     {s.title}
                   </h3>
 
@@ -72,7 +72,7 @@ export function HowItWorks() {
                   </p>
                 </div>
 
-                <div className="p-3 bg-[#141413] rounded-lg border border-[#2A2A28] text-[11px] font-mono text-[#D6D6D0] overflow-x-auto">
+                <div className="p-3 bg-inversion-dark rounded-lg border border-[#2A2A28] text-[11px] font-mono text-[#D6D6D0] overflow-x-auto">
                   <code>{s.snippet}</code>
                 </div>
               </div>

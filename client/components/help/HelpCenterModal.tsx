@@ -203,7 +203,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="gpt-4o", # or "claude-3-5-sonnet", "gemini-1.5-pro"
+    model="gpt-6.2-sol", # or "claude-sonnet-5-5", "gemini-3.1-pro-preview"
     messages=[{"role": "user", "content": "Analyze quarterly FinOps ledger"}]
 )
 
@@ -229,7 +229,7 @@ const openai = new OpenAI({
 });
 
 const completion = await openai.chat.completions.create({
-  model: 'gpt-4o',
+  model: 'gpt-6.2-sol',
   messages: [{ role: 'user', content: 'Execute model audit' }],
 });
 
@@ -247,7 +247,7 @@ console.log(completion.choices[0].message.content);`}
                 </div>
                 <div className="space-y-3 text-xs text-[#555550]">
                   <p>In the <strong>Key Vault</strong> workspace, you can register multiple provider credentials. Each key is encrypted immediately upon submission.</p>
-                  <p>SpendGuard supports automatic provider rotation: if OpenAI experiences an upstream outage, you can seamlessly switch requests to Claude 3.5 Sonnet or Gemini 1.5 Pro without modifying client code.</p>
+                  <p>SpendGuard supports automatic provider rotation: if OpenAI experiences an upstream outage, you can seamlessly switch requests to a model from another provider without modifying client code.</p>
                 </div>
               </div>
             )}

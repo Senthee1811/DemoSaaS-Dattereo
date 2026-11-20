@@ -34,17 +34,27 @@ export const TOKENS = {
   },
 } as const;
 
-export const MODEL_CHART_COLORS: Record<string, string> = {
-  'gpt-4o': '#FF6B35',
-  'gpt-4o-mini': '#FB923C',
-  'gpt-4-turbo': '#F97316',
-  'claude-3-5-sonnet-20241022': '#2563EB',
-  'claude-3-5-haiku-20241022': '#3B82F6',
-  'claude-3-opus-20240229': '#1D4ED8',
-  'gemini-1.5-pro': '#0D9488',
-  'gemini-1.5-flash': '#14B8A6',
-  'gemini-2.0-flash': '#059669',
-  'o1': '#7C3AED',
-  'o1-mini': '#8B5CF6',
-  'default': '#71717A'
-};
+const PROVIDER_SHADES = {
+  openai: ['#FF6B35', '#FB923C', '#F97316', '#EA580C'],
+  anthropic: ['#2563EB', '#3B82F6', '#1D4ED8', '#60A5FA'],
+  gemini: ['#0D9488', '#14B8A6', '#059669', '#2DD4BF'],
+} as const;
+
+/**
+ * Chart colour for a model, keyed by provider family with a stable per-model shade, so it
+ * works for any model ID the backend serves instead of a bundled per-model table.
+ */
+export function modelChartColor(model: string): string {
+  const id = model.toLowerCase();
+  const family = id.startsWith('claude')
+    ? PROVIDER_SHADES.anthropic
+    : id.startsWith('gemini')
+      ? PROVIDER_SHADES.gemini
+      : id.startsWith('gpt') || /^o\d/.test(id)
+        ? PROVIDER_SHADES.openai
+        : null;
+  if (!family) return '#71717A';
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return family[hash % family.length];
+}

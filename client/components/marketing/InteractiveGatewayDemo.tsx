@@ -18,11 +18,13 @@ interface ModelOption {
   outCost: number; // per 1M
 }
 
+// Illustrative landing-page simulation only (no gateway call is made). Real model lists and
+// prices come from GET /api/v1/pricing in the app; rates here mirror the catalog as of Nov 2026.
 const MODELS: ModelOption[] = [
-  { id: 'gpt-4o', name: 'OpenAI GPT-4o', provider: 'OpenAI', inCost: 2.50, outCost: 10.00 },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', inCost: 3.00, outCost: 15.00 },
-  { id: 'gemini-1-5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', inCost: 1.25, outCost: 5.00 },
-  { id: 'gpt-4o-mini', name: 'OpenAI GPT-4o Mini', provider: 'OpenAI', inCost: 0.15, outCost: 0.60 },
+  { id: 'gpt-6.2-sol', name: 'OpenAI GPT-6.2 Sol', provider: 'OpenAI', inCost: 2.00, outCost: 10.00 },
+  { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', provider: 'Anthropic', inCost: 2.00, outCost: 10.00 },
+  { id: 'gemini-3-1-pro', name: 'Gemini 3.1 Pro', provider: 'Google', inCost: 2.00, outCost: 12.00 },
+  { id: 'gpt-6-luna', name: 'OpenAI GPT-6 Luna', provider: 'OpenAI', inCost: 0.10, outCost: 0.50 },
 ];
 
 const PROJECTS = [
@@ -86,13 +88,13 @@ export function InteractiveGatewayDemo() {
   };
 
   return (
-    <section id="demo" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto">
+    <section id="demo" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
       {/* Section Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-12">
         <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
           Interactive Gateway Test Bench
         </span>
-        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
           Test Gateway Routing &amp; Pre-Flight Budgets
         </h2>
         <p className="mt-2 text-sm text-[#555550] font-sans">
@@ -101,10 +103,10 @@ export function InteractiveGatewayDemo() {
       </div>
 
       {/* Sandbox Workspace Card */}
-      <div className="bg-white rounded-2xl border border-[#E5E0D8] shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-2xl border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12">
           {/* Controls Panel (5 cols) */}
-          <div className="lg:col-span-5 p-6 bg-[#FAF8F5] border-b lg:border-b-0 lg:border-r border-[#E5E0D8] flex flex-col justify-between space-y-5">
+          <div className="lg:col-span-5 p-6 bg-parchment-ivory border-b lg:border-b-0 lg:border-r border-parchment-border flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div>
                 <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
@@ -118,8 +120,8 @@ export function InteractiveGatewayDemo() {
                       onClick={() => setSelectedModel(model)}
                       className={`p-2.5 rounded-xl text-left border text-xs transition-colors ${
                         selectedModel.id === model.id
-                          ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-[#141413]'
-                          : 'bg-white border-[#E5E0D8] text-[#555550] hover:bg-[#F3EFE9]'
+                          ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-inversion-dark'
+                          : 'bg-white border-parchment-border text-[#555550] hover:bg-[#F3EFE9]'
                       }`}
                     >
                       <div className="truncate font-sans">{model.name}</div>
@@ -146,11 +148,11 @@ export function InteractiveGatewayDemo() {
                         className={`w-full p-2.5 rounded-xl text-left border transition-colors ${
                           selectedProject.id === proj.id
                             ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35]'
-                            : 'bg-white border-[#E5E0D8] hover:bg-[#F3EFE9]'
+                            : 'bg-white border-parchment-border hover:bg-[#F3EFE9]'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-[#141413]">{proj.name}</span>
+                          <span className="font-semibold text-inversion-dark">{proj.name}</span>
                           <span className={`text-[11px] font-mono tabular-nums ${percent >= 100 ? 'text-[#DC2626]' : percent >= 80 ? 'text-[#D97706]' : 'text-[#0D9488]'}`}>
                             ${proj.currentSpend} / ${proj.budget} ({percent}%)
                           </span>
@@ -172,7 +174,7 @@ export function InteractiveGatewayDemo() {
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono text-[11px] text-[#555550]">Simulated Prompt + Completion Tokens</span>
-                  <span className="font-mono tabular-nums font-bold text-[#141413]">{tokenLength.toLocaleString()}</span>
+                  <span className="font-mono tabular-nums font-bold text-inversion-dark">{tokenLength.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -207,7 +209,7 @@ export function InteractiveGatewayDemo() {
           </div>
 
           {/* Real-time Response & Audit Stream (7 cols) */}
-          <div className="lg:col-span-7 p-6 bg-[#141413] text-[#ECECE8] flex flex-col justify-between">
+          <div className="lg:col-span-7 p-6 bg-inversion-dark text-[#ECECE8] flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
                 <div className="flex items-center gap-2">

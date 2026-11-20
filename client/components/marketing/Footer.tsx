@@ -6,8 +6,8 @@ import { ShieldCheck, Lock, CheckCircle } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[#141413] border-t border-[#2A2A28] pt-16 pb-12 px-4 sm:px-6 lg:px-8 text-white">
-      <div className="max-w-[1240px] mx-auto">
+    <footer className="w-full bg-inversion-dark border-t border-[#2A2A28] pt-16 pb-12 px-4 sm:px-6 lg:px-8 text-white">
+      <div className="max-w-310 mx-auto">
         {/* Main Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-[#2A2A28]">
           {/* Brand Info (2 cols) */}
@@ -57,9 +57,9 @@ export function Footer() {
           <div className="space-y-3 font-sans">
             <h4 className="text-[11px] font-mono uppercase tracking-wider text-[#A0A09B]">Integrations</h4>
             <ul className="space-y-2 text-xs text-[#888882]">
-              <li><span className="text-white font-mono text-[11px]">OpenAI (GPT-4o, o1)</span></li>
-              <li><span className="text-white font-mono text-[11px]">Anthropic (Claude 3.5)</span></li>
-              <li><span className="text-white font-mono text-[11px]">Google (Gemini 1.5 Pro)</span></li>
+              <li><span className="text-white font-mono text-[11px]">OpenAI</span></li>
+              <li><span className="text-white font-mono text-[11px]">Anthropic</span></li>
+              <li><span className="text-white font-mono text-[11px]">Google (Gemini)</span></li>
               <li><span className="text-white font-mono text-[11px]">OpenAI SDK Drop-in</span></li>
               <li><span className="text-white font-mono text-[11px]">LangChain &amp; LlamaIndex</span></li>
             </ul>

@@ -50,14 +50,14 @@ export function FaqSection() {
   };
 
   return (
-    <section id="faq" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[960px] mx-auto border-t border-[#E5E0D8]">
+    <section id="faq" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[960px] mx-auto border-t border-parchment-border">
       {/* Section Header — Editorial */}
       <div className="max-w-2xl mb-14">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[11px] font-mono text-[#FF6B35] mb-3">
           <HelpCircle className="w-3.5 h-3.5" />
           <span>architecture_faq.md</span>
         </div>
-        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413]">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark">
           Technical architecture &amp; operational questions
         </h2>
         <p className="mt-2 text-sm text-[#555550] leading-relaxed font-sans">
@@ -74,8 +74,8 @@ export function FaqSection() {
               key={idx}
               className={`rounded-2xl border transition-all ${
                 isOpen
-                  ? 'bg-white border-[#141413] shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
-                  : 'bg-white border-[#E5E0D8] hover:border-[#CDC7BC]'
+                  ? 'bg-white border-inversion-dark shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
+                  : 'bg-white border-parchment-border hover:border-[#CDC7BC]'
               }`}
             >
               <button
@@ -87,13 +87,13 @@ export function FaqSection() {
                   <span className="text-[10px] font-mono font-medium text-[#888882] tracking-wider">
                     {faq.tag}
                   </span>
-                  <h3 className="font-serif text-base font-normal text-[#141413]">
+                  <h3 className="font-serif text-base font-normal text-inversion-dark">
                     {faq.q}
                   </h3>
                 </div>
                 <div
-                  className={`w-7 h-7 rounded-full border border-[#E5E0D8] flex items-center justify-center shrink-0 transition-transform duration-200 mt-1 ${
-                    isOpen ? 'bg-[#141413] text-white rotate-180 border-[#141413]' : 'bg-[#FAF8F5] text-[#555550]'
+                  className={`w-7 h-7 rounded-full border border-parchment-border flex items-center justify-center shrink-0 transition-transform duration-200 mt-1 ${
+                    isOpen ? 'bg-inversion-dark text-white rotate-180 border-inversion-dark' : 'bg-parchment-ivory text-[#555550]'
                   }`}
                 >
                   <ChevronDown className="w-4 h-4" />

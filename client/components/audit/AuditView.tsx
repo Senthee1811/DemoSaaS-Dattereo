@@ -17,6 +17,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useModelCatalog } from '@/lib/model-catalog';
 
 interface AuditLog {
   id: string;
@@ -50,6 +51,8 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProject, setFilterProject] = useState(selectedProjectId || '');
   const [filterModel, setFilterModel] = useState('');
+  // Model filter options come from the backend's model list, not a bundled one
+  const catalog = useModelCatalog();
   const [filterAnomalyOnly, setFilterAnomalyOnly] = useState(false);
   const [filterBlockedOnly, setFilterBlockedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -203,10 +206,12 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             className="px-3.5 py-2 rounded-full border border-sg-border text-xs font-medium text-inversion-dark bg-parchment-ivory focus:outline-none focus:border-[#FF6B35] cursor-pointer"
           >
             <option value="">All Models</option>
-            <option value="gpt-4o">GPT-4o</option>
-            <option value="gpt-4o-mini">GPT-4o Mini</option>
-            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+            {catalog.status === 'ready' &&
+              catalog.models.map((m) => (
+                <option key={m.model} value={m.model}>
+                  {m.displayName}
+                </option>
+              ))}
           </select>
         </div>
 

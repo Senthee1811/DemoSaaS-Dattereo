@@ -72,22 +72,22 @@ describe('SpendGuard Core Backend Unit Tests', () => {
       expect(cost).toBe(0.007500);
     });
 
-    it('should calculate accurate cost for Claude 3.5 Sonnet', () => {
-      const cost = pricingService.calculateCost('claude-3-5-sonnet-20241022', 1200, 450);
-      // (1200 / 1M * 3.00) + (450 / 1M * 15.00) = 0.003600 + 0.006750 = 0.010350
-      expect(cost).toBe(0.010350);
+    it('should calculate accurate cost for Claude Sonnet 5.5', () => {
+      const cost = pricingService.calculateCost('claude-sonnet-5-5', 1200, 450);
+      // (1200 / 1M * 2.00) + (450 / 1M * 10.00) = 0.002400 + 0.004500 = 0.006900
+      expect(cost).toBe(0.0069);
     });
 
-    it('should calculate accurate cost for Gemini 1.5 Pro', () => {
-      const cost = pricingService.calculateCost('gemini-1.5-pro', 1200, 450);
-      // (1200 / 1M * 1.25) + (450 / 1M * 5.00) = 0.001500 + 0.002250 = 0.003750
-      expect(cost).toBe(0.003750);
+    it('should calculate accurate cost for Gemini 3.5 Flash-Lite', () => {
+      const cost = pricingService.calculateCost('gemini-3.5-flash-lite', 1200, 450);
+      // (1200 / 1M * 0.30) + (450 / 1M * 2.50) = 0.000360 + 0.001125 = 0.001485
+      expect(cost).toBe(0.001485);
     });
 
     it('should resolve correct provider identifier', () => {
       expect(pricingService.resolveProvider('gpt-4o')).toBe('OPENAI');
-      expect(pricingService.resolveProvider('claude-3-5-sonnet')).toBe('ANTHROPIC');
-      expect(pricingService.resolveProvider('gemini-1.5-pro')).toBe('GEMINI');
+      expect(pricingService.resolveProvider('claude-sonnet-5-5')).toBe('ANTHROPIC');
+      expect(pricingService.resolveProvider('gemini-3.5-flash-lite')).toBe('GEMINI');
     });
 
     it('should return catalog prices through getAllPrices', () => {

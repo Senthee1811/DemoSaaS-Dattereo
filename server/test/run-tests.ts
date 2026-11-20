@@ -48,16 +48,16 @@ async function run() {
   // 2. Pricing
   console.log('\n▶ 2. Multi-Provider Pricing Catalog Accuracy');
   const gpt4oCost = pricingService.calculateCost('gpt-4o', 1200, 450);
-  const claudeCost = pricingService.calculateCost('claude-3-5-sonnet-20241022', 1200, 450);
-  const geminiCost = pricingService.calculateCost('gemini-1.5-pro', 1200, 450);
+  const claudeCost = pricingService.calculateCost('claude-sonnet-5-5', 1200, 450);
+  const geminiCost = pricingService.calculateCost('gemini-3.5-flash-lite', 1200, 450);
 
   console.log(`  ✓ GPT-4o (1200 in / 450 out): $${gpt4oCost.toFixed(6)}`);
-  console.log(`  ✓ Claude 3.5 Sonnet (1200 in / 450 out): $${claudeCost.toFixed(6)}`);
-  console.log(`  ✓ Gemini 1.5 Pro (1200 in / 450 out): $${geminiCost.toFixed(6)}`);
+  console.log(`  ✓ Claude Sonnet 5.5 (1200 in / 450 out): $${claudeCost.toFixed(6)}`);
+  console.log(`  ✓ Gemini 3.5 Flash-Lite (1200 in / 450 out): $${geminiCost.toFixed(6)}`);
 
   if (gpt4oCost !== 0.0075) throw new Error('GPT-4o calculation mismatch');
-  if (claudeCost !== 0.01035) throw new Error('Claude calculation mismatch');
-  if (geminiCost !== 0.00375) throw new Error('Gemini calculation mismatch');
+  if (claudeCost !== 0.0069) throw new Error('Claude calculation mismatch');
+  if (geminiCost !== 0.001485) throw new Error('Gemini calculation mismatch');
 
   // Max Potential Cost Estimation for Atomic Budget Reservation
   const maxGpt4oEst = pricingService.estimateMaxCost('gpt-4o', 1000, 2000);

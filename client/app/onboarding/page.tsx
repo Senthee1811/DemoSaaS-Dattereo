@@ -20,21 +20,16 @@ import {
   Activity,
 } from 'lucide-react';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { cheapestModelFor, useModelCatalog } from '@/lib/model-catalog';
 import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-storage';
-
-const DEFAULT_MODEL: Record<'OPENAI' | 'ANTHROPIC' | 'GEMINI', string> = {
-  OPENAI: 'gpt-4o-mini',
-  ANTHROPIC: 'claude-3-5-haiku-20241022',
-  GEMINI: 'gemini-2.0-flash',
-};
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
 type ProviderId = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
 const PROVIDER_OPTIONS: Array<{ id: ProviderId; label: string; desc: string }> = [
-  { id: 'OPENAI', label: 'OpenAI', desc: 'GPT-4o / o1' },
-  { id: 'ANTHROPIC', label: 'Anthropic', desc: 'Claude 3.5' },
-  { id: 'GEMINI', label: 'Gemini', desc: '1.5 Pro & Flash' },
+  { id: 'OPENAI', label: 'OpenAI', desc: 'GPT models' },
+  { id: 'ANTHROPIC', label: 'Anthropic', desc: 'Claude models' },
+  { id: 'GEMINI', label: 'Gemini', desc: 'Gemini models' },
 ];
 
 export default function OnboardingPage() {
@@ -51,6 +46,9 @@ export default function OnboardingPage() {
 
   // Step 2: Provider Connection
   const [provider, setProvider] = useState<ProviderId>('OPENAI');
+  // Cheapest currently-priced model for the chosen provider, from the live catalog (no bundled list)
+  const catalog = useModelCatalog();
+  const testModel = catalog.status === 'ready' ? cheapestModelFor(catalog.models, provider) : undefined;
   const [providerKey, setProviderKey] = useState('');
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ valid: boolean; message: string } | null>(null);
@@ -178,6 +176,14 @@ export default function OnboardingPage() {
 
   const handleVerifyIntegration = async () => {
     if (!gatewayKey) return;
+    if (!testModel) {
+      setVerificationOutcome({
+        verified: false,
+        latencyMs: 0,
+        message: 'The model list could not be loaded, so no test model was chosen. Reload the page and try again.',
+      });
+      return;
+    }
     setIsVerifying(true);
     setVerificationOutcome(null);
 
@@ -192,7 +198,7 @@ export default function OnboardingPage() {
           'Authorization': `Bearer ${gatewayKey}`,
         },
         body: JSON.stringify({
-          model: DEFAULT_MODEL[provider],
+          model: testModel,
           messages: [{ role: 'user', content: 'Connection test ping' }],
           max_tokens: 15,
         }),
@@ -251,7 +257,7 @@ export default function OnboardingPage() {
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${gatewayKey || 'YOUR_SPENDGUARD_KEY'}" \\
   -d '{
-    "model": "${DEFAULT_MODEL[provider]}",
+    "model": "${testModel ?? '<model-id>'}",
     "messages": [{"role": "user", "content": "Hello SpendGuard AI!"}]
   }'`;
 
@@ -263,7 +269,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="${DEFAULT_MODEL[provider]}",
+    model="${testModel ?? '<model-id>'}",
     messages=[{"role": "user", "content": "Hello SpendGuard AI!"}]
 )
 print(response.choices[0].message.content)`;
@@ -276,7 +282,7 @@ const openai = new OpenAI({
 });
 
 const response = await openai.chat.completions.create({
-  model: '${DEFAULT_MODEL[provider]}',
+  model: '${testModel ?? '<model-id>'}',
   messages: [{ role: 'user', content: 'Hello SpendGuard AI!' }],
 });
 console.log(response.choices[0].message.content);`;

@@ -39,9 +39,9 @@ flowchart TB
     end
 
     subgraph UpstreamAI ["External AI Provider APIs"]
-        OpenAI["OpenAI API\n(gpt-4o, gpt-4o-mini)"]
-        Anthropic["Anthropic Claude API\n(claude-3-5-sonnet)"]
-        Gemini["Google Gemini API\n(gemini-1.5-pro, flash)"]
+        OpenAI["OpenAI API\n(GPT models)"]
+        Anthropic["Anthropic Claude API\n(Claude models)"]
+        Gemini["Google Gemini API\n(Gemini models)"]
         StripeAPI["Stripe API\n(Subscriptions & Invoices)"]
     end
 

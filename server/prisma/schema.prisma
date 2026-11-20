@@ -252,6 +252,17 @@ model ModelPricing {
   effectiveFrom         DateTime     @default(now()) @map("effective_from")
   effectiveTo           DateTime?    @map("effective_to")
   isActive              Boolean      @default(true) @map("is_active")
+  // Where the PRICE came from: 'manual' (maintained table) or 'provider_api'.
+  // No provider exposes live per-token prices today, so this is 'manual' for every row.
+  source                String       @default("manual")
+  // When the price itself last changed (not when a sync merely re-checked the row)
+  priceUpdatedAt        DateTime     @default(now()) @map("price_updated_at")
+  // Result of the last availability check against the provider's models-list endpoint:
+  // 'available' | 'missing' (provider no longer lists it) | null (never checked)
+  providerStatus        String?      @map("provider_status")
+  providerCheckedAt     DateTime?    @map("provider_checked_at")
+  // Provider-announced shutdown date, when the models-list endpoint reports one
+  retiresAt             DateTime?    @map("retires_at")
   createdAt             DateTime     @default(now()) @map("created_at")
   updatedAt             DateTime     @updatedAt @map("updated_at")
 

@@ -78,6 +78,10 @@ jobs:
         working-directory: client
         run: npm run lint
 
+      - name: Client · unit tests
+        working-directory: client
+        run: npm test
+
       - name: Client · build
         working-directory: client
         env:

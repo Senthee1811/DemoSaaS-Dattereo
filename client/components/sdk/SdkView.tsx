@@ -33,7 +33,7 @@ const openai = new OpenAI({
 
 async function main() {
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o', // Or 'claude-3-5-sonnet-20241022', 'gemini-1.5-pro'
+    model: 'gpt-6.2-sol', // Or 'claude-sonnet-5-5', 'gemini-3.1-pro-preview'
     messages: [{ role: 'user', content: 'Generate quarterly FinOps spend review.' }]
   });
 
@@ -55,7 +55,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet-20241022",
+    model="claude-sonnet-5-5",
     messages=[
         {"role": "user", "content": "Analyze AWS cloud spend anomaly report."}
     ]
@@ -68,7 +68,7 @@ print(response.choices[0].message.content)`,
   -H "Content-Type: application/json" \\
   -H "X-SpendGuard-Project-Id: ${selectedProjectId}" \\
   -d '{
-    "model": "gpt-4o",
+    "model": "gpt-6.2-sol",
     "messages": [
       {
         "role": "user",
@@ -82,7 +82,7 @@ print(response.choices[0].message.content)`,
 
 // Drop SpendGuard endpoint into LangChain / LlamaIndex workflows
 const model = new ChatOpenAI({
-  modelName: "gpt-4o",
+  modelName: "gpt-6.2-sol",
   configuration: {
     baseURL: "https://gateway.spendguard.ai/v1",
     apiKey: process.env.SPENDGUARD_API_KEY,

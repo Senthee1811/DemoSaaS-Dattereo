@@ -98,13 +98,13 @@ export function PricingSection() {
   };
 
   return (
-    <section id="pricing" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[1240px] mx-auto border-t border-[#E5E0D8]">
+    <section id="pricing" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto border-t border-parchment-border">
       {/* Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-14">
         <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
           Transparent Pricing &amp; Quotas
         </span>
-        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-[#141413] mt-3">
+        <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
           Predictable Governance Tiers
         </h2>
         <p className="mt-2 text-sm text-[#555550] font-sans">
@@ -113,14 +113,14 @@ export function PricingSection() {
 
         {/* Toggle */}
         <div className="flex items-center justify-center gap-3 mt-6">
-          <span className={`text-xs font-medium ${!isAnnual ? 'text-[#141413]' : 'text-[#888882]'}`}>
+          <span className={`text-xs font-medium ${!isAnnual ? 'text-inversion-dark' : 'text-[#888882]'}`}>
             Monthly
           </span>
           <button
             type="button"
             onClick={() => setIsAnnual(!isAnnual)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              isAnnual ? 'bg-[#FF6B35]' : 'bg-[#E5E0D8]'
+              isAnnual ? 'bg-[#FF6B35]' : 'bg-parchment-border'
             }`}
           >
             <span
@@ -130,7 +130,7 @@ export function PricingSection() {
             />
           </button>
           <div className="flex items-center gap-1.5">
-            <span className={`text-xs font-medium ${isAnnual ? 'text-[#141413]' : 'text-[#888882]'}`}>
+            <span className={`text-xs font-medium ${isAnnual ? 'text-inversion-dark' : 'text-[#888882]'}`}>
               Annual
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
@@ -150,16 +150,16 @@ export function PricingSection() {
               className={`flex flex-col justify-between p-7 rounded-2xl bg-white transition-all ${
                 plan.popular
                   ? 'border-2 border-[#FF6B35] shadow-[0_4px_20px_rgba(255,107,53,0.08)] relative'
-                  : 'border border-[#E5E0D8] shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
+                  : 'border border-parchment-border shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
               }`}
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-serif text-lg font-normal text-[#141413]">{plan.name}</h3>
+                  <h3 className="font-serif text-lg font-normal text-inversion-dark">{plan.name}</h3>
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono ${
                     plan.popular
                       ? 'bg-[#FF6B35] text-white font-semibold'
-                      : 'bg-[#FAF8F5] text-[#666660] border border-[#E5E0D8]'
+                      : 'bg-parchment-ivory text-[#666660] border border-parchment-border'
                   }`}>
                     {plan.badge}
                   </span>
@@ -170,7 +170,7 @@ export function PricingSection() {
                 </p>
 
                 <div className="pt-2 flex items-baseline gap-1">
-                  <span className="font-serif text-4xl font-normal text-[#141413] tabular-nums">
+                  <span className="font-serif text-4xl font-normal text-inversion-dark tabular-nums">
                     ${price}
                   </span>
                   <span className="text-xs text-[#888882] font-mono">/ mo</span>
@@ -184,12 +184,12 @@ export function PricingSection() {
                     Capabilities Included
                   </div>
                   {plan.features.map((feat, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-[#141413]">
+                    <div key={i} className="flex items-start gap-2 text-xs text-inversion-dark">
                       <Check className="w-3.5 h-3.5 text-[#0D9488] shrink-0 mt-0.5" strokeWidth={2.5} />
                       <div className="flex items-center gap-1.5 font-sans">
                         <span>{feat.text}</span>
                         {feat.badge && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#FAF8F5] text-[#555550] border border-[#E5E0D8] font-mono">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-parchment-ivory text-[#555550] border border-parchment-border font-mono">
                             {feat.badge}
                           </span>
                         )}
@@ -204,7 +204,7 @@ export function PricingSection() {
                   <button
                     type="button"
                     onClick={() => setShowSalesModal(true)}
-                    className="w-full py-3 px-5 rounded-full text-center font-semibold text-xs bg-[#141413] hover:bg-[#2A2A28] text-white transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full py-3 px-5 rounded-full text-center font-semibold text-xs bg-inversion-dark hover:bg-[#2A2A28] text-white transition-colors flex items-center justify-center gap-1.5"
                   >
                     <span>{plan.ctaText}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export function PricingSection() {
                     className={`w-full py-3 px-5 rounded-full text-center font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 ${
                       plan.popular
                         ? 'bg-[#FF6B35] hover:bg-[#E55A25] text-white shadow-2xs'
-                        : 'bg-[#FAF8F5] hover:bg-[#EFECE6] text-[#141413] border border-[#E5E0D8]'
+                        : 'bg-parchment-ivory hover:bg-[#EFECE6] text-inversion-dark border border-parchment-border'
                     }`}
                   >
                     <span>{plan.ctaText}</span>
@@ -231,16 +231,16 @@ export function PricingSection() {
       {/* Enterprise Qualification Modal */}
       {showSalesModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FAF8F5] rounded-[24px] max-w-lg w-full p-6 border border-[#E5E0D8] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E0D8]">
+          <div className="bg-parchment-ivory rounded-3xl max-w-lg w-full p-6 border border-parchment-border shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-parchment-border">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
-                <h3 className="font-serif text-lg font-normal text-[#141413]">Enterprise Architecture Review</h3>
+                <h3 className="font-serif text-lg font-normal text-inversion-dark">Enterprise Architecture Review</h3>
               </div>
               <button
                 type="button"
                 onClick={() => { setShowSalesModal(false); setIsSubmitted(false); }}
-                className="p-1.5 text-[#888882] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-[#888882] hover:text-inversion-dark rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -268,47 +268,47 @@ export function PricingSection() {
                 </p>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Your Name *</label>
+                  <label className="font-semibold text-inversion-dark block mb-1.5">Your Name *</label>
                   <input
                     type="text"
                     required
                     value={salesName}
                     onChange={(e) => setSalesName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs text-inversion-dark bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="e.g. Alex Rivera"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Work Email *</label>
+                  <label className="font-semibold text-inversion-dark block mb-1.5">Work Email *</label>
                   <input
                     type="email"
                     required
                     value={salesEmail}
                     onChange={(e) => setSalesEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs text-inversion-dark bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="alex@company.com"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Company & Domain *</label>
+                  <label className="font-semibold text-inversion-dark block mb-1.5">Company & Domain *</label>
                   <input
                     type="text"
                     required
                     value={salesCompany}
                     onChange={(e) => setSalesCompany(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs text-inversion-dark bg-white focus:outline-none focus:border-[#FF6B35]"
                     placeholder="e.g. Acme Corp"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Monthly AI Spend Estimate</label>
+                  <label className="font-semibold text-inversion-dark block mb-1.5">Monthly AI Spend Estimate</label>
                   <select
                     value={salesSpend}
                     onChange={(e) => setSalesSpend(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E5E0D8] text-xs text-[#141413] bg-white focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-2xl border border-parchment-border text-xs text-inversion-dark bg-white focus:outline-none focus:border-[#FF6B35]"
                   >
                     <option>$10,000 – $50,000 / month</option>
                     <option>$50,000 – $250,000 / month</option>
@@ -316,7 +316,7 @@ export function PricingSection() {
                   </select>
                 </div>
 
-                <div className="pt-3 border-t border-[#E5E0D8] flex justify-end gap-2.5">
+                <div className="pt-3 border-t border-parchment-border flex justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setShowSalesModal(false)}

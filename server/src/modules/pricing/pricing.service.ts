@@ -1,122 +1,9 @@
 import { Injectable, Logger, OnModuleInit, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { PRICING_CATALOG, ModelPricingConfig, ProviderName } from './pricing.catalog';
 
-export interface ModelPricingConfig {
-  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
-  inputPricePerMillion: number;
-  outputPricePerMillion: number;
-  cachedInputPrice?: number;
-  displayName?: string;
-  contextWindow?: number;
-}
-
-export const PRICING_CATALOG: Record<string, ModelPricingConfig> = {
-  // OpenAI Models
-  'gpt-4o': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 2.50,
-    outputPricePerMillion: 10.00,
-    displayName: 'GPT-4o (Omni)',
-    contextWindow: 128000,
-  },
-  'gpt-4o-mini': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 0.15,
-    outputPricePerMillion: 0.60,
-    displayName: 'GPT-4o Mini',
-    contextWindow: 128000,
-  },
-  'o1': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 15.00,
-    outputPricePerMillion: 60.00,
-    displayName: 'o1 (Reasoning)',
-    contextWindow: 200000,
-  },
-  'o1-mini': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 3.00,
-    outputPricePerMillion: 12.00,
-    displayName: 'o1 Mini',
-    contextWindow: 128000,
-  },
-  'gpt-4-turbo': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 10.00,
-    outputPricePerMillion: 30.00,
-    displayName: 'GPT-4 Turbo',
-    contextWindow: 128000,
-  },
-  'gpt-3.5-turbo': {
-    provider: 'OPENAI',
-    inputPricePerMillion: 0.50,
-    outputPricePerMillion: 1.50,
-    displayName: 'GPT-3.5 Turbo',
-    contextWindow: 16385,
-  },
-
-  // Anthropic Models
-  'claude-3-5-sonnet-20241022': {
-    provider: 'ANTHROPIC',
-    inputPricePerMillion: 3.00,
-    outputPricePerMillion: 15.00,
-    displayName: 'Claude 3.5 Sonnet (v2)',
-    contextWindow: 200000,
-  },
-  'claude-3-5-sonnet': {
-    provider: 'ANTHROPIC',
-    inputPricePerMillion: 3.00,
-    outputPricePerMillion: 15.00,
-    displayName: 'Claude 3.5 Sonnet',
-    contextWindow: 200000,
-  },
-  'claude-3-5-haiku-20241022': {
-    provider: 'ANTHROPIC',
-    inputPricePerMillion: 0.80,
-    outputPricePerMillion: 4.00,
-    displayName: 'Claude 3.5 Haiku',
-    contextWindow: 200000,
-  },
-  'claude-3-opus-20240229': {
-    provider: 'ANTHROPIC',
-    inputPricePerMillion: 15.00,
-    outputPricePerMillion: 75.00,
-    displayName: 'Claude 3 Opus',
-    contextWindow: 200000,
-  },
-
-  // Google Gemini Models
-  'gemini-1.5-pro': {
-    provider: 'GEMINI',
-    inputPricePerMillion: 1.25,
-    outputPricePerMillion: 5.00,
-    displayName: 'Gemini 1.5 Pro',
-    contextWindow: 2000000,
-  },
-  'gemini-1.5-flash': {
-    provider: 'GEMINI',
-    inputPricePerMillion: 0.075,
-    outputPricePerMillion: 0.30,
-    displayName: 'Gemini 1.5 Flash',
-    contextWindow: 1000000,
-  },
-  // Used by the onboarding test call; same rate the client catalog shows (client/lib/pricing.ts)
-  'gemini-2.0-flash': {
-    provider: 'GEMINI',
-    inputPricePerMillion: 0.10,
-    outputPricePerMillion: 0.40,
-    displayName: 'Gemini 2.0 Flash',
-    contextWindow: 1000000,
-  },
-  'gemini-2.0-flash-exp': {
-    provider: 'GEMINI',
-    inputPricePerMillion: 0.00,
-    outputPricePerMillion: 0.00,
-    displayName: 'Gemini 2.0 Flash (Exp)',
-    contextWindow: 1000000,
-  },
-};
+export { PRICING_CATALOG, ModelPricingConfig, ProviderName };
 
 export function modelNotPricedError(model: string): HttpException {
   return new HttpException(
@@ -147,31 +34,68 @@ export class PricingService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    await this.seedMissingCatalogRows();
     await this.refreshPricingFromDb();
   }
 
   /**
-   * Refreshes model pricing from the database into local memory cache
+   * Inserts catalog models that have no row yet (never touches existing rows, so admin
+   * price edits and deactivations survive restarts).
+   */
+  async seedMissingCatalogRows(): Promise<number> {
+    try {
+      const res = await (this.prisma as any).modelPricing?.createMany({
+        data: Object.entries(PRICING_CATALOG).map(([model, c]) => ({
+          model,
+          provider: c.provider,
+          displayName: c.displayName,
+          inputPricePerMillion: c.inputPricePerMillion,
+          outputPricePerMillion: c.outputPricePerMillion,
+          cachedInputPrice: c.cachedInputPrice,
+          contextWindow: c.contextWindow,
+          source: 'manual',
+        })),
+        skipDuplicates: true,
+      });
+      return res?.count ?? 0;
+    } catch (err: any) {
+      this.logger.warn(`Could not seed model pricing rows: ${err.message}`);
+      return 0;
+    }
+  }
+
+  private rowToConfig(item: any): ModelPricingConfig {
+    return {
+      provider: item.provider as ProviderName,
+      inputPricePerMillion: Number(item.inputPricePerMillion),
+      outputPricePerMillion: Number(item.outputPricePerMillion),
+      cachedInputPrice: item.cachedInputPrice != null ? Number(item.cachedInputPrice) : undefined,
+      displayName: item.displayName || undefined,
+      contextWindow: item.contextWindow || undefined,
+      source: item.source,
+      priceUpdatedAt: item.priceUpdatedAt,
+      providerStatus: item.providerStatus ?? null,
+      providerCheckedAt: item.providerCheckedAt ?? null,
+      retiresAt: item.retiresAt ?? null,
+    };
+  }
+
+  /**
+   * Replaces the in-memory price cache with the active rows of `model_pricing`.
+   * The table wins: models deactivated or removed there stop being priced here too.
+   * If the table is empty/unreachable the built-in catalog stays as the fallback.
    */
   async refreshPricingFromDb(): Promise<void> {
     try {
-      // Check if Prisma is available
       const dbPrices = await (this.prisma as any).modelPricing?.findMany({
         where: { isActive: true },
       });
 
       if (dbPrices && dbPrices.length > 0) {
-        for (const item of dbPrices) {
-          this.memoryCache.set(item.model, {
-            provider: item.provider as any,
-            inputPricePerMillion: Number(item.inputPricePerMillion),
-            outputPricePerMillion: Number(item.outputPricePerMillion),
-            cachedInputPrice: item.cachedInputPrice ? Number(item.cachedInputPrice) : undefined,
-            displayName: item.displayName || undefined,
-            contextWindow: item.contextWindow || undefined,
-          });
-        }
-        this.logger.log(`Loaded ${dbPrices.length} dynamic model pricing entries from database`);
+        const next = new Map<string, ModelPricingConfig>();
+        for (const item of dbPrices) next.set(item.model, this.rowToConfig(item));
+        this.memoryCache = next;
+        this.logger.log(`Loaded ${dbPrices.length} model pricing entries from database`);
       }
     } catch (err: any) {
       this.logger.warn(`Could not sync pricing from DB (using built-in catalog): ${err.message}`);
@@ -183,7 +107,7 @@ export class PricingService implements OnModuleInit {
    * Returns undefined for unknown models — there is deliberately no default rate.
    */
   getModelPrice(modelName: string): ModelPricingConfig | undefined {
-    return this.memoryCache.get(modelName) || PRICING_CATALOG[modelName];
+    return this.memoryCache.get(modelName);
   }
 
   isModelPriced(modelName: string): boolean {
@@ -239,21 +163,62 @@ export class PricingService implements OnModuleInit {
     return Number((inputCost + maxOutputCost).toFixed(6));
   }
 
+  /** Snapshot of the in-memory price cache (mirrors the active DB rows). */
+  getAllPrices() {
+    return [...this.memoryCache.entries()].map(([model, c]) => this.toPublic(model, c));
+  }
+
+  private toPublic(model: string, c: ModelPricingConfig) {
+    return {
+      model,
+      provider: c.provider,
+      displayName: c.displayName || model,
+      inputPricePerMillion: c.inputPricePerMillion,
+      outputPricePerMillion: c.outputPricePerMillion,
+      cachedInputPrice: c.cachedInputPrice ?? null,
+      contextWindow: c.contextWindow ?? null,
+      source: c.source ?? 'builtin_fallback',
+      // When the PRICE last changed, not when a sync last looked at the row
+      updatedAt: c.priceUpdatedAt ?? null,
+      providerStatus: c.providerStatus ?? null,
+      providerCheckedAt: c.providerCheckedAt ?? null,
+      retiresAt: c.retiresAt ?? null,
+    };
+  }
+
   /**
-   * Returns list of all current model pricing configurations
+   * What GET /api/v1/pricing serves: the active rows of `model_pricing`, read from the
+   * database (not from a constant). Falls back to the in-memory cache only if the DB is down.
    */
-  getAllPrices(): { model: string; provider: string; inputPricePerMillion: number; outputPricePerMillion: number; displayName?: string }[] {
-    const list: any[] = [];
-    for (const [model, config] of this.memoryCache.entries()) {
-      list.push({
-        model,
-        provider: config.provider,
-        inputPricePerMillion: config.inputPricePerMillion,
-        outputPricePerMillion: config.outputPricePerMillion,
-        displayName: config.displayName || model,
+  async listPrices() {
+    let models: ReturnType<PricingService['toPublic']>[];
+    try {
+      const rows = await (this.prisma as any).modelPricing.findMany({
+        where: { isActive: true },
+        orderBy: [{ provider: 'asc' }, { model: 'asc' }],
       });
+      models = rows.map((r: any) => this.toPublic(r.model, this.rowToConfig(r)));
+    } catch (err: any) {
+      this.logger.warn(`listPrices: DB unavailable, serving cached prices: ${err.message}`);
+      models = this.getAllPrices();
     }
-    return list;
+    const latest = (key: 'updatedAt' | 'providerCheckedAt') => {
+      const ts = models
+        .map((m) => m[key])
+        .filter(Boolean)
+        .map((d) => new Date(d as Date).getTime());
+      return ts.length ? new Date(Math.max(...ts)).toISOString() : null;
+    };
+    return {
+      models,
+      meta: {
+        // Latest price change across the table; the UI shows "Pricing as of ..."
+        pricingUpdatedAt: latest('updatedAt'),
+        lastAvailabilityCheckAt: latest('providerCheckedAt'),
+        // Honest labelling: providers publish no price API, so prices are a maintained table
+        priceSource: 'maintained table (provider pricing pages), not a live feed',
+      },
+    };
   }
 
   /**
@@ -277,6 +242,8 @@ export class PricingService implements OnModuleInit {
           displayName: dto.displayName,
           contextWindow: dto.contextWindow,
           isActive: true,
+          source: 'manual',
+          priceUpdatedAt: new Date(),
         },
         create: {
           model: dto.model,

@@ -24,10 +24,12 @@ export class PricingController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'List all supported model rates and configurations' })
-  getPricingCatalog() {
+  async getPricingCatalog() {
+    const { models, meta } = await this.pricingService.listPrices();
     return {
       status: 'success',
-      data: this.pricingService.getAllPrices(),
+      data: models,
+      meta,
       timestamp: new Date().toISOString(),
     };
   }

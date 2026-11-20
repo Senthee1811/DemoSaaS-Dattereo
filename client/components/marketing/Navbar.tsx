@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Menu, X, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import { Menu, X, ArrowRight } from 'lucide-react';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -12,13 +13,14 @@ export function Navbar() {
       <nav className="flex items-center justify-between py-2.5 px-6 bg-[#FFFFFF]/90 backdrop-blur-md rounded-full border border-[#E5E0D8] shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         {/* Left: Brand Identity */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center text-white">
-            <ShieldCheck className="w-4 h-4 text-white" strokeWidth={2.2} />
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-bold text-sm tracking-tight text-[#18191B]">SpendGuard</span>
-            <span className="text-[10px] font-mono text-[#80868B] tracking-normal">by Dattreo</span>
-          </div>
+          <Image
+            src="/logo-wordmark.png"
+            alt="SpendGuard AI by Dattereo"
+            width={2063}
+            height={644}
+            className="h-10 w-auto"
+            priority
+          />
         </Link>
 
         {/* Center: Navigation Links */}
@@ -44,15 +46,9 @@ export function Navbar() {
         <div className="hidden sm:flex items-center gap-3">
           <Link
             href="/login"
-            className="text-xs font-medium text-[#555550] hover:text-[#18191B] px-3 py-1.5 transition-colors"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/register"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-white px-4 py-2 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] transition-colors shadow-2xs"
           >
-            <span>Start Free Trial</span>
+            <span>Sign In</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -111,15 +107,9 @@ export function Navbar() {
           <div className="pt-3 border-t border-[#E5E0D8] flex flex-col gap-2">
             <Link
               href="/login"
-              className="text-center py-2 text-xs font-medium text-[#555550] hover:text-[#18191B]"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/register"
               className="text-center py-2.5 rounded-full bg-[#FF6B35] text-white text-xs font-semibold"
             >
-              Start Free Trial
+              Sign In
             </Link>
           </div>
         </div>

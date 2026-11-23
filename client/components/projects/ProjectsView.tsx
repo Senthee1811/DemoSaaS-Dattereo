@@ -15,7 +15,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
-import { useEscapeToClose, ConfirmDialog, useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, ConfirmDialog, Spinner, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 
 export interface ProjectItem {
@@ -233,7 +233,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
                       <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <Badge tone="critical" icon={ShieldAlert}>BLOCKED</Badge>
+                          proj.blockReason?.startsWith('Budget Cap Exceeded') ? (
+                            <Badge tone="critical" icon={ShieldAlert} title={proj.blockReason}>Budget cap reached</Badge>
+                          ) : (
+                            <Badge tone="critical" icon={Lock} title={proj.blockReason || 'Frozen by an administrator'}>Frozen</Badge>
+                          )
                         ) : isWarning ? (
                           <Badge tone="warning" icon={AlertTriangle}>WARNING (80%)</Badge>
                         ) : (
@@ -289,15 +293,22 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                             type="button"
                             onClick={() => handleToggleBlock(proj)}
                             disabled={unfreezingId === proj.id}
-                            aria-label={proj.isBlocked ? `Lift the freeze on ${proj.name}` : `Freeze all traffic for ${proj.name}`}
-                            className={`p-1.5 rounded-full transition-colors ${
+                            aria-label={proj.isBlocked ? `Unfreeze ${proj.name} (resume gateway requests)` : `Freeze ${proj.name} (blocks all gateway requests)`}
+                            title={proj.isBlocked ? 'Unfreeze project (resume gateway requests)' : 'Freeze project (blocks all gateway requests)'}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label font-semibold border transition-colors ${
                               proj.isBlocked
-                                ? 'text-success hover:bg-success-bg'
-                                : 'text-fg-muted hover:text-critical hover:bg-critical-bg'
+                                ? 'text-success border-success-border hover:bg-success-bg'
+                                : 'text-fg-secondary border-line hover:text-critical hover:bg-critical-bg'
                             }`}
-                            title={proj.isBlocked ? 'Lift hard-block' : 'Emergency freeze project traffic'}
                           >
-                            {proj.isBlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                            {unfreezingId === proj.id ? (
+                              <Spinner />
+                            ) : proj.isBlocked ? (
+                              <Unlock className="w-3.5 h-3.5" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5" />
+                            )}
+                            <span>{proj.isBlocked ? 'Unfreeze' : 'Freeze'}</span>
                           </button>
                         </div>
                       </td>
@@ -483,10 +494,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         title={`Freeze all traffic for "${pendingFreeze?.name}"?`}
         description="Every gateway request for this project is rejected until you lift the freeze."
         consequences={[
-          'Apps using this project\'s gateway keys get an error on every request, starting now.',
+          "Every app or script using this project's gateway keys gets HTTP 429 on each request, starting now.",
+          'Test Bench requests for this project are refused too.',
           'Budgets, keys and history are not changed.',
         ]}
-        reversible="Reversible: lift the freeze from this table at any time."
+        reversible="Reversible: press Unfreeze in this table at any time."
         confirmLabel="Freeze traffic"
         onConfirm={async () => {
           if (!pendingFreeze) return;

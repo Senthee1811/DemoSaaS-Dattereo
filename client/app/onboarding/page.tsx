@@ -23,6 +23,9 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { cheapestModelFor, useModelCatalog } from '@/lib/model-catalog';
 import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-storage';
 import { ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
+import { InlineAlert } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
+import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -51,6 +54,10 @@ export default function OnboardingPage() {
   const catalog = useModelCatalog();
   const testModel = catalog.status === 'ready' ? cheapestModelFor(catalog.models, provider) : undefined;
   const [providerKey, setProviderKey] = useState('');
+  // An empty field is never "done": the user either enters a key or explicitly skips
+  const [providerKeyError, setProviderKeyError] = useState<string | null>(null);
+  const [skippedProviderKey, setSkippedProviderKey] = useState(false);
+  const providerName = providerLabel(provider);
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{ valid: boolean; message: string } | null>(null);
 
@@ -131,16 +138,16 @@ export default function OnboardingPage() {
       const projId: string | undefined = projData?.project?.id;
       if (!projId) throw new Error('The server did not return a project id.');
 
-      // 2. Store the encrypted provider key, if one was provided
-      if (providerKey) {
+      // 2. Store the encrypted provider key (unless the user explicitly skipped this step)
+      if (!skippedProviderKey && providerKey.trim()) {
         const keyRes = await authFetch('/api/v1/keys', {
           method: 'POST',
           body: JSON.stringify({
             type: 'PROVIDER',
             projectId: projId,
             provider,
-            plainKey: providerKey,
-            keyName: `${provider} Primary Key`,
+            plainKey: providerKey.trim(),
+            keyName: `${providerName} Primary Key`,
           }),
         });
         if (!keyRes.ok) {
@@ -415,7 +422,10 @@ console.log(response.choices[0].message.content);`;
                           : 'border-parchment-border hover:border-line bg-surface text-fg-secondary'
                       }`}
                     >
-                      <div className="text-xs font-bold">{p.label}</div>
+                      <div className="text-xs font-bold inline-flex items-center gap-1.5">
+                        <ProviderLogo provider={p.id} size={14} />
+                        {p.label}
+                      </div>
                       <div className="text-caption font-mono text-fg-muted mt-0.5">{p.desc}</div>
                     </button>
                   ))}
@@ -426,7 +436,7 @@ console.log(response.choices[0].message.content);`;
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider">
-                    {provider} API Key
+                    {providerName} API Key
                   </label>
                   <span className="text-caption font-mono text-fg-muted">Encrypted at rest (AES-256-GCM)</span>
                 </div>
@@ -440,7 +450,11 @@ console.log(response.choices[0].message.content);`;
                     onChange={(e) => {
                       setProviderKey(e.target.value);
                       setTestResult(null);
+                      setProviderKeyError(null);
                     }}
+                    aria-label={`${providerName} API key`}
+                    aria-invalid={providerKeyError ? true : undefined}
+                    aria-describedby={providerKeyError ? 'provider-key-error' : undefined}
                     placeholder={
                       provider === 'OPENAI'
                         ? 'sk-proj-...'
@@ -459,6 +473,12 @@ console.log(response.choices[0].message.content);`;
                     {isTestingKey ? 'Testing...' : '⚡ Test'}
                   </button>
                 </div>
+
+                {providerKeyError && (
+                  <div id="provider-key-error" className="mt-2">
+                    <InlineAlert variant="error" title={providerKeyError} />
+                  </div>
+                )}
 
                 {testResult && (
                   <div className={`mt-2 p-2.5 rounded-menu border flex items-center gap-2 text-xs font-mono ${
@@ -481,14 +501,37 @@ console.log(response.choices[0].message.content);`;
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Back</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(3)}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors"
-                >
-                  <span>Next: Configure Budget</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProviderKey('');
+                      setProviderKeyError(null);
+                      setTestResult(null);
+                      setSkippedProviderKey(true);
+                      setCurrentStep(3);
+                    }}
+                    className="px-4 py-2.5 rounded-full border border-line bg-surface text-fg text-xs font-semibold"
+                  >
+                    Skip for now, I&apos;ll add it later
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!providerKey.trim()) {
+                        setProviderKeyError(`Enter your ${providerName} API key, or choose "Skip for now".`);
+                        return;
+                      }
+                      setProviderKeyError(null);
+                      setSkippedProviderKey(false);
+                      setCurrentStep(3);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors"
+                  >
+                    <span>Next: Configure Budget</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -691,6 +734,12 @@ console.log(response.choices[0].message.content);`;
                     <p className="text-label text-fg-secondary">
                       Execute a real pre-flight reservation probe through the gateway right now.
                     </p>
+                    {skippedProviderKey && (
+                      <p className="text-label text-warning mt-1">
+                        No provider key yet, so this test request will be refused with missing_provider_key. Add a key in
+                        Key Vault, then try again.
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -768,12 +817,19 @@ console.log(response.choices[0].message.content);`;
               {/* Status Breakdown Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-field bg-parchment-ivory border border-parchment-border space-y-1">
-                  <span className="text-caption font-mono text-fg-muted uppercase tracking-wider block">Connected Provider</span>
-                  <div className="flex items-center gap-2">
-                    <CircleCheck className="w-4 h-4 text-success" />
-                    <span className="text-xs font-semibold text-fg">{provider}</span>
-                    <span className="text-caption font-mono text-success bg-success-bg px-2 py-0.5 rounded-full border border-success-border">AES-256-GCM Sealed</span>
-                  </div>
+                  <span className="text-caption font-mono text-fg-muted uppercase tracking-wider block">AI Provider Key</span>
+                  {skippedProviderKey ? (
+                    <div className="mt-1 space-y-0.5">
+                      <Badge tone="warning">Not configured</Badge>
+                      <p className="text-caption text-fg-secondary">Add it any time in Key Vault. Gateway requests fail until then.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-semibold text-fg">
+                      <CircleCheck className="w-4 h-4 text-success" />
+                      <ProviderBadge provider={provider} size={16} />
+                      <Badge tone="success" mono>AES-256-GCM Sealed</Badge>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-field bg-parchment-ivory border border-parchment-border space-y-1">

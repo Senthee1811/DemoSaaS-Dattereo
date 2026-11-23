@@ -38,8 +38,16 @@ export class KeysController {
     if (body?.type && body.type !== 'PROVIDER') {
       throw new BadRequestException(`Unsupported key type '${body.type}'. Use PROVIDER or GATEWAY.`);
     }
+    // A provider key is required for type PROVIDER: blank or whitespace-only is a 400, never stored
+    const plainKey = (body.plainKey || body.rawKey || '').trim();
+    if (!plainKey) {
+      throw new BadRequestException('plainKey is required: enter the provider API key (or skip this step and add it later).');
+    }
+    if (!body.provider) {
+      throw new BadRequestException('provider is required for a PROVIDER key (OPENAI, ANTHROPIC or GEMINI).');
+    }
     return this.keysService.storeProviderKey(
-      { projectId: body.projectId, provider: body.provider as any, keyName: body.keyName, plainKey: (body.plainKey || body.rawKey) as string },
+      { projectId: body.projectId, provider: body.provider, keyName: body.keyName, plainKey },
       user.orgId,
     );
   }

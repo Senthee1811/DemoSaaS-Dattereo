@@ -249,8 +249,8 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
           <div className="p-8">
             <EmptyState
               icon={KeyRound}
-              title="No provider keys connected"
-              description="Connect your upstream OpenAI, Anthropic, or Gemini API keys to route real model inference."
+              title="Provider key: not configured"
+              description="Gateway requests fail with missing_provider_key until you connect an OpenAI, Anthropic or Gemini key for the project."
               actionText="Connect Provider Key"
               onAction={() => setShowAddProviderKeyModal(true)}
               compact

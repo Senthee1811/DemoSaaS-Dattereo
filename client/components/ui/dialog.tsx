@@ -8,6 +8,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 const cn = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
 
@@ -32,12 +33,14 @@ export const DialogContent = React.forwardRef<
     >
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close
-          aria-label="Close"
-          className="absolute right-4 top-4 p-1.5 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted"
-        >
-          <X className="w-4 h-4" />
-        </DialogPrimitive.Close>
+        <Tip label="Close">
+          <DialogPrimitive.Close
+            aria-label="Close"
+            className="absolute right-4 top-4 p-1.5 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted"
+          >
+            <X className="w-4 h-4" />
+          </DialogPrimitive.Close>
+        </Tip>
       )}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>

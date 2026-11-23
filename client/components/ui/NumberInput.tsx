@@ -3,6 +3,7 @@
 import React, { useId } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { numberProblem, type NumberRange } from '@/lib/limits';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * The one numeric field (shadcn Input pattern + steppers). Ranges come from lib/limits.ts,
@@ -57,9 +58,11 @@ export function NumberInput({
           problem ? 'border-critical' : 'border-line'
         }`}
       >
-        <button type="button" className={`${btn} border-r border-line`} onClick={() => stepBy(-1)} disabled={disabled || atMin} aria-label="Decrease">
+        <Tip label="Decrease">
+          <button type="button" className={`${btn} border-r border-line`} onClick={() => stepBy(-1)} disabled={disabled || atMin} aria-label="Decrease">
           <Minus className="w-3.5 h-3.5" />
         </button>
+        </Tip>
         {prefix && <span className="flex items-center pl-3 text-fg-muted font-mono text-xs select-none">{prefix}</span>}
         <input
           id={inputId}
@@ -86,9 +89,11 @@ export function NumberInput({
           aria-valuenow={Number.isFinite(Number(value)) && value !== '' ? Number(value) : undefined}
           className="flex-1 min-w-0 px-3 py-2.5 bg-transparent font-mono text-xs text-fg focus:outline-none tabular-nums"
         />
-        <button type="button" className={`${btn} border-l border-line`} onClick={() => stepBy(1)} disabled={disabled || atMax} aria-label="Increase">
+        <Tip label="Increase">
+          <button type="button" className={`${btn} border-l border-line`} onClick={() => stepBy(1)} disabled={disabled || atMax} aria-label="Increase">
           <Plus className="w-3.5 h-3.5" />
         </button>
+        </Tip>
       </div>
       {problem && (
         <p id={errorId} role="alert" className="text-label text-critical">

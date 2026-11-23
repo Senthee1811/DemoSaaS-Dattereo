@@ -5,6 +5,7 @@ import { useQueryParam } from '@/lib/client-storage';
 import { errorMessage as toMessage } from '@/lib/types';
 import Link from 'next/link';
 import { ShieldCheck, ArrowRight, Mail, TriangleAlert, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -207,7 +208,8 @@ export default function ForgotPasswordPage() {
                       placeholder="Min. 8 characters"
                       className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                     />
-                    <button
+                    <Tip label={showPassword ? 'Hide password' : 'Show password'}>
+                      <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword(!showPassword)}
@@ -216,6 +218,7 @@ export default function ForgotPasswordPage() {
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
+                    </Tip>
                   </div>
                 </div>
 
@@ -236,7 +239,8 @@ export default function ForgotPasswordPage() {
                       placeholder="Confirm new password"
                       className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                     />
-                    <button
+                    <Tip label={showConfirmPassword ? 'Hide password' : 'Show password'}>
+                      <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -245,6 +249,7 @@ export default function ForgotPasswordPage() {
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
+                    </Tip>
                   </div>
                 </div>
 

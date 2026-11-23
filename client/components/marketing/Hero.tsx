@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Copy } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 export function Hero() {
   const [activeTab, setActiveTab] = useState<'curl' | 'python' | 'node'>('curl');
@@ -134,14 +135,15 @@ const response = await client.chat.completions.create({
               ))}
             </div>
 
-            <button
+            <Tip label="Copy snippet">
+              <button aria-label="Copy snippet"
               type="button"
               onClick={handleCopy}
               className="p-1.5 rounded-control hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
-              title="Copy snippet"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
+            </Tip>
           </div>
         </div>
 

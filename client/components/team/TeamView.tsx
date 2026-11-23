@@ -12,6 +12,7 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { Tip } from '@/components/ui/tooltip';
 
 interface UserItem {
   id: string;
@@ -85,9 +86,11 @@ export function TeamView() {
         <div role="status" className="p-3.5 rounded-field border border-sg-border bg-surface text-xs space-y-1.5">
           <div className="flex items-start justify-between gap-3">
             <p className="font-semibold text-fg">{inviteNotice.email} was added to {orgName}.</p>
-            <button type="button" onClick={() => setInviteNotice(null)} aria-label="Dismiss" className="text-sg-text-secondary hover:text-fg">
+            <Tip label="Dismiss">
+              <button type="button" onClick={() => setInviteNotice(null)} aria-label="Dismiss" className="text-sg-text-secondary hover:text-fg">
               <X className="w-3.5 h-3.5" />
             </button>
+            </Tip>
           </div>
           {inviteNotice.emailSent ? (
             <p className="text-sg-text-secondary">We emailed them a one-time link to set their password (valid 7 days).</p>
@@ -196,13 +199,15 @@ export function TeamView() {
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-sg-border shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-sg-border">
               <h3 className="font-serif text-lg font-normal text-fg">Invite Organization Member</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setShowInviteModal(false)}
                 className="p-1.5 text-sg-text-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">

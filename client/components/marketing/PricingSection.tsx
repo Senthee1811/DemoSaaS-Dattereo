@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Check, ArrowRight, ShieldCheck, X, CheckCircle2 } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 interface PlanFeature {
   text: string;
@@ -237,13 +238,15 @@ export function PricingSection() {
                 <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
                 <h3 className="font-serif text-lg font-normal text-inversion-dark">Enterprise Architecture Review</h3>
               </div>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => { setShowSalesModal(false); setIsSubmitted(false); }}
                 className="p-1.5 text-[#888882] hover:text-inversion-dark rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             {isSubmitted ? (

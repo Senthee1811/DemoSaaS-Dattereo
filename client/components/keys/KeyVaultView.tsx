@@ -23,6 +23,7 @@ import { NumberInput } from '@/components/ui/NumberInput';
 import { RATE_LIMIT_RPM, isNumberInRange } from '@/lib/limits';
 import { useScope } from '@/lib/scope';
 import { CredentialProtection } from './CredentialProtection';
+import { Tip } from '@/components/ui/tooltip';
 
 interface ProviderKey {
   id: string;
@@ -402,13 +403,15 @@ export function KeyVaultView() {
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Connect Provider API Key</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setShowAddProviderKeyModal(false)}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -523,7 +526,8 @@ export function KeyVaultView() {
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Issue Gateway API Token</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => {
                   setShowGenerateGatewayKeyModal(false);
@@ -533,6 +537,7 @@ export function KeyVaultView() {
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             {newGatewaySecret ? (

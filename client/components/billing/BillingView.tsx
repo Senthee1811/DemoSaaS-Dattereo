@@ -18,6 +18,7 @@ import { errorMessage } from '@/lib/types';
 import { useErrorDialog, useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 interface SubscriptionData {
   orgId: string;
@@ -346,13 +347,15 @@ export function BillingView() {
                 <ShieldCheck className="w-4 h-4 text-accent" />
                 <h3 className="font-serif text-lg font-normal text-fg">Enterprise Qualification</h3>
               </div>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => { setShowEnterpriseModal(false); setEnterpriseSubmitted(false); }}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             {enterpriseSubmitted ? (

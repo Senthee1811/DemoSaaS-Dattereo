@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { providerLabel } from '@/lib/providers';
 import { useScope } from '@/lib/scope';
+import { Tip } from '@/components/ui/tooltip';
 
 interface AuditLog {
   id: string;
@@ -226,14 +227,15 @@ export function AuditView() {
             <span>Blocked Only</span>
           </label>
 
-          <button
+          <Tip label="Refresh logs">
+            <button aria-label="Refresh logs"
             type="button"
             onClick={fetchLogs}
             className="p-2 rounded-full hover:bg-surface-muted text-sg-text-secondary transition-colors"
-            title="Refresh logs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-accent' : ''}`} />
           </button>
+          </Tip>
         </div>
       </div>
 
@@ -271,14 +273,15 @@ export function AuditView() {
                     <td className="py-3.5 px-4 font-mono text-label text-sg-text-secondary">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate max-w-27.5">{log.id}</span>
-                        <button
+                        <Tip label="Copy Request ID">
+                          <button aria-label="Copy Request ID"
                           type="button"
                           onClick={() => handleCopy(log.id)}
                           className="text-sg-text-muted hover:text-fg p-0.5 rounded-control transition-colors"
-                          title="Copy Request ID"
                         >
                           {copiedId === log.id ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
                         </button>
+                        </Tip>
                       </div>
                     </td>
 
@@ -330,7 +333,8 @@ export function AuditView() {
             </span>
 
             <div className="flex items-center gap-2">
-              <button
+              <Tip label="Previous page">
+                <button aria-label="Previous page"
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
@@ -338,10 +342,12 @@ export function AuditView() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
+              </Tip>
               <span className="px-3 font-mono tabular-nums text-fg font-medium">
                 {currentPage} / {totalPages}
               </span>
-              <button
+              <Tip label="Next page">
+                <button aria-label="Next page"
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
@@ -349,6 +355,7 @@ export function AuditView() {
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
           </div>
         </div>

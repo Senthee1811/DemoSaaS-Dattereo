@@ -155,7 +155,7 @@ response = client.chat.completions.create(
             {/* The project comes from the global Scope: no separate picker that could drift from it */}
             <div className="flex items-center gap-2 text-xs text-sg-text-secondary" title={isFallback ? 'Scope is All projects, so the first project is used. Pick one in Scope to change it.' : 'Change it with Scope in the top bar'}>
               <span>Project:</span>
-              <span className="px-3 py-1 rounded-full border border-line bg-surface-subtle text-fg font-medium max-w-[12rem] truncate">
+              <span className="px-3 py-1 rounded-full border border-line bg-surface-subtle text-fg font-medium max-w-48 truncate">
                 {scopedProject?.name ?? 'No project yet'}
               </span>
             </div>
@@ -316,7 +316,7 @@ response = client.chat.completions.create(
               </button>
             </div>
 
-            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-field font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
+            <pre className="p-3.5 bg-inversion-dark text-sg-chart-grid rounded-field font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
               <code>{getCodeSnippet()}</code>
             </pre>
           </div>

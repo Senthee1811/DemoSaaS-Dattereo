@@ -6,6 +6,7 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { Tip } from '@/components/ui/tooltip';
 
 interface AuditRow {
   id: string;
@@ -104,7 +105,8 @@ export function DayRequestsPanel({ day, onClose }: { day: string; onClose: () =>
               </p>
             )}
           </div>
-          <button
+          <Tip label="Close panel">
+            <button
             ref={closeRef}
             type="button"
             onClick={onClose}
@@ -113,6 +115,7 @@ export function DayRequestsPanel({ day, onClose }: { day: string; onClose: () =>
           >
             <X className="w-4 h-4" />
           </button>
+          </Tip>
         </div>
 
         <div className="flex-1 overflow-y-auto">

@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/Badge';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 import { useScope } from '@/lib/scope';
+import { Tip } from '@/components/ui/tooltip';
 
 export interface ProjectItem {
   id: string;
@@ -216,8 +217,8 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                     <tr key={proj.id} className="hover:bg-surface-subtle transition-colors">
                       <td className="py-3.5 px-4">
                         {/* Names wrap (they matter); the UUID truncates but copies whole (select-all) */}
-                        <div className="font-semibold text-xs text-fg break-words max-w-xs">{proj.name}</div>
-                        <div className="text-label font-mono text-fg-muted max-w-[14rem] truncate select-all" title={proj.id}>
+                        <div className="font-semibold text-xs text-fg wrap-break-word max-w-xs">{proj.name}</div>
+                        <div className="text-label font-mono text-fg-muted max-w-56 truncate select-all" title={proj.id}>
                           id: {proj.id}
                         </div>
                         {proj.description && (
@@ -239,7 +240,7 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 min-w-[200px]">
+                      <td className="py-3.5 px-4 min-w-50">
                         <div className="flex items-center justify-between text-label font-mono tabular-nums mb-1.5">
                           <span className="font-semibold text-fg">${currentSpend.toFixed(2)}</span>
                           <span className="text-fg-muted">/ ${budget.toLocaleString()}</span>
@@ -270,7 +271,8 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          <Tip label="Edit budget allocation">
+                            <button aria-label="Edit budget allocation"
                             type="button"
                             onClick={() => {
                               setEditingProject(proj);
@@ -278,10 +280,10 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                               setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
                             }}
                             className="p-1.5 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full transition-colors"
-                            title="Edit budget allocation"
                           >
                             <Settings2 className="w-3.5 h-3.5" />
                           </button>
+                          </Tip>
 
                           <button
                             type="button"
@@ -318,13 +320,15 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Create FinOps Project</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setShowCreateModal(false)}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -411,13 +415,15 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Edit Budget — {editingProject.name}</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setEditingProject(null)}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">

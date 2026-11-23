@@ -25,6 +25,7 @@ import { SlackAlertSettings } from './SlackAlertSettings';
 import { useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { SecurityWorkspace } from './security/SecurityWorkspace';
+import { Tip } from '@/components/ui/tooltip';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -434,7 +435,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                 </div>
               </div>
 
-              <button
+              <Tip label="Close modal">
+                <button
                 type="button"
                 onClick={() => setIsDeactivateModalOpen(false)}
                 className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
@@ -442,6 +444,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
               >
                 <CircleX className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             {/* Error Message */}
@@ -528,7 +531,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                         placeholder="Enter your current password"
                         className="w-full px-3.5 py-2.5 rounded-field bg-surface-subtle border border-line text-xs text-fg placeholder-fg-muted focus:bg-surface focus:border-accent focus:outline-none pr-10"
                       />
-                      <button
+                      <Tip label={showPassword ? 'Hide password' : 'Show password'}>
+                        <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg"
@@ -536,6 +540,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
+                      </Tip>
                     </div>
                   </div>
 

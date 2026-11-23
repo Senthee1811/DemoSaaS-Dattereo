@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, ArrowRight } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -55,7 +56,8 @@ export function Navbar() {
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center">
-          <button
+          <Tip label="Toggle Menu">
+            <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-1.5 text-[#555550] hover:text-sg-text-primary"
@@ -63,6 +65,7 @@ export function Navbar() {
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
+          </Tip>
         </div>
       </nav>
 

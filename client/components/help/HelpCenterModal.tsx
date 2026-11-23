@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEscapeToClose } from '@/components/ui/feedback';
 import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 interface HelpCenterModalProps {
   isOpen: boolean;
@@ -98,13 +99,15 @@ export function HelpCenterModal({
               <span>Restart Tour</span>
             </button>
 
-            <button
+            <Tip label="Close help modal">
+              <button
               onClick={onClose}
               className="p-1.5 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
               aria-label="Close help modal"
             >
               <X className="w-4 h-4" />
             </button>
+            </Tip>
           </div>
         </div>
 

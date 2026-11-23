@@ -12,6 +12,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch } from '@/lib/auth-fetch';
+import { useScopeProject } from '@/lib/scope';
 
 interface AlertItem {
   id: string;
@@ -31,27 +32,26 @@ interface AlertItem {
 type TestThreshold = 'PERCENT_80' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
 
 interface AlertsViewProps {
-  projects: Array<{ id: string; name: string }>;
   onRefreshUnreadCount: () => void;
 }
 
-export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) {
+export function AlertsView({ onRefreshUnreadCount }: AlertsViewProps) {
+  // Global scope: the feed shows the scoped project's alerts, and test alerts go to that project
+  const { scopeId, project: testProject, projectId: testProjectId, isFallback } = useScopeProject();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // Test alerts go to the first project (derived each render: projects load after mount)
-  const testProjectId = projects[0]?.id;
   const [testThreshold, setTestThreshold] = useState<TestThreshold>('PERCENT_80');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
   const fetchAlerts = useCallback(
     () =>
-      authFetch('/api/v1/alerts')
+      authFetch(scopeId ? `/api/v1/alerts?projectId=${encodeURIComponent(scopeId)}` : '/api/v1/alerts')
         .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
         .then((data: { alerts?: AlertItem[] }) => setAlerts(data.alerts || []))
         .catch((err) => console.error('Failed to fetch alerts:', err))
         .finally(() => setIsLoading(false)),
-    [],
+    [scopeId],
   );
 
   useEffect(() => {
@@ -180,6 +180,11 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             A test alert goes through the same path as real ones. It always appears in this feed, and it is also sent to
             Slack when the project has a webhook (Settings → Notifications). The status next to each alert shows what
             actually happened. Email delivery of budget alerts is not available yet.
+          </p>
+
+          <p className="text-xs text-fg-secondary">
+            Sends to <span className="font-semibold text-fg">{testProject?.name ?? 'no project yet'}</span>
+            {isFallback ? ' (the first project: pick one in Scope to change it).' : ' (your current Scope).'}
           </p>
 
           {/* Test Dispatch Bar */}

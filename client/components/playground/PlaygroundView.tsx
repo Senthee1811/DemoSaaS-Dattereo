@@ -12,6 +12,7 @@ import { authFetch } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ModelPicker } from './ModelPicker';
 import { Badge } from '@/components/ui/Badge';
+import { useScopeProject } from '@/lib/scope';
 
 interface ExecutionResult {
   status: number;
@@ -24,14 +25,12 @@ interface ExecutionResult {
 }
 
 interface PlaygroundViewProps {
-  projects: Array<{ id: string; name: string }>;
   onRefreshMetrics: () => void;
 }
 
-export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewProps) {
-  // The user's pick, else the first project (projects arrive after mount, so derive each render)
-  const [pickedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const selectedProjectId = pickedProjectId || projects[0]?.id || '';
+export function PlaygroundView({ onRefreshMetrics }: PlaygroundViewProps) {
+  // Global scope: requests go to the project in Scope (the first project while Scope is All projects)
+  const { project: scopedProject, projectId: selectedProjectId, isFallback } = useScopeProject();
   // Empty until the catalog loads; ModelPicker reports the list and we default to its first entry
   const [selectedModel, setSelectedModel] = useState('');
   const [prompt, setPrompt] = useState('Generate a concise spend analysis summary for our Q3 multi-model AI infrastructure.');
@@ -153,20 +152,12 @@ response = client.chat.completions.create(
               <span>Inference Request Config</span>
             </h3>
 
-            {/* Scope Project */}
-            <div className="flex items-center gap-2 text-xs text-sg-text-secondary">
+            {/* The project comes from the global Scope: no separate picker that could drift from it */}
+            <div className="flex items-center gap-2 text-xs text-sg-text-secondary" title={isFallback ? 'Scope is All projects, so the first project is used. Pick one in Scope to change it.' : 'Change it with Scope in the top bar'}>
               <span>Project:</span>
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="bg-parchment-ivory border border-sg-border rounded-full px-3 py-1 text-xs text-fg font-medium cursor-pointer"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <span className="px-3 py-1 rounded-full border border-line bg-surface-subtle text-fg font-medium max-w-[12rem] truncate">
+                {scopedProject?.name ?? 'No project yet'}
+              </span>
             </div>
           </div>
 

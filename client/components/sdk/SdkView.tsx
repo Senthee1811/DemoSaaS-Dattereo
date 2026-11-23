@@ -9,13 +9,12 @@ import {
   Cpu,
 } from 'lucide-react';
 import { providerNames } from '@/lib/providers';
+import { useScopeProject } from '@/lib/scope';
 
-interface SdkViewProps {
-  projects: Array<{ id: string; name: string }>;
-}
-
-export function SdkView({ projects }: SdkViewProps) {
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || 'proj_copilot');
+export function SdkView() {
+  // Global scope: the snippets name the project in Scope (the first project while Scope is All projects)
+  const { project: scopedProject, projectId: scopedId, isFallback } = useScopeProject();
+  const selectedProjectId = scopedId || 'YOUR_PROJECT_ID';
   const [activeLang, setActiveLang] = useState<'node' | 'python' | 'curl' | 'langchain'>('node');
   const [copied, setCopied] = useState(false);
 
@@ -143,18 +142,13 @@ console.log(response.content);`
 
           {/* Project Scoping & Copy */}
           <div className="flex items-center gap-2.5">
-            <span className="text-xs text-fg-secondary">Bind Project:</span>
-            <select
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-surface border border-line rounded-full px-3 py-1 text-xs text-fg font-medium cursor-pointer"
+            <span className="text-xs text-fg-secondary">Project:</span>
+            <span
+              className="px-3 py-1 rounded-full border border-line bg-surface-subtle text-xs text-fg font-medium max-w-[12rem] truncate"
+              title={isFallback ? 'Scope is All projects, so the first project is shown. Pick one in Scope to change it.' : 'Change it with Scope in the top bar'}
             >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              {scopedProject?.name ?? 'No project yet'}
+            </span>
 
             <button
               type="button"

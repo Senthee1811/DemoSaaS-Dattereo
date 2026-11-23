@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
 
 import OnboardingPage from './page';
 import { KeyVaultView } from '@/components/keys/KeyVaultView';
+import { ScopeProvider } from '@/lib/scope';
 
 const PROJECT_ID = '3c66dcd5-9588-479c-ac9d-83c024ad1032';
 const posts: Array<{ url: string; body: Record<string, unknown> | undefined }> = [];
@@ -121,7 +122,11 @@ describe('7.6 onboarding: provider key', () => {
   });
 
   it('(b) Key Vault shows the missing provider key honestly', async () => {
-    render(<KeyVaultView projects={[{ id: PROJECT_ID, name: 'Production AI Assistant' }]} />);
+    render(
+      <ScopeProvider scopeId="" onScopeChange={() => {}} projects={[{ id: PROJECT_ID, name: 'Production AI Assistant' }]}>
+        <KeyVaultView />
+      </ScopeProvider>,
+    );
     expect(await screen.findByText('Provider key: not configured')).toBeInTheDocument();
   });
 });

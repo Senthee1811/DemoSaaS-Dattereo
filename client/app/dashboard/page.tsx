@@ -15,6 +15,7 @@ import { TeamView } from '@/components/team/TeamView';
 import { BillingView } from '@/components/billing/BillingView';
 import { SettingsView, type SettingsTab } from '@/components/settings/SettingsView';
 import { destinationAfterTour, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
+import { ScopeProvider, resolveScopeProject } from '@/lib/scope';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
@@ -38,8 +39,10 @@ export default function AppDashboard() {
   const toast = useToast();
   const showError = useErrorDialog();
   const [settingsSection, setSettingsSection] = useState<SettingsTab>('account');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  // The ONE raw scope value. Everything else reads it through <ScopeProvider> (lib/scope.tsx).
+  const [rawScopeId, setScopeId] = useState<string>('');
   const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const selectedProjectId = projects.some((p) => p.id === rawScopeId) ? rawScopeId : '';
   const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -80,7 +83,7 @@ export default function AppDashboard() {
   // Tour: send a real test alert through POST /api/v1/alerts (the same path as Settings and
   // Alerts) and report what actually happened. Nothing here is simulated.
   const sendTourTestAlert = async () => {
-    const project = projects.find((p) => p.id === selectedProjectId) ?? projects[0];
+    const project = resolveScopeProject(projects, selectedProjectId);
     if (!project) {
       showError({ title: 'No project yet', message: 'Test alerts belong to a project.', hint: 'Create a project first, then try again.' });
       return;
@@ -179,6 +182,7 @@ export default function AppDashboard() {
   }, [accessToken, loadAll, fetchAnalytics, fetchUnreadAlerts]);
 
   return (
+    <ScopeProvider scopeId={rawScopeId} onScopeChange={setScopeId} projects={projects}>
     <div className="flex h-screen w-screen overflow-hidden bg-surface-subtle text-sg-text-primary">
       {/* Navigation Sidebar */}
       <Sidebar
@@ -195,9 +199,6 @@ export default function AppDashboard() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Global Application Header */}
         <Header
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
           onOpenPlayground={() => setCurrentTab('playground')}
           onOpenAlerts={() => setCurrentTab('alerts')}
           onRefreshData={refreshAll}
@@ -235,37 +236,23 @@ export default function AppDashboard() {
             )}
 
             {currentTab === 'keys' && (
-              <KeyVaultView
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-              />
+              <KeyVaultView />
             )}
 
             {currentTab === 'playground' && (
-              <PlaygroundView
-                projects={projects}
-                onRefreshMetrics={refreshAll}
-              />
+              <PlaygroundView onRefreshMetrics={refreshAll} />
             )}
 
             {currentTab === 'audit' && (
-              <AuditView
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-              />
+              <AuditView />
             )}
 
             {currentTab === 'alerts' && (
-              <AlertsView
-                projects={projects}
-                onRefreshUnreadCount={fetchUnreadAlerts}
-              />
+              <AlertsView onRefreshUnreadCount={fetchUnreadAlerts} />
             )}
 
             {currentTab === 'sdk' && (
-              <SdkView
-                projects={projects}
-              />
+              <SdkView />
             )}
 
             {currentTab === 'team' && (
@@ -326,5 +313,6 @@ export default function AppDashboard() {
         onNavigateToSdk={() => setCurrentTab('sdk')}
       />
     </div>
+    </ScopeProvider>
   );
 }

@@ -22,6 +22,7 @@ import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { providerLabel } from '@/lib/providers';
+import { useScope } from '@/lib/scope';
 
 interface AuditLog {
   id: string;
@@ -46,16 +47,13 @@ interface AuditLog {
   timestamp: string;
 }
 
-interface AuditViewProps {
-  projects: Array<{ id: string; name: string }>;
-  selectedProjectId?: string;
-}
-
-export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
+export function AuditView() {
+  // Global scope is the project filter: there is no second, separate project filter here
+  const { scopeId: filterProject, projects } = useScope();
+  const scopeName = projects.find((p) => p.id === filterProject)?.name;
   const toast = useToast();
   const showError = useErrorDialog();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterProject, setFilterProject] = useState(selectedProjectId || '');
   const [filterModel, setFilterModel] = useState('');
   // Model filter options come from the backend's model list, not a bundled one
   const catalog = useModelCatalog();
@@ -64,13 +62,6 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const pageSize = 15;
-
-  // Follow the project picked in the header (React's "adjust state on prop change" pattern)
-  const [prevSelectedProjectId, setPrevSelectedProjectId] = useState(selectedProjectId);
-  if (selectedProjectId !== prevSelectedProjectId) {
-    setPrevSelectedProjectId(selectedProjectId);
-    if (selectedProjectId) setFilterProject(selectedProjectId);
-  }
 
   // Each load is keyed by its filters + a manual reload counter. "Loading" simply
   // means the result on screen belongs to a different key than the one requested.
@@ -192,19 +183,10 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             />
           </div>
 
-          {/* Project Filter */}
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="px-3.5 py-2 rounded-full border border-sg-border text-xs font-medium text-fg bg-parchment-ivory focus:outline-none focus:border-accent cursor-pointer"
-          >
-            <option value="">All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          {/* Project comes from the global Scope */}
+          <span className="px-3.5 py-2 rounded-full border border-line text-xs font-medium text-fg bg-surface-subtle max-w-[14rem] truncate" title="Change it with Scope in the top bar">
+            {scopeName ?? 'All projects'}
+          </span>
 
           {/* Model Filter */}
           <select

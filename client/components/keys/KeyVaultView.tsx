@@ -21,6 +21,7 @@ import { useEscapeToClose, ConfirmDialog, InlineAlert, useToast } from '@/compon
 import { Badge } from '@/components/ui/Badge';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { RATE_LIMIT_RPM, isNumberInRange } from '@/lib/limits';
+import { useScope } from '@/lib/scope';
 
 interface ProviderKey {
   id: string;
@@ -46,12 +47,9 @@ interface GatewayKey {
   createdAt: string;
 }
 
-interface KeyVaultViewProps {
-  projects: Array<{ id: string; name: string }>;
-  selectedProjectId?: string;
-}
-
-export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps) {
+export function KeyVaultView() {
+  // Global scope: the key lists follow it, and the create forms default to it
+  const { scopeId: selectedProjectId, projects } = useScope();
   const toast = useToast();
   const [providerKeys, setProviderKeys] = useState<ProviderKey[]>([]);
   const [gatewayKeys, setGatewayKeys] = useState<GatewayKey[]>([]);

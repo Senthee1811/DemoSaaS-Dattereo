@@ -9,6 +9,8 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { AuthenticatedUser } from '@/modules/auth/decorators/current-user.decorator';
+import { EmailService } from '@/modules/email/email.service';
+import { appUrl } from '@/common/app-url';
 import * as crypto from 'crypto';
 
 const INVITE_TTL_SECONDS = 7 * 24 * 3600;
@@ -20,6 +22,7 @@ export class TeamService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
+    private readonly emailService: EmailService,
   ) {}
 
   async listMembers(orgId: string) {
@@ -92,13 +95,20 @@ export class TeamService {
       },
     });
 
-    let inviteToken: string | undefined;
     if (this.redisService.isConnected) {
-      inviteToken = crypto.randomBytes(32).toString('hex');
+      const inviteToken = crypto.randomBytes(32).toString('hex');
       await this.redisService.setCache(
         `spendguard:pwd_reset:${inviteToken}`,
         JSON.stringify({ userId: user.id, email: user.email }),
         INVITE_TTL_SECONDS,
+      );
+      const org = await this.prisma.organization.findUnique({ where: { id: actor.orgId }, select: { name: true } });
+      // The token only ever travels by email; it is never returned to the caller.
+      void this.emailService.sendOrgInvite(
+        user.email,
+        `${appUrl()}/forgot-password?token=${inviteToken}`,
+        org?.name || 'your team',
+        actor.name || 'A teammate',
       );
     }
 
@@ -106,12 +116,8 @@ export class TeamService {
 
     return {
       user,
-      invite: {
-        deliveryStatus: 'simulated_pending_smtp_integration',
-        expiresInDays: 7,
-        // Exposed outside production so the flow can be completed without SMTP
-        token: process.env.NODE_ENV !== 'production' ? inviteToken : undefined,
-      },
+      // Tells the UI whether an email could actually have gone out (RESEND_API_KEY set).
+      invite: { emailConfigured: Boolean(process.env.RESEND_API_KEY) && this.redisService.isConnected, expiresInDays: 7 },
     };
   }
 

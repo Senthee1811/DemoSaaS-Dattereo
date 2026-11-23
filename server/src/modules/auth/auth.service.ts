@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { EmailService } from '@/modules/email/email.service';
+import { appUrl } from '@/common/app-url';
 import * as crypto from 'crypto';
 import { promisify } from 'util';
 
@@ -46,6 +48,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -302,18 +305,16 @@ export class AuthService {
     const generic = {
       success: true,
       message: 'If this email is associated with an account, instructions have been sent.',
-      deliveryStatus: 'simulated_pending_smtp_integration',
     };
 
     if (!user) return generic;
 
     const resetToken = await this.issuePasswordToken(user.id, user.email, 3600);
-    this.logger.log(`Password reset token issued for user ${user.id}. SMTP delivery pending service configuration.`);
+    // Not awaited: response time must not reveal whether the account exists.
+    // EmailService never throws. The token only ever travels by email.
+    void this.emailService.sendPasswordReset(user.email, `${appUrl()}/forgot-password?token=${resetToken}`);
 
-    return {
-      ...generic,
-      resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
-    };
+    return generic;
   }
 
   /**

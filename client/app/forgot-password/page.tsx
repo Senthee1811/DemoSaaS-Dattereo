@@ -11,7 +11,6 @@ export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [resetToken, setResetToken] = useState('');
   
   // Reset password form state (when token is provided)
   // Invite / reset links arrive as /forgot-password?token=... — prefill it and
@@ -52,10 +51,6 @@ export default function ForgotPasswordPage() {
       }
 
       setMessage(data.message || 'If an account exists for this email, recovery instructions have been initiated.');
-      if (data.resetToken) {
-        setResetToken(data.resetToken);
-        setTokenInput(data.resetToken);
-      }
     } catch (err: unknown) {
       setErrorMessage(toMessage(err, 'Failed to submit recovery request.'));
     } finally {
@@ -170,20 +165,9 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              {/* Informative dependency notice */}
-              <div className="p-3.5 rounded-2xl bg-sg-surface-hover border border-parchment-border text-[11px] text-[#555550] space-y-1">
-                <span className="font-mono font-semibold uppercase text-inversion-dark block">
-                  Infrastructure Note:
-                </span>
-                <p>
-                  External email dispatch requires an active SMTP or Resend API provider configuration in production.
-                  {resetToken && (
-                    <span className="block mt-1 text-inversion-dark font-mono font-medium">
-                      Development Token Generated: <code className="bg-white px-1.5 py-0.5 rounded border border-parchment-border select-all">{resetToken}</code>
-                    </span>
-                  )}
-                </p>
-              </div>
+              <p className="text-[11px] text-[#555550]">
+                Check your inbox for a link to choose a new password. It expires in 1 hour.
+              </p>
 
               {/* Reset Password Form when token is available */}
               <form className="space-y-3.5 pt-2" onSubmit={handlePerformReset}>

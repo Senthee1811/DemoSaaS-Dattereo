@@ -29,7 +29,7 @@ export function TeamView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const orgName = useStoredUser()?.orgName || 'My Organization';
   const [inviteError, setInviteError] = useState('');
-  const [inviteNotice, setInviteNotice] = useState<{ email: string; link: string | null } | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<{ email: string; emailSent: boolean } | null>(null);
 
   const fetchTeam = useCallback(
     () =>
@@ -60,11 +60,9 @@ export function TeamView() {
         return;
       }
       const data = await res.json();
-      const inviteToken: string | undefined = data?.invite?.token;
       setInviteNotice({
         email: data?.user?.email || email,
-        // Email delivery is not wired up yet; share this link with the invitee directly.
-        link: inviteToken ? `${window.location.origin}/forgot-password?token=${inviteToken}` : null,
+        emailSent: data?.invite?.emailConfigured === true,
       });
       setShowInviteModal(false);
       setName('');
@@ -88,13 +86,10 @@ export function TeamView() {
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-          {inviteNotice.link ? (
-            <>
-              <p className="text-sg-text-secondary">Email delivery isn&apos;t configured yet. Send them this one-time link to set their password (valid 7 days):</p>
-              <code className="block break-all bg-parchment-ivory border border-parchment-border rounded-lg p-2 font-mono text-[11px] select-all">{inviteNotice.link}</code>
-            </>
+          {inviteNotice.emailSent ? (
+            <p className="text-sg-text-secondary">We emailed them a one-time link to set their password (valid 7 days).</p>
           ) : (
-            <p className="text-sg-text-secondary">They can set a password with &ldquo;Forgot password&rdquo; on the sign-in page.</p>
+            <p className="text-sg-text-secondary">Email delivery isn&apos;t configured on this deployment, so no email was sent. They can set a password with &ldquo;Forgot password&rdquo; on the sign-in page once it is.</p>
           )}
         </div>
       )}

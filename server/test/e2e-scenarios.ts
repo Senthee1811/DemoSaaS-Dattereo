@@ -298,10 +298,13 @@ async function run() {
   const carolEmail = `carol.${RUN}@e2e.spendguard.test`;
   const invite = await api('POST', '/api/v1/team', { token: A, body: { name: 'Carol', email: carolEmail, role: 'MEMBER' } });
   check('alice invites carol into her org', invite.status === 201 && invite.body.user?.orgId === alice.body.user.orgId, invite.body);
-  check('invite returns a set-password token (dev)', typeof invite.body.invite?.token === 'string', invite.body.invite);
-  const setPw = await api('POST', '/auth/reset-password', { body: { token: invite.body.invite.token, newPassword: 'CarolsOwnPass#1' } });
+  check('invite response never contains a token', !JSON.stringify(invite.body).toLowerCase().includes('token'), invite.body);
+  // The token only travels by email, so the test reads it from Redis, where the server stores it.
+  const inviteToken = await findPasswordToken(carolEmail);
+  check('an invite token was issued for carol', typeof inviteToken === 'string', inviteToken);
+  const setPw = await api('POST', '/auth/reset-password', { body: { token: inviteToken, newPassword: 'CarolsOwnPass#1' } });
   check('carol sets her password via the invite token', setPw.status === 200, setPw.body);
-  const reuse = await api('POST', '/auth/reset-password', { body: { token: invite.body.invite.token, newPassword: 'AnotherPass#2' } });
+  const reuse = await api('POST', '/auth/reset-password', { body: { token: inviteToken, newPassword: 'AnotherPass#2' } });
   check('invite token is single-use', reuse.status === 400, reuse.status);
   const carol = await api('POST', '/auth/login', { body: { email: carolEmail, password: 'CarolsOwnPass#1' } });
   check('carol can log in', carol.status === 200, carol.status);
@@ -612,6 +615,23 @@ async function phase1(A: string) {
     const last = attempts[5];
     check('6 failed logins for one email in a minute → first 5 are 401, 6th is 429', statuses.slice(0, 5).every((s) => s === 401) && last.status === 429, statuses);
     check('auth 429 uses the flat error shape', typeof last.body.error?.message === 'string' && last.body.error?.code === 'auth_rate_limited', last.body);
+  }
+}
+
+/** Finds the one-time password-set token issued for an email (it is only ever emailed). */
+async function findPasswordToken(email: string): Promise<string | undefined> {
+  const redis = await connectRedis();
+  try {
+    const client = redis.getClient();
+    if (!client) return undefined;
+    const keys = await client.keys('spendguard:pwd_reset:*');
+    for (const key of keys) {
+      const raw = await client.get(key);
+      if (raw && JSON.parse(raw).email === email) return key.slice('spendguard:pwd_reset:'.length);
+    }
+    return undefined;
+  } finally {
+    await redis.onModuleDestroy?.();
   }
 }
 

@@ -33,7 +33,9 @@ function setup() {
   const jwt = new JwtService({});
   const redis = fakeRedis();
   const prisma = { user: { findUnique: jest.fn(async () => user) } };
-  const svc = new AuthService(prisma as any, jwt, config as any, redis.service, {} as any);
+  // Sessions are covered in security.spec.ts; here they are a no-op so logout/refresh logic is isolated
+  const sessions = { create: async () => 'sid-1', checkForRefresh: async () => 'ok', revokeIfExists: async () => {}, isRevoked: async () => false };
+  const svc = new AuthService(prisma as any, jwt, config as any, redis.service, {} as any, sessions as any);
   const issue = () => (svc as any).generateTokens({ sub: 'u1', email: 'a@b.co', orgId: 'o1', role: 'OWNER' });
   return { svc, jwt, redis, issue };
 }

@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SessionsService } from './sessions.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { AuthRateLimitMiddleware } from '@/common/middleware/auth-rate-limit.middleware';
@@ -22,7 +23,7 @@ import { AuthRateLimitMiddleware } from '@/common/middleware/auth-rate-limit.mid
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard, AuthRateLimitMiddleware],
+  providers: [AuthService, SessionsService, JwtStrategy, RolesGuard, AuthRateLimitMiddleware],
   exports: [AuthService, JwtStrategy, RolesGuard],
 })
 export class AuthModule implements NestModule {

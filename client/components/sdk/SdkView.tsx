@@ -110,20 +110,20 @@ console.log(response.content);`
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div>
-        <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+        <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
           SDK & Gateway Integration
         </h2>
-        <p className="text-xs text-[#5F6368] mt-1">
+        <p className="text-xs text-fg-secondary mt-1">
           SpendGuard AI exposes a 100% OpenAI-compatible endpoint. Swap your `baseURL` and enforce budget guardrails with zero code rewrites.
         </p>
       </div>
 
       {/* Integration Workspace */}
-      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+      <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 bg-[#FAF8F5]">
+        <div className="p-4 border-b border-line flex flex-wrap items-center justify-between gap-3 bg-surface-subtle">
           {/* Language Tabs */}
-          <div className="flex items-center gap-1.5 p-0.5 rounded-full bg-[#EFECE6] border border-[#E5E0D8]">
+          <div className="flex items-center gap-1.5 p-0.5 rounded-full bg-surface-muted border border-line-strong">
             {(['node', 'python', 'curl', 'langchain'] as const).map((lang) => (
               <button
                 key={lang}
@@ -131,8 +131,8 @@ console.log(response.content);`
                 onClick={() => setActiveLang(lang)}
                 className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                   activeLang === lang
-                    ? 'bg-white text-[#141413] shadow-xs'
-                    : 'text-[#5F6368] hover:text-[#141413]'
+                    ? 'bg-surface text-fg shadow-xs'
+                    : 'text-fg-secondary hover:text-fg'
                 }`}
               >
                 {lang === 'node' ? 'Node.js' : lang === 'python' ? 'Python' : lang === 'curl' ? 'cURL' : 'LangChain'}
@@ -142,11 +142,11 @@ console.log(response.content);`
 
           {/* Project Scoping & Copy */}
           <div className="flex items-center gap-2.5">
-            <span className="text-xs text-[#5F6368]">Bind Project:</span>
+            <span className="text-xs text-fg-secondary">Bind Project:</span>
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-white border border-[#E4E4E0] rounded-full px-3 py-1 text-xs text-[#141413] font-medium cursor-pointer"
+              className="bg-surface border border-line rounded-full px-3 py-1 text-xs text-fg font-medium cursor-pointer"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -158,48 +158,48 @@ console.log(response.content);`
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] rounded-full text-xs font-semibold shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-surface hover:bg-surface-muted text-fg border border-line rounded-full text-xs font-semibold shadow-xs transition-colors"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5 text-[#5F6368]" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5 text-fg-secondary" />}
               <span>{copied ? 'Copied' : 'Copy Snippet'}</span>
             </button>
           </div>
         </div>
 
         {/* Code Box */}
-        <pre className="p-5 bg-[#141413] text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed border-t border-white/10">
+        <pre className="p-5 bg-code text-[#ECECE8] font-mono text-xs overflow-x-auto leading-relaxed border-t border-white/10">
           <code>{currentSnippet}</code>
         </pre>
       </div>
 
       {/* Integration Architectural Guardrails */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
-            <Cpu className="w-4 h-4 text-[#FF6B35]" />
+        <div className="p-5 bg-surface rounded-card border border-line shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-fg">
+            <Cpu className="w-4 h-4 text-accent" />
             <span>Zero SDK Vendor Lock-in</span>
           </div>
-          <p className="text-xs text-[#5F6368] leading-relaxed">
+          <p className="text-xs text-fg-secondary leading-relaxed">
             Works directly with official `openai` Python and Node libraries, LangChain, LlamaIndex, and AutoGen.
           </p>
         </div>
 
-        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
-            <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
+        <div className="p-5 bg-surface rounded-card border border-line shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-fg">
+            <ShieldCheck className="w-4 h-4 text-success" />
             <span>Sub-5ms Atomic Check</span>
           </div>
-          <p className="text-xs text-[#5F6368] leading-relaxed">
+          <p className="text-xs text-fg-secondary leading-relaxed">
             Redis executes atomic pre-flight Lua capacity reservations before forwarding traffic upstream.
           </p>
         </div>
 
-        <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 font-semibold text-xs text-[#141413]">
-            <Code2 className="w-4 h-4 text-[#5F6368]" />
+        <div className="p-5 bg-surface rounded-card border border-line shadow-2xs space-y-1.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-fg">
+            <Code2 className="w-4 h-4 text-fg-secondary" />
             <span>Multi-Provider Fallbacks</span>
           </div>
-          <p className="text-xs text-[#5F6368] leading-relaxed">
+          <p className="text-xs text-fg-secondary leading-relaxed">
             Switch between OpenAI, Claude, and Gemini by changing the model parameter without changing SDK code.
           </p>
         </div>

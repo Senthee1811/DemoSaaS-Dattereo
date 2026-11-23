@@ -13,11 +13,13 @@ import { AlertsView } from '@/components/alerts/AlertsView';
 import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
 import { BillingView } from '@/components/billing/BillingView';
-import { SettingsView } from '@/components/settings/SettingsView';
+import { SettingsView, type SettingsTab } from '@/components/settings/SettingsView';
+import { destinationAfterTour, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { useHydrated, useLocalStorageValue, useSessionStorageValue, useStoredUser } from '@/lib/client-storage';
 import type { DashboardAnalytics } from '@/lib/types';
 import type { ProjectItem } from '@/components/projects/ProjectsView';
@@ -32,6 +34,10 @@ async function getJson<T>(url: string): Promise<T> {
 export default function AppDashboard() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const toast = useToast();
+  const showError = useErrorDialog();
+  const [settingsSection, setSettingsSection] = useState<SettingsTab>('account');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);
@@ -58,7 +64,7 @@ export default function AppDashboard() {
   // Show the welcome modal right after sign-up, or until the first tour is done
   const justRegistered = useSessionStorageValue('spendguard_just_registered') === 'true';
   const tourCompleted = useLocalStorageValue('spendguard_tour_completed');
-  const onboardingState = useLocalStorageValue('spendguard_onboarding_state');
+  const onboardingState = useLocalStorageValue(ONBOARDING_STATE_KEY);
   const isWelcomeOpen =
     !welcomeDismissed && (justRegistered || (onboardingState === 'ACCOUNT_READY' && !tourCompleted));
 
@@ -68,6 +74,37 @@ export default function AppDashboard() {
       sessionStorage.removeItem('spendguard_just_registered');
     } catch {
       /* storage unavailable */
+    }
+  };
+
+  // Tour: send a real test alert through POST /api/v1/alerts (the same path as Settings and
+  // Alerts) and report what actually happened. Nothing here is simulated.
+  const sendTourTestAlert = async () => {
+    const project = projects.find((p) => p.id === selectedProjectId) ?? projects[0];
+    if (!project) {
+      showError({ title: 'No project yet', message: 'Test alerts belong to a project.', hint: 'Create a project first, then try again.' });
+      return;
+    }
+    try {
+      const res = await authFetch('/api/v1/alerts', {
+        method: 'POST',
+        body: JSON.stringify({ projectId: project.id, thresholdType: 'PERCENT_80' }),
+      });
+      if (!res.ok) {
+        showError({ title: 'Test alert not sent', message: await readApiError(res, 'The server refused the request.') });
+        return;
+      }
+      const { alert } = (await res.json()) as { alert?: { status?: string } };
+      if (alert?.status === 'QUEUED') {
+        toast.success('Test alert queued for Slack', `${project.name}: delivery runs in the background. Its status (Sent or Failed) shows in Alerts.`);
+      } else if (alert?.status === 'FAILED') {
+        toast.error('Slack delivery could not be queued', 'The alert is in the in-app feed. Try again shortly.');
+      } else {
+        toast.info('Test alert recorded in-app', `${project.name} has no Slack webhook yet, so nothing was posted to Slack. Add one in Notifications.`);
+      }
+      fetchUnreadAlerts();
+    } catch {
+      showError({ title: 'Test alert not sent', message: 'The server could not be reached.' });
     }
   };
 
@@ -81,7 +118,10 @@ export default function AppDashboard() {
   const fetchProjects = useCallback(
     () =>
       getJson<{ projects?: ProjectItem[] }>('/api/v1/projects')
-        .then((data) => setProjects(data.projects || []))
+        .then((data) => {
+          setProjects(data.projects || []);
+          setProjectsLoaded(true);
+        })
         .catch((err) => console.error('Failed to fetch projects:', err)),
     [],
   );
@@ -139,7 +179,7 @@ export default function AppDashboard() {
   }, [accessToken, loadAll, fetchAnalytics, fetchUnreadAlerts]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#FBFBFA] text-sg-text-primary">
+    <div className="flex h-screen w-screen overflow-hidden bg-surface-subtle text-sg-text-primary">
       {/* Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -165,10 +205,14 @@ export default function AppDashboard() {
           unreadAlertsCount={unreadAlertsCount}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onOpenHelp={() => setIsHelpOpen(true)}
+          onOpenSettings={(section) => {
+            setSettingsSection(section);
+            setCurrentTab('settings');
+          }}
         />
 
         {/* Dynamic Viewport Container */}
-        <main className="flex-1 overflow-y-auto px-6 py-6 bg-[#FBFBFA] scroll-smooth">
+        <main className="flex-1 overflow-y-auto px-6 py-6 bg-surface-subtle scroll-smooth">
           <div className="max-w-7xl mx-auto">
             {currentTab === 'overview' && (
               <OverviewView
@@ -234,6 +278,8 @@ export default function AppDashboard() {
 
             {currentTab === 'settings' && (
               <SettingsView
+                key={settingsSection}
+                initialTab={settingsSection}
                 onStartTour={() => setIsTourActive(true)}
                 onNavigateToTeam={() => setCurrentTab('team')}
               />
@@ -255,12 +301,21 @@ export default function AppDashboard() {
         orgName={orgName}
       />
 
-      {/* Interactive 9-Step Product Tour */}
+      {/* Interactive product tour */}
       <ProductTour
         isActive={isTourActive}
         onClose={() => setIsTourActive(false)}
-        onNavigateTab={(tab) => setCurrentTab(tab)}
-        onStartWorkspaceSetup={() => router.push('/onboarding')}
+        onNavigateTab={(tab, section) => {
+          if (section) setSettingsSection(section);
+          setCurrentTab(tab);
+        }}
+        onSendTestAlert={sendTourTestAlert}
+        onFinished={() => {
+          // Same completion check as the setup wizard: a set-up org stays on the console
+          if (destinationAfterTour({ onboardingState, projectCount: projects.length, projectsLoaded }) === 'onboarding') {
+            router.push('/onboarding');
+          }
+        }}
       />
 
       {/* In-Product Knowledge Base & Help Center */}

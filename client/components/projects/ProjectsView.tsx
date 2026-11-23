@@ -13,7 +13,12 @@ import {
   FolderKanban,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { authFetch } from '@/lib/auth-fetch';
+import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { errorMessage } from '@/lib/types';
+import { useEscapeToClose, ConfirmDialog, Spinner, useErrorDialog, useToast } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
+import { NumberInput } from '@/components/ui/NumberInput';
+import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 
 export interface ProjectItem {
   id: string;
@@ -36,8 +41,12 @@ interface ProjectsViewProps {
 }
 
 export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
+  const toast = useToast();
+  const showError = useErrorDialog();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
+  useEscapeToClose(showCreateModal, () => setShowCreateModal(false));
+  useEscapeToClose(editingProject !== null, () => setEditingProject(null));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New Project Form State
@@ -52,24 +61,35 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const totalSpend = projects.reduce((acc, p) => acc + Number(p.currentMonthlySpend || 0), 0);
   const blockedCount = projects.filter((p) => p.isBlocked).length;
 
-  // Toggle Hard Block / Emergency Freeze
+  // Emergency freeze (Type C, confirmed first) / lift freeze (direct, toast)
+  const [pendingFreeze, setPendingFreeze] = useState<ProjectItem | null>(null);
+  const [unfreezingId, setUnfreezingId] = useState<string | null>(null);
+  const setBlocked = async (project: ProjectItem, isBlocked: boolean) => {
+    const res = await authFetch('/api/v1/projects', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: project.id,
+        isBlocked,
+        blockReason: isBlocked ? 'Manual Emergency Hard-Block enforced by Administrator' : null,
+      }),
+    });
+    if (!res.ok) throw new Error(await readApiError(res, 'The project could not be updated.'));
+    onRefresh();
+  };
   const handleToggleBlock = async (project: ProjectItem) => {
+    if (!project.isBlocked) {
+      setPendingFreeze(project);
+      return;
+    }
+    setUnfreezingId(project.id);
     try {
-      const newBlockedState = !project.isBlocked;
-      const res = await authFetch('/api/v1/projects', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: project.id,
-          isBlocked: newBlockedState,
-          blockReason: newBlockedState ? 'Manual Emergency Hard-Block enforced by Administrator' : null
-        })
-      });
-      if (res.ok) {
-        onRefresh();
-      }
+      await setBlocked(project, false);
+      toast.success(`Traffic resumed for ${project.name}`);
     } catch (err) {
-      console.error('Failed to toggle hard-block:', err);
+      showError({ title: `Could not unfreeze ${project.name}`, message: errorMessage(err), hint: 'The project is still frozen. Try again.' });
+    } finally {
+      setUnfreezingId(null);
     }
   };
 
@@ -133,10 +153,10 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
             Projects & Budget Guardrails
           </h2>
-          <p className="text-xs text-[#5F6368] mt-1">
+          <p className="text-xs text-fg-secondary mt-1">
             Assign monthly limits, soft-warning thresholds, and fail-closed blocking rules per team.
           </p>
         </div>
@@ -144,7 +164,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Project</span>
@@ -152,22 +172,22 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       </div>
 
       {/* Aggregate FinOps Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-surface p-5 rounded-card border border-line shadow-2xs">
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Active Projects</span>
-          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">{projects.length}</p>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Active Projects</span>
+          <p className="font-serif text-2xl font-normal text-fg tabular-nums mt-1">{projects.length}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
-          <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">${totalAllocation.toLocaleString()}</p>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Total Allocation</span>
+          <p className="font-serif text-2xl font-normal text-fg tabular-nums mt-1">${totalAllocation.toLocaleString()}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
-          <p className="font-serif text-2xl font-normal text-[#0D9488] tabular-nums mt-1">${totalSpend.toFixed(2)}</p>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Current Period Spend</span>
+          <p className="font-serif text-2xl font-normal text-success tabular-nums mt-1">${totalSpend.toFixed(2)}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
-          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${blockedCount > 0 ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Emergency Freezes</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${blockedCount > 0 ? 'text-critical' : 'text-fg-secondary'}`}>
             {blockedCount}
           </p>
         </div>
@@ -183,20 +203,20 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           onAction={() => setShowCreateModal(true)}
         />
       ) : (
-        <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+        <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-surface-subtle text-fg-secondary font-semibold border-b border-line">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project Name & ID</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">MTD Spend vs Budget</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Utilization</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Enforcement</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Project Name & ID</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">MTD Spend vs Budget</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Utilization</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Enforcement</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+              <tbody className="divide-y divide-line text-fg">
                 {projects.map((proj) => {
                   const currentSpend = Number(proj.currentMonthlySpend || 0);
                   const budget = Number(proj.budgetMonthly || 1000);
@@ -205,63 +225,59 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   const isWarning = utilization >= 80 && !isExceeded;
 
                   return (
-                    <tr key={proj.id} className="hover:bg-[#FAF8F5] transition-colors">
+                    <tr key={proj.id} className="hover:bg-surface-subtle transition-colors">
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-xs text-[#141413]">{proj.name}</div>
-                        <div className="text-[11px] font-mono text-[#80868B]">id: {proj.id}</div>
+                        {/* Names wrap (they matter); the UUID truncates but copies whole (select-all) */}
+                        <div className="font-semibold text-xs text-fg break-words max-w-xs">{proj.name}</div>
+                        <div className="text-label font-mono text-fg-muted max-w-[14rem] truncate select-all" title={proj.id}>
+                          id: {proj.id}
+                        </div>
                         {proj.description && (
-                          <div className="text-[11px] text-[#5F6368] mt-0.5 line-clamp-1">{proj.description}</div>
+                          <div className="text-label text-fg-secondary mt-0.5 line-clamp-1 max-w-xs" title={proj.description}>{proj.description}</div>
                         )}
                       </td>
 
                       <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                            <ShieldAlert className="w-3 h-3" />
-                            <span>BLOCKED</span>
-                          </span>
+                          proj.blockReason?.startsWith('Budget Cap Exceeded') ? (
+                            <Badge tone="critical" icon={ShieldAlert} title={proj.blockReason}>Budget cap reached</Badge>
+                          ) : (
+                            <Badge tone="critical" icon={Lock} title={proj.blockReason || 'Frozen by an administrator'}>Frozen</Badge>
+                          )
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>WARNING (80%)</span>
-                          </span>
+                          <Badge tone="warning" icon={AlertTriangle}>WARNING (80%)</Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
-                            <ShieldCheck className="w-3 h-3" />
-                            <span>HEALTHY</span>
-                          </span>
+                          <Badge tone="success" icon={ShieldCheck}>HEALTHY</Badge>
                         )}
                       </td>
 
                       <td className="py-3.5 px-4 min-w-[200px]">
-                        <div className="flex items-center justify-between text-[11px] font-mono tabular-nums mb-1.5">
-                          <span className="font-semibold text-[#141413]">${currentSpend.toFixed(2)}</span>
-                          <span className="text-[#80868B]">/ ${budget.toLocaleString()}</span>
+                        <div className="flex items-center justify-between text-label font-mono tabular-nums mb-1.5">
+                          <span className="font-semibold text-fg">${currentSpend.toFixed(2)}</span>
+                          <span className="text-fg-muted">/ ${budget.toLocaleString()}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#F3F3F0] rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
                           <div
                             style={{ width: `${utilization}%` }}
                             className={`h-full transition-all duration-300 ${
-                              proj.isBlocked ? 'bg-[#DC2626]' : isWarning ? 'bg-[#D97706]' : 'bg-[#FF6B35]'
+                              proj.isBlocked ? 'bg-critical' : isWarning ? 'bg-warning' : 'bg-accent'
                             }`}
                           />
                         </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono tabular-nums text-xs font-semibold">
-                        <span className={isExceeded ? 'text-[#DC2626]' : isWarning ? 'text-[#D97706]' : 'text-[#141413]'}>
+                        <span className={isExceeded ? 'text-critical' : isWarning ? 'text-warning' : 'text-fg'}>
                           {utilization}%
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                          proj.budgetHardBlockEnabled
-                            ? 'bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]'
-                            : 'bg-transparent text-[#80868B]'
-                        }`}>
-                          {proj.budgetHardBlockEnabled ? 'Fail-Closed (429)' : 'Soft Warning Only'}
-                        </span>
+                        {proj.budgetHardBlockEnabled ? (
+                          <Badge>Fail-Closed (429)</Badge>
+                        ) : (
+                          <span className="text-label text-fg-muted">Soft warning only</span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
@@ -273,7 +289,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                               setBudgetMonthly(String(proj.budgetMonthly));
                               setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
                             }}
-                            className="p-1.5 text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] rounded-full transition-colors"
+                            className="p-1.5 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full transition-colors"
                             title="Edit budget allocation"
                           >
                             <Settings2 className="w-3.5 h-3.5" />
@@ -282,14 +298,23 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                           <button
                             type="button"
                             onClick={() => handleToggleBlock(proj)}
-                            className={`p-1.5 rounded-full transition-colors ${
+                            disabled={unfreezingId === proj.id}
+                            aria-label={proj.isBlocked ? `Unfreeze ${proj.name} (resume gateway requests)` : `Freeze ${proj.name} (blocks all gateway requests)`}
+                            title={proj.isBlocked ? 'Unfreeze project (resume gateway requests)' : 'Freeze project (blocks all gateway requests)'}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label font-semibold border transition-colors ${
                               proj.isBlocked
-                                ? 'text-[#0D9488] hover:bg-[#F0FDF4]'
-                                : 'text-[#80868B] hover:text-[#DC2626] hover:bg-[#FEF2F2]'
+                                ? 'text-success border-success-border hover:bg-success-bg'
+                                : 'text-fg-secondary border-line hover:text-critical hover:bg-critical-bg'
                             }`}
-                            title={proj.isBlocked ? 'Lift hard-block' : 'Emergency freeze project traffic'}
                           >
-                            {proj.isBlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                            {unfreezingId === proj.id ? (
+                              <Spinner />
+                            ) : proj.isBlocked ? (
+                              <Unlock className="w-3.5 h-3.5" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5" />
+                            )}
+                            <span>{proj.isBlocked ? 'Unfreeze' : 'Freeze'}</span>
                           </button>
                         </div>
                       </td>
@@ -304,14 +329,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
       {/* Modal: Create Project */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-              <h3 className="font-serif text-lg font-normal text-[#141413]">Create FinOps Project</h3>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="font-serif text-lg font-normal text-fg">Create FinOps Project</h3>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -319,43 +344,41 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Project Name *</label>
+                <label className="font-semibold text-fg block mb-1.5">Project Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Production Copilot"
                   value={name}
+                  maxLength={120}
                   onChange={(e) => {
                     setName(e.target.value);
                     if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'));
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs text-fg focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Slug Identifier</label>
+                <label className="font-semibold text-fg block mb-1.5">Slug Identifier</label>
                 <input
                   type="text"
                   placeholder="production-copilot"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Budget Limit (USD) *</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
-                  <input
-                    type="number"
-                    min="10"
-                    step="10"
-                    value={budgetMonthly}
-                    onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
-                  />
-                </div>
+                <label className="font-semibold text-fg block mb-1.5">Monthly Budget Limit (USD) *</label>
+                <NumberInput
+                  value={budgetMonthly}
+                  onValueChange={setBudgetMonthly}
+                  range={BUDGET_USD}
+                  step={100}
+                  prefix="$"
+                  aria-label="Monthly budget in USD"
+                />
               </div>
 
               <div className="pt-1">
@@ -364,11 +387,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     type="checkbox"
                     checked={budgetHardBlockEnabled}
                     onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
-                    className="rounded text-[#FF6B35] mt-0.5"
+                    className="rounded-control text-accent mt-0.5"
                   />
                   <div>
-                    <span className="font-semibold text-[#141413] block">Enforce Atomic Hard-Block (Fail-Closed)</span>
-                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                    <span className="font-semibold text-fg block">Enforce Atomic Hard-Block (Fail-Closed)</span>
+                    <span className="text-fg-secondary text-label block mt-0.5">
                       Rejects proxy requests with HTTP 429 once allocation is exhausted.
                     </span>
                   </div>
@@ -376,19 +399,19 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
+            <div className="pt-3 border-t border-line flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-fg-secondary hover:bg-surface-muted transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleCreateProject}
-                disabled={isSubmitting || !name}
-                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
+                disabled={isSubmitting || !name || !isNumberInRange(budgetMonthly, BUDGET_USD)}
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
               </button>
@@ -399,14 +422,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
       {/* Modal: Edit Budget */}
       {editingProject && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-              <h3 className="font-serif text-lg font-normal text-[#141413]">Edit Budget — {editingProject.name}</h3>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="font-serif text-lg font-normal text-fg">Edit Budget — {editingProject.name}</h3>
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -414,18 +437,15 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Monthly Allocation (USD) *</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-[#80868B] font-mono">$</span>
-                  <input
-                    type="number"
-                    min="10"
-                    step="10"
-                    value={budgetMonthly}
-                    onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
-                  />
-                </div>
+                <label className="font-semibold text-fg block mb-1.5">Monthly Allocation (USD) *</label>
+                <NumberInput
+                  value={budgetMonthly}
+                  onValueChange={setBudgetMonthly}
+                  range={BUDGET_USD}
+                  step={100}
+                  prefix="$"
+                  aria-label="Monthly budget in USD"
+                />
               </div>
 
               <div className="pt-1">
@@ -434,11 +454,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     type="checkbox"
                     checked={budgetHardBlockEnabled}
                     onChange={(e) => setBudgetHardBlockEnabled(e.target.checked)}
-                    className="rounded text-[#FF6B35] mt-0.5"
+                    className="rounded-control text-accent mt-0.5"
                   />
                   <div>
-                    <span className="font-semibold text-[#141413] block">Fail-Closed Hard Limit</span>
-                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                    <span className="font-semibold text-fg block">Fail-Closed Hard Limit</span>
+                    <span className="text-fg-secondary text-label block mt-0.5">
                       Enforces sub-5ms Redis reservation checks to block overspend immediately.
                     </span>
                   </div>
@@ -446,19 +466,19 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
+            <div className="pt-3 border-t border-line flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setEditingProject(null)}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-fg-secondary hover:bg-surface-muted transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleUpdateProject}
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
+                disabled={isSubmitting || !isNumberInRange(budgetMonthly, BUDGET_USD)}
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Saving...' : 'Save Allocation'}
               </button>
@@ -466,6 +486,25 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={pendingFreeze !== null}
+        tone="sensitive"
+        title={`Freeze all traffic for "${pendingFreeze?.name}"?`}
+        description="Every gateway request for this project is rejected until you lift the freeze."
+        consequences={[
+          "Every app or script using this project's gateway keys gets HTTP 429 on each request, starting now.",
+          'Test Bench requests for this project are refused too.',
+          'Budgets, keys and history are not changed.',
+        ]}
+        reversible="Reversible: press Unfreeze in this table at any time."
+        confirmLabel="Freeze traffic"
+        onConfirm={async () => {
+          if (!pendingFreeze) return;
+          await setBlocked(pendingFreeze, true);
+          toast.success(`${pendingFreeze.name} is frozen`, 'All gateway requests for it are being rejected.');
+        }}
+        onClose={() => setPendingFreeze(null)}
+      />
     </div>
   );
 }

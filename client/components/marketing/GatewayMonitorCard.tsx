@@ -73,11 +73,11 @@ export function GatewayMonitorCard() {
   const currentReq = SAMPLE_REQUESTS[activeReqIdx];
 
   return (
-    <div className="relative w-full max-w-[460px] bg-[#111111] text-white rounded-3xl p-5 sm:p-6 shadow-[0_24px_50px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.08),0_0_30px_-5px_rgba(255,107,53,0.15)] transition-all">
+    <div className="relative w-full max-w-[460px] bg-[#111111] text-white rounded-card p-5 sm:p-6 shadow-[0_24px_50px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.08),0_0_30px_-5px_rgba(255,107,53,0.15)] transition-all">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3.5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#222222] border border-white/10 flex items-center justify-center text-[#FF6B35]">
+          <div className="w-7 h-7 rounded-control bg-[#222222] border border-white/10 flex items-center justify-center text-[#FF6B35]">
             <Cpu className="w-4 h-4" />
           </div>
           <div>
@@ -86,24 +86,24 @@ export function GatewayMonitorCard() {
               <span className="text-white/40">·</span>
               <span className="text-white/70 font-normal">Project Gateway</span>
             </div>
-            <div className="text-[11px] text-white/50">Live Gateway Monitor</div>
+            <div className="text-label text-white/50">Live Gateway Monitor</div>
           </div>
         </div>
 
         {/* Live Badge */}
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A2E1A] border border-[#2B592B] text-[11px] font-semibold text-[#4ADE80]">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A2E1A] border border-[#2B592B] text-label font-semibold text-[#4ADE80]">
           <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse" />
           <span>LIVE</span>
         </div>
       </div>
 
       {/* Real-time Request Throughput Visualizer (Replacing Audio Waveform) */}
-      <div className="my-4 p-3.5 rounded-2xl bg-white/[0.04] border border-white/5">
+      <div className="my-4 p-3.5 rounded-field bg-white/[0.04] border border-white/5">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-medium tracking-wide text-white/60 uppercase">
+          <span className="text-label font-medium tracking-wide text-white/60 uppercase">
             Live Request Throughput
           </span>
-          <span className="text-[11px] font-mono text-[#FF8A4C]">
+          <span className="text-label font-mono text-[#FF8A4C]">
             142 req/s · 98ms avg
           </span>
         </div>
@@ -121,18 +121,18 @@ export function GatewayMonitorCard() {
       </div>
 
       {/* Status Line */}
-      <div className="flex items-center gap-2 mb-3 px-1 text-[12px] text-white/80">
+      <div className="flex items-center gap-2 mb-3 px-1 text-xs text-white/80">
         <div className="w-2 h-2 rounded-full bg-[#FF6B35] animate-ping" />
         <span className="font-medium text-[#FF8A4C]">AI Analyzing Usage Pattern...</span>
       </div>
 
       {/* Request Log Line */}
-      <div className={`p-3 rounded-xl bg-white/[0.06] border border-white/10 font-mono text-[11.5px] transition-transform duration-200 ${isSimulating ? 'scale-[0.98]' : 'scale-100'}`}>
+      <div className={`p-3 rounded-menu bg-white/[0.06] border border-white/10 font-mono text-[11.5px] transition-transform duration-200 ${isSimulating ? 'scale-[0.98]' : 'scale-100'}`}>
         <div className="flex items-center justify-between text-white/90">
           <span className="text-[#FFA06E] font-semibold">{currentReq.provider}/{currentReq.model}</span>
           <span className="text-white/50">{currentReq.time}</span>
         </div>
-        <div className="mt-1 flex items-center justify-between text-white/60 text-[11px]">
+        <div className="mt-1 flex items-center justify-between text-white/60 text-label">
           <span>{currentReq.tokens.toLocaleString()} tokens</span>
           <span className="text-emerald-400 font-semibold">${currentReq.cost.toFixed(3)}</span>
           <span className="text-white/40">·</span>
@@ -142,7 +142,7 @@ export function GatewayMonitorCard() {
 
       {/* Bottom Row */}
       <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[12px] text-white/70 font-medium">
+        <div className="flex items-center gap-2 text-xs text-white/70 font-medium">
           <Layers className="w-3.5 h-3.5 text-[#FF6B35]" />
           <span>4 Active Projects</span>
         </div>
@@ -150,7 +150,7 @@ export function GatewayMonitorCard() {
         <button
           type="button"
           onClick={handleSimulateRequest}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF6B35] hover:bg-[#FF8A4C] text-white text-[11.5px] font-semibold shadow-md shadow-[#FF6B35]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-[#FF6B35] hover:bg-[#FF8A4C] text-white text-[11.5px] font-semibold shadow-md shadow-[#FF6B35]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           <span>Simulate Next Request</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

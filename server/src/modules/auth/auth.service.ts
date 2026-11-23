@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
+import { EmailService } from '@/modules/email/email.service';
+import { appUrl } from '@/common/app-url';
 import * as crypto from 'crypto';
 import { promisify } from 'util';
 
@@ -46,6 +48,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -104,6 +107,8 @@ export class AuthService {
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.refreshSecret'),
       expiresIn: this.configService.get<string>('jwt.refreshExpiration') || '7d',
+      // Unique per session, so revoking one session never revokes another issued in the same second
+      jwtid: crypto.randomUUID(),
     });
 
     return { accessToken, refreshToken };
@@ -218,6 +223,43 @@ export class AuthService {
     };
   }
 
+  /** Redis key marking a refresh token as revoked (by hash: works for tokens issued before jti existed). */
+  private revokedRefreshKey(refreshToken: string): string {
+    return `spendguard:rt_revoked:${crypto.createHash('sha256').update(refreshToken).digest('hex')}`;
+  }
+
+  /**
+   * Sign out: revokes the refresh token server-side until it would have expired.
+   * Fails (503) rather than pretending when the revocation store is unavailable.
+   * The short-lived access token (15m by default) is not revoked; it expires on its own.
+   */
+  async logout(refreshToken: string) {
+    let payload: TokenPayload & { exp?: number };
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get<string>('jwt.refreshSecret'),
+        ignoreExpiration: true,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const ttl = (payload.exp ?? 0) - Math.floor(Date.now() / 1000);
+    if (ttl <= 0) return { success: true, revoked: false }; // already expired: nothing left to revoke
+
+    const client = this.redisService.getClient();
+    if (!client) {
+      throw new ServiceUnavailableException('Sign-out is temporarily unavailable. Please try again.');
+    }
+    try {
+      await client.set(this.revokedRefreshKey(refreshToken), '1', 'EX', ttl);
+    } catch {
+      throw new ServiceUnavailableException('Sign-out is temporarily unavailable. Please try again.');
+    }
+    this.logger.log(`Refresh token revoked for user ${payload.sub}`);
+    return { success: true, revoked: true };
+  }
+
   /**
    * Refresh access token using refresh token
    */
@@ -230,6 +272,18 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+
+    // Fail closed: a signed-out token must never be usable, so without the
+    // revocation store there is no refresh (the user signs in again).
+    const client = this.redisService.getClient();
+    if (!client) throw new UnauthorizedException('Session could not be verified. Please sign in again.');
+    let revoked = 0;
+    try {
+      revoked = await client.exists(this.revokedRefreshKey(refreshToken));
+    } catch {
+      throw new UnauthorizedException('Session could not be verified. Please sign in again.');
+    }
+    if (revoked) throw new UnauthorizedException('Invalid or expired refresh token');
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -302,18 +356,16 @@ export class AuthService {
     const generic = {
       success: true,
       message: 'If this email is associated with an account, instructions have been sent.',
-      deliveryStatus: 'simulated_pending_smtp_integration',
     };
 
     if (!user) return generic;
 
     const resetToken = await this.issuePasswordToken(user.id, user.email, 3600);
-    this.logger.log(`Password reset token issued for user ${user.id}. SMTP delivery pending service configuration.`);
+    // Not awaited: response time must not reveal whether the account exists.
+    // EmailService never throws. The token only ever travels by email.
+    void this.emailService.sendPasswordReset(user.email, `${appUrl()}/forgot-password?token=${resetToken}`);
 
-    return {
-      ...generic,
-      resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
-    };
+    return generic;
   }
 
   /**

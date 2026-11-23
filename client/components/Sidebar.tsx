@@ -14,13 +14,12 @@ import {
   Users,
   ShieldCheck,
   CreditCard,
-  ExternalLink,
-  Cpu,
   X,
   CircleHelp,
   Compass,
   Settings2,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 export type NavTab = 
   | 'overview' 
@@ -110,27 +109,25 @@ export function Sidebar({
       {isOpenMobile && (
         <div 
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-overlay backdrop-blur-xs z-40 lg:hidden transition-opacity"
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#E4E4E0] flex flex-col h-screen shrink-0 select-none transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-line flex flex-col h-screen shrink-0 select-none transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
         isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
       }`}>
         {/* Brand Header */}
-        <div className="h-16 px-4 border-b border-[#E4E4E0] flex items-center justify-between shrink-0">
+        <div className="h-16 px-4 border-b border-line flex items-center justify-between shrink-0">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#FF6B35] flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-menu bg-accent flex items-center justify-center text-white shadow-xs">
               <ShieldCheck className="w-4 h-4 text-white" strokeWidth={2.4} />
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 leading-none">
-                <span className="font-serif font-medium tracking-tight text-[#141413] text-sm">SpendGuard</span>
-                <span className="text-[9px] uppercase font-mono font-bold tracking-wider px-1 py-0.2 rounded-full bg-[#F3F3F0] text-[#5F6368] border border-[#E4E4E0]">
-                  AI
-                </span>
+                <span className="font-serif font-medium tracking-tight text-fg text-sm">SpendGuard</span>
+                <Badge mono className="uppercase tracking-wider">AI</Badge>
               </div>
-              <span className="text-[10px] text-[#80868B] font-mono mt-0.5">by Dattreo</span>
+              <span className="text-caption text-fg-muted font-mono mt-0.5">by Dattreo</span>
             </div>
           </Link>
 
@@ -139,7 +136,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={onCloseMobile}
-              className="p-1.5 rounded-full hover:bg-[#F3F3F0] text-[#5F6368] lg:hidden"
+              className="p-1.5 rounded-full hover:bg-surface-muted text-fg-secondary lg:hidden"
             >
               <X className="w-4 h-4" />
             </button>
@@ -147,12 +144,10 @@ export function Sidebar({
         </div>
 
         {/* Organization Badge */}
-        <div className="px-4 py-2.5 border-b border-[#E4E4E0] bg-[#FBFBFA] shrink-0">
+        <div className="px-4 py-2.5 border-b border-line bg-surface-subtle shrink-0">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#141413] font-semibold truncate text-[11px]">{orgName}</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
-              Active
-            </span>
+            <span className="text-fg font-semibold truncate min-w-0 text-label" title={orgName}>{orgName}</span>
+            <Badge tone="success">Active</Badge>
           </div>
         </div>
 
@@ -160,7 +155,7 @@ export function Sidebar({
         <nav className="flex-1 overflow-y-auto p-3 space-y-4">
           {sections.map((section) => (
             <div key={section.title} className="space-y-1">
-              <span className="px-3 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              <span className="px-3 text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                 {section.title}
               </span>
               <div className="space-y-0.5">
@@ -177,24 +172,24 @@ export function Sidebar({
                       }}
                       className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-xs transition-colors ${
                         isActive
-                          ? 'bg-[#FFF7F2] text-[#FF6B35] font-semibold border border-[#FFD2C0] shadow-2xs'
-                          : 'text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] border border-transparent font-medium'
+                          ? 'bg-accent-subtle text-accent font-semibold border border-accent-border shadow-2xs'
+                          : 'text-fg-secondary hover:text-fg hover:bg-surface-muted border border-transparent font-medium'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#FF6B35]' : 'text-[#80868B]'}`} strokeWidth={1.8} />
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-accent' : 'text-fg-muted'}`} strokeWidth={1.8} />
                         <span className="truncate">{item.label}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         {item.badge && (
-                          <span className="text-[9px] px-2 py-0.2 rounded-full bg-[#FF6B35] text-white font-mono font-bold uppercase tracking-wider">
+                          <span className="text-micro px-2 py-0.2 rounded-full bg-accent text-white font-mono font-bold uppercase tracking-wider">
                             {item.badge}
                           </span>
                         )}
 
                         {item.count !== undefined && (
-                          <span className="text-[10px] px-2 py-0.2 rounded-full bg-red-600 text-white font-bold">
+                          <span className="text-caption px-2 py-0.2 rounded-full bg-red-600 text-white font-bold">
                             {item.count}
                           </span>
                         )}
@@ -207,8 +202,8 @@ export function Sidebar({
           ))}
 
           {/* Quick Help & Tour triggers in sidebar */}
-          <div className="pt-2 border-t border-[#E4E4E0]/60 space-y-1">
-            <span className="px-3 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+          <div className="pt-2 border-t border-line/60 space-y-1">
+            <span className="px-3 text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
               SUPPORT & TOURS
             </span>
             <button
@@ -217,9 +212,9 @@ export function Sidebar({
                 onOpenHelp?.();
                 onCloseMobile?.();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] font-medium transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-fg-secondary hover:text-fg hover:bg-surface-muted font-medium transition-colors"
             >
-              <CircleHelp className="w-4 h-4 text-[#80868B] shrink-0" />
+              <CircleHelp className="w-4 h-4 text-fg-muted shrink-0" />
               <span>Help Center & FAQ</span>
             </button>
             <button
@@ -228,42 +223,14 @@ export function Sidebar({
                 onStartTour?.();
                 onCloseMobile?.();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] font-medium transition-colors"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-full text-xs text-fg-secondary hover:text-fg hover:bg-surface-muted font-medium transition-colors"
             >
-              <Compass className="w-4 h-4 text-[#FF6B35] shrink-0" />
+              <Compass className="w-4 h-4 text-accent shrink-0" />
               <span>Restart Product Tour</span>
             </button>
           </div>
         </nav>
 
-        {/* Operational Health Footer */}
-        <div className="p-3.5 border-t border-[#E4E4E0] bg-[#FBFBFA] space-y-2 shrink-0">
-          <div className="p-2.5 rounded-2xl bg-white border border-[#E4E4E0] space-y-1 text-[11px] shadow-2xs">
-            <div className="flex items-center justify-between font-semibold text-[#141413]">
-              <div className="flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-[#FF6B35]" />
-                <span>Budget Engine</span>
-              </div>
-              <span className="text-[10px] text-[#0D9488] font-bold font-mono">Sub-5ms</span>
-            </div>
-            <div className="flex items-center justify-between text-[#5F6368] text-[10px]">
-              <span>Fail-Closed</span>
-              <span className="font-semibold text-[#141413]">Enforced</span>
-            </div>
-            <div className="flex items-center justify-between text-[#5F6368] text-[10px]">
-              <span>Key Vault</span>
-              <span className="font-semibold text-[#141413] font-mono">AES-256-GCM</span>
-            </div>
-          </div>
-
-          <Link
-            href="/"
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-white hover:bg-[#F3F3F0] text-[11px] font-medium text-[#5F6368] hover:text-[#141413] border border-[#E4E4E0] transition-colors shadow-2xs"
-          >
-            <span>Marketing Site</span>
-            <ExternalLink className="w-3 h-3" />
-          </Link>
-        </div>
       </aside>
     </>
   );

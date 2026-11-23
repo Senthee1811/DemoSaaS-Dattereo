@@ -91,7 +91,7 @@ export function InteractiveGatewayDemo() {
     <section id="demo" className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
       {/* Section Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+        <span className="text-label font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
           Interactive Gateway Test Bench
         </span>
         <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
@@ -103,13 +103,13 @@ export function InteractiveGatewayDemo() {
       </div>
 
       {/* Sandbox Workspace Card */}
-      <div className="bg-white rounded-2xl border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-field border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12">
           {/* Controls Panel (5 cols) */}
           <div className="lg:col-span-5 p-6 bg-parchment-ivory border-b lg:border-b-0 lg:border-r border-parchment-border flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div>
-                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                <label className="text-label font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
                   1. Upstream Foundation Model
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -118,14 +118,14 @@ export function InteractiveGatewayDemo() {
                       key={model.id}
                       type="button"
                       onClick={() => setSelectedModel(model)}
-                      className={`p-2.5 rounded-xl text-left border text-xs transition-colors ${
+                      className={`p-2.5 rounded-menu text-left border text-xs transition-colors ${
                         selectedModel.id === model.id
                           ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-inversion-dark'
                           : 'bg-white border-parchment-border text-[#555550] hover:bg-[#F3EFE9]'
                       }`}
                     >
                       <div className="truncate font-sans">{model.name}</div>
-                      <div className="text-[10px] font-mono text-[#888882] mt-0.5">
+                      <div className="text-caption font-mono text-[#888882] mt-0.5">
                         ${model.inCost} / ${model.outCost} (1M)
                       </div>
                     </button>
@@ -134,7 +134,7 @@ export function InteractiveGatewayDemo() {
               </div>
 
               <div>
-                <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
+                <label className="text-label font-mono font-semibold uppercase tracking-wider text-[#555550] block mb-2">
                   2. Project Allocation &amp; Guardrail
                 </label>
                 <div className="space-y-2">
@@ -145,7 +145,7 @@ export function InteractiveGatewayDemo() {
                         key={proj.id}
                         type="button"
                         onClick={() => setSelectedProject(proj)}
-                        className={`w-full p-2.5 rounded-xl text-left border transition-colors ${
+                        className={`w-full p-2.5 rounded-menu text-left border transition-colors ${
                           selectedProject.id === proj.id
                             ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35]'
                             : 'bg-white border-parchment-border hover:bg-[#F3EFE9]'
@@ -153,7 +153,7 @@ export function InteractiveGatewayDemo() {
                       >
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-inversion-dark">{proj.name}</span>
-                          <span className={`text-[11px] font-mono tabular-nums ${percent >= 100 ? 'text-[#DC2626]' : percent >= 80 ? 'text-[#D97706]' : 'text-[#0D9488]'}`}>
+                          <span className={`text-label font-mono tabular-nums ${percent >= 100 ? 'text-[#DC2626]' : percent >= 80 ? 'text-[#D97706]' : 'text-[#0D9488]'}`}>
                             ${proj.currentSpend} / ${proj.budget} ({percent}%)
                           </span>
                         </div>
@@ -173,7 +173,7 @@ export function InteractiveGatewayDemo() {
 
               <div>
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-mono text-[11px] text-[#555550]">Simulated Prompt + Completion Tokens</span>
+                  <span className="font-mono text-label text-[#555550]">Simulated Prompt + Completion Tokens</span>
                   <span className="font-mono tabular-nums font-bold text-inversion-dark">{tokenLength.toLocaleString()}</span>
                 </div>
                 <input
@@ -214,10 +214,10 @@ export function InteractiveGatewayDemo() {
               <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
-                  <span className="font-mono text-[11px] text-[#A1A1AA]">gateway.spendguard.ai:443</span>
+                  <span className="font-mono text-label text-[#A1A1AA]">gateway.spendguard.ai:443</span>
                 </div>
 
-                <span className="font-mono tabular-nums text-[11px] text-[#A1A1AA]">
+                <span className="font-mono tabular-nums text-label text-[#A1A1AA]">
                   Overhead: {lastResult?.latencyMs || 42}ms
                 </span>
               </div>
@@ -225,12 +225,12 @@ export function InteractiveGatewayDemo() {
               {/* Status Header */}
               <div className="mt-4">
                 {lastResult?.blocked ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FEF2F2]/10 border border-[#DC2626]/40 text-[#EF4444] text-xs font-mono font-semibold">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-[#FEF2F2]/10 border border-[#DC2626]/40 text-[#EF4444] text-xs font-mono font-semibold">
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>HTTP 429 HARD-BLOCKED (BUDGET EXCEEDED)</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F0FDF4]/10 border border-[#0D9488]/40 text-[#34D399] text-xs font-mono font-semibold">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-[#F0FDF4]/10 border border-[#0D9488]/40 text-[#34D399] text-xs font-mono font-semibold">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>HTTP 200 OK — ATOMIC CAPACITY RESERVED</span>
                   </div>
@@ -239,8 +239,8 @@ export function InteractiveGatewayDemo() {
 
               {/* Headers breakdown */}
               <div className="mt-4 space-y-2 font-mono text-xs">
-                <div className="text-[10px] text-[#71717A] uppercase tracking-wider">SpendGuard Headers</div>
-                <div className="p-3 bg-[#232428] rounded border border-white/5 space-y-1.5 text-[11px]">
+                <div className="text-caption text-[#71717A] uppercase tracking-wider">SpendGuard Headers</div>
+                <div className="p-3 bg-[#232428] rounded-control border border-white/5 space-y-1.5 text-label">
                   <div className="flex justify-between">
                     <span className="text-[#A1A1AA]">x-spendguard-model:</span>
                     <span className="text-white">{selectedModel.id}</span>

@@ -130,6 +130,32 @@ export async function authFetch(input: string, init?: RequestInit): Promise<Resp
   return res;
 }
 
+/**
+ * Signs out for real: the backend revokes the refresh token, then the browser
+ * session is cleared. Throws (and keeps the session) if revocation fails, so the
+ * UI never reports a sign-out that did not happen. A 401 means the token was
+ * already unusable, which is as good as revoked.
+ */
+export async function signOut(): Promise<void> {
+  const refreshToken = readStorage(REFRESH_KEY);
+  if (refreshToken) {
+    let res: Response;
+    try {
+      res = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+    } catch {
+      throw new Error('Could not reach the server, so you are still signed in. Check your connection and try again.');
+    }
+    if (!res.ok && res.status !== 401) {
+      throw new Error(await readApiError(res, 'Sign-out failed on the server, so you are still signed in. Please try again.'));
+    }
+  }
+  clearSession();
+}
+
 /** Extracts a human-readable error message from any SpendGuard API error body. */
 export async function readApiError(res: Response, fallback = 'Something went wrong. Please try again.'): Promise<string> {
   try {

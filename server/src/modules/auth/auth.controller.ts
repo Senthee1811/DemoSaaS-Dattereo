@@ -109,6 +109,16 @@ export class AuthController {
   }
 
   @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sign out: revoke the refresh token server-side' })
+  @ApiResponse({ status: 200, description: 'Refresh token revoked' })
+  @ApiResponse({ status: 503, description: 'Revocation store unavailable; nothing was revoked' })
+  async logout(@Body() dto: RefreshDto) {
+    return this.authService.logout(dto.refreshToken);
+  }
+
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Initiate password reset flow' })

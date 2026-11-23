@@ -14,6 +14,7 @@ import {
   Network,
   FlaskConical,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 interface OnboardingChecklistProps {
   projectsCount: number;
@@ -89,23 +90,21 @@ export function OnboardingChecklist({
   }
 
   return (
-    <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
+    <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
       {/* Header bar */}
-      <div className="p-5 flex items-center justify-between border-b border-[#E4E4E0]/60">
+      <div className="p-5 flex items-center justify-between border-b border-line/60">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] flex items-center justify-center text-[#FF6B35]">
+          <div className="w-8 h-8 rounded-full bg-accent-subtle border border-accent-border flex items-center justify-center text-accent">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-serif text-base font-normal text-[#141413] tracking-tight">
+              <h3 className="font-serif text-base font-normal text-fg tracking-tight">
                 FinOps Activation Checklist
               </h3>
-              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E5E0D8] text-[#555550]">
-                {completedCount} of {tasks.length} completed ({progressPct}%)
-              </span>
+              <Badge mono>{completedCount} of {tasks.length} completed ({progressPct}%)</Badge>
             </div>
-            <p className="text-xs text-[#888882]">
+            <p className="text-xs text-fg-muted">
               Follow these recommended steps to establish fail-closed financial guardrails.
             </p>
           </div>
@@ -113,7 +112,7 @@ export function OnboardingChecklist({
 
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-full hover:bg-[#F3F3F0] text-[#888882] hover:text-[#141413] transition-colors"
+          className="p-1.5 rounded-full hover:bg-surface-muted text-fg-muted hover:text-fg transition-colors"
           aria-label={isCollapsed ? 'Expand checklist' : 'Collapse checklist'}
         >
           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -121,9 +120,9 @@ export function OnboardingChecklist({
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full h-1 bg-[#F3F3F0]">
+      <div className="w-full h-1 bg-surface-muted">
         <div 
-          className="h-full bg-[#FF6B35] transition-all duration-300 ease-out"
+          className="h-full bg-accent transition-all duration-300 ease-out"
           style={{ width: `${progressPct}%` }}
         />
       </div>
@@ -135,19 +134,19 @@ export function OnboardingChecklist({
             return (
               <div
                 key={task.id}
-                className={`flex items-center justify-between p-3 rounded-2xl border transition-colors ${
+                className={`flex items-center justify-between p-3 rounded-field border transition-colors ${
                   task.isComplete
-                    ? 'bg-[#FAF8F5]/60 border-[#E5E0D8]/60 text-[#888882]'
-                    : 'bg-white border-[#E4E4E0] text-[#141413] hover:border-[#FFD2C0]'
+                    ? 'bg-surface-subtle/60 border-line-strong/60 text-fg-muted'
+                    : 'bg-surface border-line text-fg hover:border-accent-border'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   {task.isComplete ? (
-                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CircleCheck className="w-4 h-4 text-success shrink-0" />
                   ) : (
-                    <Circle className="w-4 h-4 text-[#C4BFB8] shrink-0" />
+                    <Circle className="w-4 h-4 text-fg-muted shrink-0" />
                   )}
-                  <span className={`text-xs sm:text-sm ${task.isComplete ? 'line-through text-[#888882]' : 'font-medium'}`}>
+                  <span className={`text-xs sm:text-sm ${task.isComplete ? 'line-through text-fg-muted' : 'font-medium'}`}>
                     {task.label}
                   </span>
                 </div>
@@ -155,7 +154,7 @@ export function OnboardingChecklist({
                 {!task.isComplete && (
                   <button
                     onClick={task.action}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#FAF8F5] hover:bg-[#FFF7F2] border border-[#E5E0D8] hover:border-[#FFD2C0] text-xs font-semibold text-[#141413] hover:text-[#FF6B35] transition-colors shrink-0"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-subtle hover:bg-accent-subtle border border-line-strong hover:border-accent-border text-xs font-semibold text-fg hover:text-accent transition-colors shrink-0"
                   >
                     <span>{task.actionLabel}</span>
                     <ArrowRight className="w-3 h-3" />

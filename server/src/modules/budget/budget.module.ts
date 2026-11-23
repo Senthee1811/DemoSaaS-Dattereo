@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
+import { AlertsModule } from '@/modules/alerts/alerts.module';
 import { BudgetService } from './budget.service';
 import { BudgetReconciliationProcessor } from './budget-reconciliation.processor';
 import { BudgetReconciliationScheduler } from './budget-reconciliation.scheduler';
@@ -8,6 +9,7 @@ import { BudgetReconciliationScheduler } from './budget-reconciliation.scheduler
 @Global()
 @Module({
   imports: [
+    AlertsModule,
     BullModule.registerQueueAsync({
       name: 'budget-reconciliation',
       inject: [ConfigService],

@@ -1,4 +1,10 @@
-import { Controller, Get, Query, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, Res, HttpStatus, BadRequestException } from '@nestjs/common';
+
+function assertDate(name: string, value?: string) {
+  if (value !== undefined && value !== '' && Number.isNaN(Date.parse(value))) {
+    throw new BadRequestException(`${name} must be an ISO 8601 date`);
+  }
+}
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AuditService } from './audit.service';
@@ -26,6 +32,8 @@ export class AuditController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    assertDate('startDate', startDate);
+    assertDate('endDate', endDate);
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
     const parsedOffset = offset ? parseInt(offset, 10) : 0;
     return this.auditService.listLogs({

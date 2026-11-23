@@ -17,11 +17,19 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { notifyStorageChange } from '@/lib/client-storage';
+import { TOUR_COMPLETED_KEY } from '@/lib/onboarding';
 import { NavTab } from '@/components/Sidebar';
+import type { SettingsTab } from '@/components/settings/SettingsView';
+import { Spinner } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface TourStep {
   step: number;
   tab: NavTab;
+  /** Settings section to open when tab is 'settings'. */
+  settingsSection?: SettingsTab;
+  /** An action the user can run from this step (real API call, never a mock). */
+  action?: 'test-alert';
   title: string;
   description: string;
   badge: string;
@@ -73,30 +81,41 @@ const TOUR_STEPS: TourStep[] = [
     step: 6,
     tab: 'alerts',
     title: '6. Alerts & Anomaly Detection',
-    description: 'Identify unusual spending patterns and budget thresholds. Automated Z-score outlier detection flags 3-Sigma cost spikes with instant Slack and Email alerts.',
+    description: 'Identify unusual spending patterns and budget thresholds. Automated Z-score outlier detection flags 3-sigma cost spikes. Every alert lands in this feed; with a Slack webhook it is also posted to Slack.',
     badge: 'Governance',
     icon: BellRing,
   },
   {
     step: 7,
+    tab: 'settings',
+    settingsSection: 'notifications',
+    title: '7. Slack Alerts',
+    description:
+      'Paste your Slack Incoming Webhook URL in Notifications to post budget and anomaly alerts to a channel. Try it: send a real test alert. Without a webhook it is recorded in the Alerts feed only; with one it is queued for Slack and shows Sent or Failed.',
+    badge: 'Notifications',
+    icon: BellRing,
+    action: 'test-alert',
+  },
+  {
+    step: 8,
     tab: 'audit',
-    title: '7. Audit Ledger & Compliance',
+    title: '8. Audit Ledger & Compliance',
     description: 'Inspect cryptographic request history, token consumption, and latency metrics. Export RFC-4180 CSV ledgers for financial compliance and cost attribution.',
     badge: 'Governance',
     icon: ScrollText,
   },
   {
-    step: 8,
+    step: 9,
     tab: 'team',
-    title: '8. Team & Access Control',
+    title: '9. Team & Access Control',
     description: 'Understand workspace roles and permissions (OWNER, ADMIN, MEMBER). Enforce strict tenant isolation and safeguard key access across teams.',
     badge: 'Organization',
     icon: Users,
   },
   {
-    step: 9,
+    step: 10,
     tab: 'billing',
-    title: '9. Billing & Subscription Limits',
+    title: '10. Billing & Subscription Limits',
     description: 'Monitor token quotas and manage subscription plans (Starter, Growth, Enterprise) with automated Stripe Checkout integration.',
     badge: 'Organization',
     icon: CreditCard,
@@ -106,38 +125,52 @@ const TOUR_STEPS: TourStep[] = [
 interface ProductTourProps {
   isActive: boolean;
   onClose: () => void;
-  onNavigateTab: (tab: NavTab) => void;
-  onStartWorkspaceSetup?: () => void;
+  onNavigateTab: (tab: NavTab, settingsSection?: SettingsTab) => void;
+  /** Runs the real test-alert request (POST /api/v1/alerts) and reports the outcome. */
+  onSendTestAlert?: () => Promise<void>;
+  /**
+   * Called only when the user finishes the last step (not on Skip/Escape). The dashboard
+   * decides from the shared onboarding check whether that leads anywhere.
+   */
+  onFinished?: () => void;
 }
 
 export function ProductTour({
   isActive,
   onClose,
   onNavigateTab,
-  onStartWorkspaceSetup,
+  onFinished,
+  onSendTestAlert,
 }: ProductTourProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [sendingTest, setSendingTest] = useState(false);
 
   const currentStep = TOUR_STEPS[currentStepIndex];
 
   // Declared before the effects that use it (it is also the Escape-key handler)
-  const handleFinish = useCallback(() => {
-    try {
-      localStorage.setItem('spendguard_tour_completed', 'true');
-      localStorage.setItem('spendguard_onboarding_state', 'TOUR_COMPLETED');
-    } catch {
-      /* storage unavailable */
-    }
-    notifyStorageChange();
-    setCurrentStepIndex(0); // a restarted tour begins at step 1
-    onClose();
-    onStartWorkspaceSetup?.();
-  }, [onClose, onStartWorkspaceSetup]);
+  // Skip, Escape and finishing all end the tour. Only finishing the last step calls
+  // onFinished. The tour records its own completion and never touches the onboarding
+  // state: overwriting it used to downgrade set-up users and send them back to /onboarding.
+  const endTour = useCallback(
+    (finished: boolean) => {
+      try {
+        localStorage.setItem(TOUR_COMPLETED_KEY, 'true');
+      } catch {
+        /* storage unavailable */
+      }
+      notifyStorageChange();
+      setCurrentStepIndex(0); // a restarted tour begins at step 1
+      onClose();
+      if (finished) onFinished?.();
+    },
+    [onClose, onFinished],
+  );
+  const handleFinish = useCallback(() => endTour(false), [endTour]);
 
   // Navigate to corresponding tab when step changes
   useEffect(() => {
     if (isActive && currentStep) {
-      onNavigateTab(currentStep.tab);
+      onNavigateTab(currentStep.tab, currentStep.settingsSection);
     }
   }, [isActive, currentStepIndex, currentStep, onNavigateTab]);
 
@@ -165,7 +198,7 @@ export function ProductTour({
     if (currentStepIndex < TOUR_STEPS.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      handleFinish();
+      endTour(true);
     }
   };
 
@@ -180,23 +213,21 @@ export function ProductTour({
 
   return (
     <aside 
-      className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[420px] bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xl p-5 space-y-4 animate-in slide-in-from-bottom-5 duration-200"
+      className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[420px] bg-surface rounded-card border border-line shadow-2xl p-5 space-y-4 animate-in slide-in-from-bottom-5 duration-200"
       aria-label="Product tour guide"
     >
       {/* Top Bar with Badge, Progress & Dismiss */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[10px] font-mono font-semibold text-[#FF6B35]">
-            {currentStep.badge}
-          </span>
-          <span className="text-[11px] font-mono text-[#888882]">
+          <Badge tone="accent" mono>{currentStep.badge}</Badge>
+          <span className="text-label font-mono text-fg-muted">
             Step {currentStep.step} of {TOUR_STEPS.length}
           </span>
         </div>
 
         <button
           onClick={handleFinish}
-          className="p-1 rounded-full text-[#888882] hover:text-[#141413] hover:bg-[#F3F3F0] transition-colors"
+          className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
           aria-label="Skip tour"
         >
           <X className="w-4 h-4" />
@@ -204,33 +235,51 @@ export function ProductTour({
       </div>
 
       {/* Progress Line */}
-      <div className="w-full h-1 bg-[#F3F3F0] rounded-full overflow-hidden">
+      <div className="w-full h-1 bg-surface-muted rounded-full overflow-hidden">
         <div 
-          className="h-full bg-[#FF6B35] transition-all duration-300 ease-out"
+          className="h-full bg-accent transition-all duration-300 ease-out"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
       {/* Step Content */}
       <div className="flex items-start gap-3.5">
-        <div className="w-9 h-9 rounded-2xl bg-[#FFF7F2] border border-[#FFD2C0] text-[#FF6B35] flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-field bg-accent-subtle border border-accent-border text-accent flex items-center justify-center shrink-0">
           <Icon className="w-5 h-5" />
         </div>
         <div className="space-y-1">
-          <h3 className="font-serif text-base font-normal text-[#141413] tracking-tight">
+          <h3 className="font-serif text-base font-normal text-fg tracking-tight">
             {currentStep.title}
           </h3>
-          <p className="text-xs text-[#555550] leading-relaxed">
+          <p className="text-xs text-fg-secondary leading-relaxed">
             {currentStep.description}
           </p>
+          {currentStep.action === 'test-alert' && onSendTestAlert && (
+            <button
+              type="button"
+              disabled={sendingTest}
+              onClick={async () => {
+                setSendingTest(true);
+                try {
+                  await onSendTestAlert();
+                } finally {
+                  setSendingTest(false);
+                }
+              }}
+              className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-accent-border bg-accent-subtle text-accent text-xs font-semibold disabled:opacity-50"
+            >
+              {sendingTest ? <Spinner /> : <BellRing className="w-3.5 h-3.5" />}
+              <span>{sendingTest ? 'Sending…' : 'Send a real test alert'}</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Footer Navigation Controls */}
-      <div className="flex items-center justify-between pt-2 border-t border-[#E4E4E0]/60">
+      <div className="flex items-center justify-between pt-2 border-t border-line/60">
         <button
           onClick={handleFinish}
-          className="text-xs text-[#888882] hover:text-[#141413] transition-colors font-medium"
+          className="text-xs text-fg-muted hover:text-fg transition-colors font-medium"
         >
           Skip tour
         </button>
@@ -239,7 +288,7 @@ export function ProductTour({
           {currentStepIndex > 0 && (
             <button
               onClick={handlePrev}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E4E4E0] hover:bg-[#FAF8F5] text-xs font-medium text-[#141413] transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-line hover:bg-surface-subtle text-xs font-medium text-fg transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
@@ -248,9 +297,9 @@ export function ProductTour({
 
           <button
             onClick={handleNext}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white text-xs font-semibold transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-semibold transition-colors shadow-2xs"
           >
-            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish & Configure' : 'Next'}</span>
+            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish tour' : 'Next'}</span>
             {currentStepIndex === TOUR_STEPS.length - 1 ? (
               <Check className="w-3.5 h-3.5" />
             ) : (

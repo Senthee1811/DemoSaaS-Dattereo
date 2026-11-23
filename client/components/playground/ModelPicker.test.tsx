@@ -48,7 +48,10 @@ describe('ModelPicker', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe('/api/v1/pricing');
-    expect(onLoaded).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ model: 'alpha-1' })]));
+    // onLoaded fires from a passive effect, which can land just after the cards paint
+    await waitFor(() =>
+      expect(onLoaded).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ model: 'alpha-1' })])),
+    );
   });
 
   it('selects a model when its card is clicked', async () => {

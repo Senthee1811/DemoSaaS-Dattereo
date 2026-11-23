@@ -35,7 +35,8 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      // Unknown fields on a validated body are an error, not silently dropped
+      forbidNonWhitelisted: true,
     }),
   );
 

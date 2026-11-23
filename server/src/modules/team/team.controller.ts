@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TeamService } from './team.service';
+import { InviteMemberDto, UpdateRoleDto } from './team.dto';
 import { CurrentUser, AuthenticatedUser } from '@/modules/auth/decorators/current-user.decorator';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 
@@ -20,7 +21,7 @@ export class TeamController {
   @Roles('OWNER', 'ADMIN')
   @ApiOperation({ summary: 'Invite new member and assign organization role' })
   async inviteUser(
-    @Body() body: { name: string; email: string; role: 'ADMIN' | 'MEMBER' },
+    @Body() body: InviteMemberDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.teamService.inviteMember(body, user);
@@ -30,7 +31,7 @@ export class TeamController {
   @Roles('OWNER')
   @ApiOperation({ summary: 'Change a member role (OWNER only)' })
   async updateRole(
-    @Body() body: { userId: string; role: 'OWNER' | 'ADMIN' | 'MEMBER' },
+    @Body() body: UpdateRoleDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.teamService.updateRole(body.userId, body.role, user);

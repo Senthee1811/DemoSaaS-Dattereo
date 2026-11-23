@@ -68,7 +68,7 @@ export function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-2 p-5 bg-white rounded-2xl border border-parchment-border shadow-lg flex flex-col gap-3.5 text-xs">
+        <div className="md:hidden mt-2 p-5 bg-white rounded-field border border-parchment-border shadow-lg flex flex-col gap-3.5 text-xs">
           <a
             href="#demo"
             onClick={() => setMobileMenuOpen(false)}

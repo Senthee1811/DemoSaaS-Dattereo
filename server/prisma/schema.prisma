@@ -114,7 +114,7 @@ model Project {
 model AlertConfig {
   id                  String   @id @default(uuid())
   projectId           String   @unique @map("project_id")
-  slackWebhookUrl     String?  @map("slack_webhook_url")
+  slackWebhookUrl     String?  @map("slack_webhook_url") // encrypted (EncryptionService); never returned by the API
   emailRecipients     String?  @map("email_recipients") // JSON array string
   warningThresholdPct Decimal  @default(80.0) @map("warning_threshold_pct") @db.Decimal(5, 2)
   hardBlockPct        Decimal  @default(100.0) @map("hard_block_pct") @db.Decimal(5, 2)
@@ -214,8 +214,12 @@ model BudgetAlert {
   title          String
   message        String
   isRead         Boolean       @default(false) @map("is_read")
-  status         String        @default("SENT")
+  // IN_APP (feed only) | QUEUED (Slack delivery pending) | SENT | FAILED.
+  // SENT/FAILED are only ever written by the alert-delivery worker after a real HTTP response.
+  status         String        @default("IN_APP")
   triggeredAt    DateTime      @default(now()) @map("triggered_at")
+  deliveredAt    DateTime?     @map("delivered_at")
+  deliveryError  String?       @map("delivery_error")
 
   project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -270,3 +274,13 @@ model ModelPricing {
   @@map("model_pricing")
 }
 
+
+// Stripe retries any webhook that did not get a 2xx, so each event ID is recorded in the
+// same transaction as its effects. A redelivered event hits the primary key and is skipped.
+model ProcessedWebhookEvent {
+  id          String   @id // Stripe event ID (evt_...)
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_webhook_events")
+}

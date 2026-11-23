@@ -16,6 +16,34 @@
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), "SF Mono", Monaco, Menlo, Consolas, monospace;
 
+  /*
+   * Type scale: every step is one notch above Tailwind's default (xs 12→13px, sm 14→15px,
+   * base 16→17px, lg 18→20px, xl 20→22px, 2xl 24→26px, 3xl 30→32px). Change sizes here, not
+   * in components. Display sizes (4xl and up) are used by marketing headlines and are unchanged.
+   */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.7;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.7;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 1.2;
+
+  /* Sizes below xs, formerly hardcoded as text-[9px] / [10px] / [11px] (now 10 / 11 / 12px) */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1.3;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.35;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.4;
+
   /* === Core Dattreo Brand Palette === */
   --color-dattreo-orange: #FF6B35;
   --color-dattreo-orange-hover: #E55A25;
@@ -29,42 +57,15 @@
   --color-sg-primary-border: #FFD2C0;
 
   /* === Surfaces & Backgrounds === */
-  --color-sg-canvas: #FFFFFF;
-  --color-sg-surface: #FFFFFF;
-  --color-sg-surface-muted: #F4F4F3;
-  --color-sg-surface-hover: #F8F8F7;
 
   /* === Anthropic Parchment Palette === */
-  --color-parchment-ivory: #FAF8F5;
-  --color-parchment-card: #FFFFFF;
-  --color-parchment-oat: #EFECE6;
-  --color-parchment-manilla: #F5EFEB;
-  --color-parchment-border: #E5E0D8;
   --color-inversion-dark: #141413;
 
   /* === High-Contrast Text === */
-  --color-sg-text-primary: #18191B;
-  --color-sg-text-secondary: #5F6368;
-  --color-sg-text-muted: #80868B;
-  --color-sg-text-subtle: #9AA0A6;
 
   /* === Restrained Borders === */
-  --color-sg-border: #E4E4E0;
-  --color-sg-border-light: #ECECE8;
-  --color-sg-border-focus: #FF6B35;
 
   /* === Accessible Semantic Statuses === */
-  --color-sg-success: #0D9488;
-  --color-sg-success-bg: #F0FDF4;
-  --color-sg-success-border: #BBF7D0;
-
-  --color-sg-warning: #D97706;
-  --color-sg-warning-bg: #FFFBEB;
-  --color-sg-warning-border: #FDE68A;
-
-  --color-sg-critical: #DC2626;
-  --color-sg-critical-bg: #FEF2F2;
-  --color-sg-critical-border: #FECACA;
 
   /* === Multi-Provider FinOps Charts === */
   --color-sg-chart-primary: #FF6B35;
@@ -72,6 +73,187 @@
   --color-sg-chart-tertiary: #0D9488;
   --color-sg-chart-quaternary: #7C3AED;
   --color-sg-chart-grid: #ECECE8;
+}
+
+/* ---------------------------------------------------------------------------
+ * Semantic design tokens. Components use these utilities, never raw hex:
+ *   bg-canvas / bg-surface / bg-surface-subtle / bg-surface-muted
+ *   text-fg / text-fg-secondary / text-fg-muted, border-line / divide-line
+ *   accent, success, warning, critical, info (+ -bg / -border), bg-code for code samples
+ *   rounded-control / rounded-menu / rounded-field / rounded-card / rounded-dialog
+ * Light values live on :root, dark values on .dark (set on <html> before paint by the
+ * theme script in app/layout.tsx). .theme-light pins a subtree (the marketing site) to light.
+ * ------------------------------------------------------------------------- */
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.theme-light, .theme-light *)));
+
+@theme inline {
+  --color-canvas: var(--sg-canvas);
+  --color-surface: var(--sg-surface);
+  --color-surface-subtle: var(--sg-surface-subtle);
+  --color-surface-muted: var(--sg-surface-muted);
+  --color-fg: var(--sg-fg);
+  --color-fg-secondary: var(--sg-fg-secondary);
+  --color-fg-muted: var(--sg-fg-muted);
+  --color-line: var(--sg-line);
+  --color-line-strong: var(--sg-line-strong);
+  --color-accent: var(--sg-accent);
+  --color-accent-hover: var(--sg-accent-hover);
+  --color-accent-subtle: var(--sg-accent-subtle);
+  --color-accent-border: var(--sg-accent-border);
+  --color-success: var(--sg-success);
+  --color-success-bg: var(--sg-success-bg);
+  --color-success-border: var(--sg-success-border);
+  --color-warning: var(--sg-warning);
+  --color-warning-bg: var(--sg-warning-bg);
+  --color-warning-border: var(--sg-warning-border);
+  --color-critical: var(--sg-critical);
+  --color-critical-bg: var(--sg-critical-bg);
+  --color-critical-border: var(--sg-critical-border);
+  --color-info: var(--sg-info);
+  --color-info-bg: var(--sg-info-bg);
+  --color-info-border: var(--sg-info-border);
+  --color-code: var(--sg-code);
+  --color-code-fg: var(--sg-code-fg);
+  --color-overlay: var(--sg-overlay);
+
+  /* Legacy token names now follow the theme too */
+  --color-parchment-ivory: var(--sg-surface-subtle);
+  --color-parchment-card: var(--sg-surface);
+  --color-parchment-oat: var(--sg-surface-muted);
+  --color-parchment-border: var(--sg-line-strong);
+  --color-sg-canvas: var(--sg-canvas);
+  --color-sg-surface: var(--sg-surface);
+  --color-sg-surface-muted: var(--sg-surface-muted);
+  --color-sg-surface-hover: var(--sg-surface-subtle);
+  --color-sg-text-primary: var(--sg-fg);
+  --color-sg-text-secondary: var(--sg-fg-secondary);
+  --color-sg-text-muted: var(--sg-fg-muted);
+  --color-sg-text-subtle: var(--sg-fg-muted);
+  --color-sg-border: var(--sg-line);
+  --color-sg-border-light: var(--sg-line);
+  --color-sg-success: var(--sg-success);
+  --color-sg-success-bg: var(--sg-success-bg);
+  --color-sg-success-border: var(--sg-success-border);
+  --color-sg-warning: var(--sg-warning);
+  --color-sg-warning-bg: var(--sg-warning-bg);
+  --color-sg-warning-border: var(--sg-warning-border);
+  --color-sg-critical: var(--sg-critical);
+  --color-sg-critical-bg: var(--sg-critical-bg);
+  --color-sg-critical-border: var(--sg-critical-border);
+
+  /* Radius: one value per kind of element */
+  --radius-control: 0.5rem;   /* chips, small tags, inline code */
+  --radius-menu: 0.75rem;     /* dropdowns, menus, tooltips */
+  --radius-field: 1rem;       /* inputs, inner panels, list items */
+  --radius-card: 1.5rem;      /* cards and section containers */
+  --radius-dialog: 1.5rem;    /* dialogs and side panels */
+
+  /* Motion: one curve for interaction feedback */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root,
+.theme-light {
+  color-scheme: light;
+  --sg-canvas: #FBFBFA;
+  --sg-surface: #FFFFFF;
+  --sg-surface-subtle: #FAF8F5;
+  --sg-surface-muted: #F3F3F0;
+  --sg-fg: #141413;
+  --sg-fg-secondary: #5F6368;
+  --sg-fg-muted: #80868B;
+  --sg-line: #E4E4E0;
+  --sg-line-strong: #E5E0D8;
+  --sg-accent: #FF6B35;
+  --sg-accent-hover: #E55A25;
+  --sg-accent-subtle: #FFF7F2;
+  --sg-accent-border: #FFD2C0;
+  --sg-success: #0D9488;
+  --sg-success-bg: #F0FDF4;
+  --sg-success-border: #BBF7D0;
+  --sg-warning: #B45309;
+  --sg-warning-bg: #FFFBEB;
+  --sg-warning-border: #FDE68A;
+  --sg-critical: #DC2626;
+  --sg-critical-bg: #FEF2F2;
+  --sg-critical-border: #FECACA;
+  --sg-info: #2563EB;
+  --sg-info-bg: #EFF6FF;
+  --sg-info-border: #BFDBFE;
+  --sg-code: #141413;
+  --sg-code-fg: #ECECE8;
+  --sg-overlay: rgb(0 0 0 / 0.4);
+  /* Chart palette (read by lib/chart-theme.ts) */
+  --sg-chart-axis: #80868B;
+  --sg-chart-grid: #ECECE8;
+  --sg-chart-tooltip-bg: #FFFFFF;
+  --sg-chart-tooltip-border: #E4E4E0;
+  --sg-chart-tooltip-fg: #141413;
+}
+
+.dark {
+  color-scheme: dark;
+  --sg-canvas: #121211;
+  --sg-surface: #1B1B1A;
+  --sg-surface-subtle: #20201E;
+  --sg-surface-muted: #2A2A28;
+  --sg-fg: #ECECE8;
+  --sg-fg-secondary: #B4B4AE;
+  --sg-fg-muted: #8C8C86;
+  --sg-line: #33332F;
+  --sg-line-strong: #3A3A36;
+  --sg-accent: #FF7A47;
+  --sg-accent-hover: #FF8A5C;
+  --sg-accent-subtle: #3A2418;
+  --sg-accent-border: #6B3A22;
+  --sg-success: #2DD4BF;
+  --sg-success-bg: #0F2A26;
+  --sg-success-border: #1F4D45;
+  --sg-warning: #FBBF24;
+  --sg-warning-bg: #2E2410;
+  --sg-warning-border: #5C4614;
+  --sg-critical: #F87171;
+  --sg-critical-bg: #3A1616;
+  --sg-critical-border: #6B2525;
+  --sg-info: #60A5FA;
+  --sg-info-bg: #172338;
+  --sg-info-border: #2B4A75;
+  --sg-code: #0E0E0D;
+  --sg-code-fg: #ECECE8;
+  --sg-overlay: rgb(0 0 0 / 0.6);
+  --sg-chart-axis: #8C8C86;
+  --sg-chart-grid: #2A2A28;
+  --sg-chart-tooltip-bg: #1B1B1A;
+  --sg-chart-tooltip-border: #33332F;
+  --sg-chart-tooltip-fg: #ECECE8;
+}
+
+/* The marketing site is designed light-only: it keeps light tokens inside .dark */
+.dark .theme-light {
+  color-scheme: light;
+  --sg-canvas: #FBFBFA;
+  --sg-surface: #FFFFFF;
+  --sg-surface-subtle: #FAF8F5;
+  --sg-surface-muted: #F3F3F0;
+  --sg-fg: #141413;
+  --sg-fg-secondary: #5F6368;
+  --sg-fg-muted: #80868B;
+  --sg-line: #E4E4E0;
+  --sg-line-strong: #E5E0D8;
+  --sg-accent: #FF6B35;
+  --sg-accent-hover: #E55A25;
+  --sg-accent-subtle: #FFF7F2;
+  --sg-accent-border: #FFD2C0;
+  --sg-success: #0D9488;
+  --sg-success-bg: #F0FDF4;
+  --sg-success-border: #BBF7D0;
+  --sg-warning: #B45309;
+  --sg-warning-bg: #FFFBEB;
+  --sg-warning-border: #FDE68A;
+  --sg-critical: #DC2626;
+  --sg-critical-bg: #FEF2F2;
+  --sg-critical-border: #FECACA;
+  --sg-code: #141413;
 }
 
 @layer base {
@@ -83,8 +265,8 @@
   }
 
   body {
-    background-color: #FAF8F5;
-    color: #18191B;
+    background-color: var(--sg-canvas);
+    color: var(--sg-fg);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -104,10 +286,37 @@
     font-family: var(--font-mono);
   }
 
+  /*
+   * Icon scale: every lucide icon is one step (12.5%) larger than its w-/h- class says,
+   * e.g. w-4 renders at 18px. Layout follows the zoomed size. Change --icon-zoom to retune.
+   */
+  :root {
+    --icon-zoom: 1.125;
+  }
+  svg.lucide {
+    zoom: var(--icon-zoom);
+  }
+
   /* Accessible Focus Rings */
   *:focus-visible {
-    outline: 2px solid #FF6B35;
+    outline: 2px solid var(--sg-accent);
     outline-offset: 2px;
+  }
+
+  /*
+   * Interaction feedback, in one place: anything clickable gets a pointer, one easing curve,
+   * and dims to 88% on hover. Disabled controls get no hover affordance. Static text is untouched.
+   */
+  :where(button, [role="button"], [role="menuitem"], [role="tab"], [role="option"], summary, select, a[href], label[for]) {
+    cursor: pointer;
+    transition-timing-function: var(--ease-standard);
+    transition-duration: 150ms;
+  }
+  :where(button, [role="button"], [role="menuitem"], [role="tab"], [role="option"]):not(:disabled, [aria-disabled="true"]):hover {
+    opacity: 0.88;
+  }
+  :where(button, [role="button"], [role="menuitem"], [role="tab"], [role="option"]):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
   }
 
   /* Precision Tabular Numerals for FinOps Metrics */
@@ -118,9 +327,9 @@
 
 /* Steep Editorial Analytics Card (24px radius, hairline border, subtle elevation) */
 .steep-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E4E4E0;
-  border-radius: 24px;
+  background-color: var(--sg-surface);
+  border: 1px solid var(--sg-line);
+  border-radius: var(--radius-card);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
@@ -146,7 +355,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #D8D8D4;
+  background-color: var(--sg-line);
   border-radius: 9999px;
 }
 
@@ -162,4 +371,9 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Badge icons render at their real size: the global icon zoom pushed them off the text baseline */
+.sg-badge svg {
+  zoom: 1;
 }

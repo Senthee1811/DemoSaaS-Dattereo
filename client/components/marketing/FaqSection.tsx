@@ -37,7 +37,7 @@ const FAQS: FaqItem[] = [
   },
   {
     q: 'How does statistical spike anomaly detection work?',
-    a: 'The anomaly engine computes rolling hourly and daily expenditure baselines using a 3-sigma (Z-score > 3.0) deviation threshold. If an unexpected batch job or runaway agent loop causes spend velocity to surge abnormally compared to historical project norms, an alert appears immediately in your in-app Alerts feed (Slack and email delivery are coming soon).',
+    a: 'The anomaly engine computes rolling hourly and daily expenditure baselines using a 3-sigma (Z-score > 3.0) deviation threshold. If an unexpected batch job or runaway agent loop causes spend velocity to surge abnormally compared to historical project norms, an alert appears immediately in your in-app Alerts feed, and in Slack if you add a webhook (email alerts are coming soon).',
     tag: 'ANOMALY ENGINE',
   },
 ];
@@ -53,7 +53,7 @@ export function FaqSection() {
     <section id="faq" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-[960px] mx-auto border-t border-parchment-border">
       {/* Section Header — Editorial */}
       <div className="max-w-2xl mb-14">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[11px] font-mono text-[#FF6B35] mb-3">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-label font-mono text-[#FF6B35] mb-3">
           <HelpCircle className="w-3.5 h-3.5" />
           <span>architecture_faq.md</span>
         </div>
@@ -72,7 +72,7 @@ export function FaqSection() {
           return (
             <div
               key={idx}
-              className={`rounded-2xl border transition-all ${
+              className={`rounded-field border transition-all ${
                 isOpen
                   ? 'bg-white border-inversion-dark shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
                   : 'bg-white border-parchment-border hover:border-[#CDC7BC]'
@@ -84,7 +84,7 @@ export function FaqSection() {
                 className="w-full p-5 text-left flex items-start justify-between gap-4 focus:outline-none"
               >
                 <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-medium text-[#888882] tracking-wider">
+                  <span className="text-caption font-mono font-medium text-[#888882] tracking-wider">
                     {faq.tag}
                   </span>
                   <h3 className="font-serif text-base font-normal text-inversion-dark">

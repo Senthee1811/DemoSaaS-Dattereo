@@ -6,6 +6,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { EmailModule } from './modules/email/email.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EncryptionModule } from './modules/encryption/encryption.module';
 import { PricingModule } from './modules/pricing/pricing.module';
@@ -29,6 +30,7 @@ import { HealthModule } from './health/health.module';
     }),
     PrismaModule,
     RedisModule,
+    EmailModule,
     AuthModule,
     EncryptionModule,
     PricingModule,

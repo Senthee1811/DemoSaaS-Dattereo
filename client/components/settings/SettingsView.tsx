@@ -21,6 +21,9 @@ import {
 import { authFetch, clearSession, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
+import { SlackAlertSettings } from './SlackAlertSettings';
+import { useEscapeToClose } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -29,15 +32,17 @@ interface AccountStatus {
 }
 
 interface SettingsViewProps {
+  /** Section to open first (e.g. from the account menu). */
+  initialTab?: SettingsTab;
   onStartTour?: () => void;
   onNavigateToTeam?: () => void;
 }
 
-type SettingsTab = 'profile' | 'security' | 'notifications' | 'preferences' | 'account';
+export type SettingsTab = 'profile' | 'security' | 'notifications' | 'preferences' | 'account';
 
-export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProps) {
+export function SettingsView({ initialTab = 'account', onStartTour, onNavigateToTeam }: SettingsViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
   // User & Org state
   const user = useStoredUser() ?? {};
@@ -52,6 +57,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
   const [confirmPhrase, setConfirmPhrase] = useState('');
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  // Escape closes the deactivation dialog, except while the request is running
+  useEscapeToClose(isDeactivateModalOpen && !isDeactivating, () => setIsDeactivateModalOpen(false));
 
   useEffect(() => {
     authFetch('/api/auth/account-status')
@@ -118,16 +125,16 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
   return (
     <div className="space-y-6 max-w-6xl pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#E4E4E0] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] text-[10px] font-mono font-medium text-[#5F6368] mb-1.5">
-            <Settings2 className="w-3 h-3 text-[#FF6B35]" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-subtle border border-line text-caption font-mono font-medium text-fg-secondary mb-1.5">
+            <Settings2 className="w-3 h-3 text-accent" />
             <span>Workspace & Identity Governance</span>
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-normal text-[#141413] tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl font-normal text-fg tracking-tight">
             Settings & Account Management
           </h1>
-          <p className="text-xs text-[#555550] mt-0.5">
+          <p className="text-xs text-fg-secondary mt-0.5">
             Manage your personal profile, security authentication, notification webhooks, and account lifecycle.
           </p>
         </div>
@@ -136,16 +143,16 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
           <button
             type="button"
             onClick={onStartTour}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#E4E4E0] text-xs font-semibold text-[#141413] shadow-2xs transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface hover:bg-surface-subtle border border-line text-xs font-semibold text-fg shadow-2xs transition-colors self-start sm:self-auto"
           >
-            <Compass className="w-3.5 h-3.5 text-[#FF6B35]" />
+            <Compass className="w-3.5 h-3.5 text-accent" />
             <span>Restart Product Tour</span>
           </button>
         )}
       </div>
 
       {/* Settings Sub-Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#E4E4E0] overflow-x-auto pb-px">
+      <div className="flex items-center gap-2 border-b border-line overflow-x-auto pb-px">
         {[
           { id: 'account', label: 'Account Management', icon: UserRoundX },
           { id: 'profile', label: 'Profile', icon: UserRound },
@@ -161,8 +168,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               onClick={() => setActiveTab(tab.id as SettingsTab)}
               className={`flex items-center gap-2 px-4 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                 isActive
-                  ? 'border-[#FF6B35] text-[#FF6B35] font-semibold'
-                  : 'border-transparent text-[#5F6368] hover:text-[#141413] hover:border-[#E4E4E0]'
+                  ? 'border-accent text-accent font-semibold'
+                  : 'border-transparent text-fg-secondary hover:text-fg hover:border-line'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -176,84 +183,80 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
       {activeTab === 'account' && (
         <div className="space-y-6">
           {/* Identity & Membership Overview */}
-          <div className="p-6 rounded-[24px] bg-white border border-[#E4E4E0] shadow-2xs space-y-5">
+          <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
             <div>
-              <h2 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
+              <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
                 Account Status & Membership
               </h2>
-              <p className="text-xs text-[#555550]">
+              <p className="text-xs text-fg-secondary">
                 Overview of your authenticated identity, tenant organization, and active privileges.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                   Account Email
                 </span>
-                <p className="text-xs font-semibold text-[#141413] truncate font-mono">
+                <p className="text-xs font-semibold text-fg truncate font-mono">
                   {user.email || '—'}
                 </p>
-                <span className="inline-flex items-center gap-1 text-[10px] text-[#0D9488] font-medium mt-1">
+                <span className="inline-flex items-center gap-1 text-caption text-success font-medium mt-1">
                   <CircleCheck className="w-3 h-3" />
                   <span>Verified Identity</span>
                 </span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                   Account Status
                 </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-semibold text-[#141413]">Active & Authenticated</span>
+                  <span className="text-xs font-semibold text-fg">Active & Authenticated</span>
                 </div>
-                <p className="text-[10px] text-[#888882]">Session token valid with Redis</p>
+                <p className="text-caption text-fg-muted">Session token valid with Redis</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                   Workspace Membership
                 </span>
-                <p className="text-xs font-semibold text-[#141413] truncate">
+                <p className="text-xs font-semibold text-fg truncate" title={user.orgName || 'Workspace'}>
                   {user.orgName || 'Workspace'}
                 </p>
-                <div className="flex items-center gap-1.5 text-[10px] text-[#555550]">
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#FFF7F2] text-[#FF6B35] font-mono font-semibold border border-[#FFD2C0]">
-                    {user.role || 'MEMBER'}
-                  </span>
+                <div className="flex items-center gap-1.5 text-caption text-fg-secondary">
+                  <Badge tone="accent" mono>{user.role || 'MEMBER'}</Badge>
                   <span>{accountStatus?.organization?.memberCount || 1} members</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+              <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                   Active Web Session
                 </span>
-                <p className="text-xs font-semibold text-[#141413] font-mono">
+                <p className="text-xs font-semibold text-fg font-mono">
                   BFF Session (Next.js)
                 </p>
-                <p className="text-[10px] text-[#888882]">AES-256 encrypted proxy</p>
+                <p className="text-caption text-fg-muted">AES-256 encrypted proxy</p>
               </div>
             </div>
           </div>
 
           {/* DANGER ZONE: ACCOUNT DEACTIVATION */}
-          <div className="p-6 rounded-[24px] bg-[#FEF2F2]/40 border border-red-200/80 shadow-2xs space-y-4">
+          <div className="p-6 rounded-card bg-critical-bg/40 border border-critical-border/80 shadow-2xs space-y-4">
             <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-field bg-critical-bg text-critical flex items-center justify-center shrink-0">
                 <UserRoundX className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-base font-normal text-[#141413]">
+                  <h3 className="font-serif text-base font-normal text-fg">
                     Deactivate User Account
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-mono font-semibold">
-                    Irreversible Session Revocation
-                  </span>
+                  <Badge tone="critical" mono>Irreversible Session Revocation</Badge>
                 </div>
-                <p className="text-xs text-[#555550] leading-relaxed max-w-3xl">
+                <p className="text-xs text-fg-secondary leading-relaxed max-w-3xl">
                   Deactivating your account permanently invalidates all active JWT sessions and refresh tokens.
                   Your access to SpendGuard AI will be revoked immediately. Organization data, provider keys, 
                   audit records, and other team members&apos; access remain intact.
@@ -263,20 +266,20 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
             {/* Ownership Warning Banner if applicable */}
             {!canDeactivate && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                <TriangleAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-field bg-warning-bg border border-warning-border flex items-start gap-3">
+                <TriangleAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold text-amber-900">
+                  <p className="text-xs font-semibold text-warning">
                     Ownership Transfer Required Before Deactivation
                   </p>
-                  <p className="text-xs text-amber-800 leading-relaxed">
+                  <p className="text-xs text-warning leading-relaxed">
                     {ownershipReason || 'As the sole OWNER of this workspace, you must transfer ownership to another team member before deactivating your account to prevent leaving the workspace unmanaged.'}
                   </p>
                   {onNavigateToTeam && (
                     <button
                       type="button"
                       onClick={onNavigateToTeam}
-                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-amber-900 hover:text-amber-950 underline"
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-warning hover:text-amber-950 underline"
                     >
                       <Users className="w-3.5 h-3.5" />
                       <span>Go to Team & Access to assign an Owner</span>
@@ -286,8 +289,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               </div>
             )}
 
-            <div className="pt-2 flex items-center justify-between border-t border-red-200/60">
-              <span className="text-xs text-[#888882]">
+            <div className="pt-2 flex items-center justify-between border-t border-critical-border/60">
+              <span className="text-xs text-fg-muted">
                 Requires current password verification & confirmation phrase.
               </span>
 
@@ -317,41 +320,41 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
       {/* TAB 2: PROFILE */}
       {activeTab === 'profile' && (
-        <div className="p-6 rounded-[24px] bg-white border border-[#E4E4E0] shadow-2xs space-y-5">
+        <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
           <div>
-            <h2 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
+            <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
               Personal Profile
             </h2>
-            <p className="text-xs text-[#555550]">
+            <p className="text-xs text-fg-secondary">
               Identity details displayed to your FinOps team and in cryptographic audit trails.
             </p>
           </div>
 
           <div className="space-y-4 max-w-xl">
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#141413]">Full Name</label>
+              <label className="block text-xs font-semibold text-fg">Full Name</label>
               <input
                 type="text"
                 readOnly
                 value={user.name || ''}
-                className="w-full px-3.5 py-2 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none"
+                className="w-full px-3.5 py-2 rounded-field bg-surface-subtle border border-line text-xs text-fg focus:outline-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#141413]">Email Address</label>
+              <label className="block text-xs font-semibold text-fg">Email Address</label>
               <input
                 type="email"
                 readOnly
                 value={user.email || ''}
-                className="w-full px-3.5 py-2 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] font-mono focus:outline-none"
+                className="w-full px-3.5 py-2 rounded-field bg-surface-subtle border border-line text-xs text-fg font-mono focus:outline-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-[#141413]">Assigned Role</label>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] text-xs font-medium text-[#141413]">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#FF6B35]" />
+              <label className="block text-xs font-semibold text-fg">Assigned Role</label>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-subtle border border-line text-xs font-medium text-fg">
+                <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                 <span>{user.role || 'MEMBER'} ({user.role === 'OWNER' ? 'Full FinOps Governance & Key Access' : user.role === 'ADMIN' ? 'Project, Key & Team Management' : 'Read-only Dashboard Access'})</span>
               </div>
             </div>
@@ -361,39 +364,37 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
       {/* TAB 3: SECURITY & AUTH */}
       {activeTab === 'security' && (
-        <div className="p-6 rounded-[24px] bg-white border border-[#E4E4E0] shadow-2xs space-y-5">
+        <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
           <div>
-            <h2 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
+            <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
               Security & Authentication
             </h2>
-            <p className="text-xs text-[#555550]">
+            <p className="text-xs text-fg-secondary">
               Cryptographic authentication settings and password governance.
             </p>
           </div>
 
           <div className="space-y-4 max-w-2xl">
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
+            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-[#141413]">Password Cryptography</p>
-                <p className="text-[11px] text-[#888882]">Protected with PBKDF2 (100,000 iterations, 512-bit salt)</p>
+                <p className="text-xs font-semibold text-fg">Password Cryptography</p>
+                <p className="text-label text-fg-muted">Protected with PBKDF2 (100,000 iterations, 512-bit salt)</p>
               </div>
               <button
                 type="button"
                 onClick={() => router.push('/forgot-password')}
-                className="px-3.5 py-1.5 rounded-full bg-white hover:bg-[#FAF8F5] border border-[#E4E4E0] text-xs font-semibold text-[#141413] transition-colors shadow-2xs"
+                className="px-3.5 py-1.5 rounded-full bg-surface hover:bg-surface-subtle border border-line text-xs font-semibold text-fg transition-colors shadow-2xs"
               >
                 Change Password
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
+            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-[#141413]">AES-256-GCM Envelope Encryption</p>
-                <p className="text-[11px] text-[#888882]">All provider API keys are sealed with master vault rotation support</p>
+                <p className="text-xs font-semibold text-fg">AES-256-GCM Envelope Encryption</p>
+                <p className="text-label text-fg-muted">All provider API keys are sealed with master vault rotation support</p>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#0D9488] text-[10px] font-mono font-semibold border border-[#BBF7D0]">
-                ENFORCED
-              </span>
+              <Badge tone="success" mono>ENFORCED</Badge>
             </div>
           </div>
         </div>
@@ -401,32 +402,26 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
       {/* TAB 4: NOTIFICATIONS */}
       {activeTab === 'notifications' && (
-        <div className="p-6 rounded-[24px] bg-white border border-[#E4E4E0] shadow-2xs space-y-5">
+        <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
           <div>
-            <h2 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
+            <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
               Notifications & Alerts
             </h2>
-            <p className="text-xs text-[#555550]">
-              Budget warnings, hard blocks and cost spikes currently appear in the in-app Alerts feed only.
-              External delivery channels are not available yet.
+            <p className="text-xs text-fg-secondary">
+              Budget warnings, hard blocks and cost spikes always appear in the in-app Alerts feed.
+              Add a Slack webhook to also post them to a channel.
             </p>
           </div>
 
           <div className="space-y-3 max-w-xl">
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-[#141413]">Slack Webhook Notifications</p>
-                <p className="text-[11px] text-[#888882]">Post budget alerts to a Slack channel</p>
-              </div>
-              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
-            </div>
+            <SlackAlertSettings />
 
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
+            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-[#141413]">Email Dispatch</p>
-                <p className="text-[11px] text-[#888882]">Email budget warnings and hard-block notifications</p>
+                <p className="text-xs font-semibold text-fg">Email Dispatch</p>
+                <p className="text-label text-fg-muted">Email budget warnings and hard-block notifications</p>
               </div>
-              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
+              <span className="text-label text-fg-muted font-semibold">Not configured — coming soon</span>
             </div>
           </div>
         </div>
@@ -434,25 +429,25 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
       {/* TAB 5: PREFERENCES */}
       {activeTab === 'preferences' && (
-        <div className="p-6 rounded-[24px] bg-white border border-[#E4E4E0] shadow-2xs space-y-5">
+        <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
           <div>
-            <h2 className="font-serif text-lg font-normal text-[#141413] tracking-tight">
+            <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
               Interface Preferences
             </h2>
-            <p className="text-xs text-[#555550]">
+            <p className="text-xs text-fg-secondary">
               Customizations for currency, timezones, and display styling.
             </p>
           </div>
 
           <div className="space-y-4 max-w-xl text-xs">
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-              <label className="font-semibold text-[#141413]">Currency Display</label>
-              <p className="text-[#888882] text-[11px]">USD ($) - Standard FinOps multi-provider denomination</p>
+            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+              <label className="font-semibold text-fg">Currency Display</label>
+              <p className="text-fg-muted text-label">USD ($) - Standard FinOps multi-provider denomination</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-              <label className="font-semibold text-[#141413]">Design Direction</label>
-              <p className="text-[#888882] text-[11px]">Editorial Dattreo Design System (Deep neutrals, orange accents, zero slop)</p>
+            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
+              <label className="font-semibold text-fg">Design Direction</label>
+              <p className="text-fg-muted text-label">Editorial Dattreo Design System (Deep neutrals, orange accents, zero slop)</p>
             </div>
           </div>
         </div>
@@ -462,22 +457,22 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
       {isDeactivateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
           <div 
-            className="relative w-full max-w-xl bg-white rounded-[24px] border border-red-200 shadow-2xl p-6 sm:p-8 space-y-6"
+            className="relative w-full max-w-xl bg-surface rounded-card border border-critical-border shadow-2xl p-6 sm:p-8 space-y-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="deactivate-modal-title"
           >
             {/* Header with Step Tracker */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-critical-bg text-critical flex items-center justify-center">
                   <UserRoundX className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 id="deactivate-modal-title" className="font-serif text-base font-normal text-[#141413]">
+                  <h3 id="deactivate-modal-title" className="font-serif text-base font-normal text-fg">
                     Account Deactivation
                   </h3>
-                  <span className="text-[10px] font-mono text-[#888882]">
+                  <span className="text-caption font-mono text-fg-muted">
                     Step {deactivateStep} of 3 • Security Verification
                   </span>
                 </div>
@@ -486,7 +481,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               <button
                 type="button"
                 onClick={() => setIsDeactivateModalOpen(false)}
-                className="p-1 rounded-full text-[#888882] hover:text-[#141413] hover:bg-[#F3F3F0] transition-colors"
+                className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
                 aria-label="Close modal"
               >
                 <CircleX className="w-4 h-4" />
@@ -495,8 +490,8 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
             {/* Error Message */}
             {deactivateError && (
-              <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
-                <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-field bg-critical-bg border border-critical-border text-xs text-critical flex items-start gap-2">
+                <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
                 <span>{deactivateError}</span>
               </div>
             )}
@@ -505,45 +500,45 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             {deactivateStep === 1 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-[#141413]">
+                  <h4 className="text-sm font-semibold text-fg">
                     Please review what happens when you deactivate your account:
                   </h4>
-                  <p className="text-xs text-[#555550]">
+                  <p className="text-xs text-fg-secondary">
                     Deactivation is a security operation that disconnects your identity from SpendGuard AI.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-2.5 text-xs text-[#555550]">
+                <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-2.5 text-xs text-fg-secondary">
                   <div className="flex items-start gap-2.5">
-                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CircleCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <span><strong>Immediate Session Invalidation:</strong> All active sessions, cookies, and refresh tokens are wiped from Redis instantly.</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CircleCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <span><strong>Organization & Team Unaffected:</strong> Organization workspace, projects, budgets, and other members are NOT deleted.</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CircleCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <span><strong>Billing Stays with Workspace:</strong> Subscriptions remain attached to the organization until canceled by an admin.</span>
                   </div>
                   <div className="flex items-start gap-2.5">
-                    <CircleCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <CircleCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <span><strong>30-Day Recovery Period:</strong> You may request reactivation within 30 days by contacting your workspace owner or support.</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-[#E4E4E0]">
+                <div className="flex items-center justify-between pt-3 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setIsDeactivateModalOpen(false)}
-                    className="text-xs text-[#888882] hover:text-[#141413] font-medium"
+                    className="text-xs text-fg-muted hover:text-fg font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeactivateStep(2)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2A2A28] text-white text-xs font-semibold shadow-2xs transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-code hover:bg-[#2A2A28] text-white text-xs font-semibold shadow-2xs transition-colors"
                   >
                     <span>I Understand, Continue</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -556,17 +551,17 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             {deactivateStep === 2 && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h4 className="text-sm font-semibold text-[#141413]">
+                  <h4 className="text-sm font-semibold text-fg">
                     Step 2: Confirm Your Identity
                   </h4>
-                  <p className="text-xs text-[#555550]">
+                  <p className="text-xs text-fg-secondary">
                     Enter your current SpendGuard password to verify this action.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-[#141413]">
+                    <label className="block text-xs font-semibold text-fg">
                       Current Password
                     </label>
                     <div className="relative">
@@ -575,12 +570,12 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your current password"
-                        className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] placeholder-[#888882] focus:bg-white focus:border-[#FF6B35] focus:outline-none pr-10"
+                        className="w-full px-3.5 py-2.5 rounded-field bg-surface-subtle border border-line text-xs text-fg placeholder-fg-muted focus:bg-surface focus:border-accent focus:outline-none pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888882] hover:text-[#141413]"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -589,13 +584,13 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-[#141413]">
+                    <label className="block text-xs font-semibold text-fg">
                       Reason for Leaving (Optional)
                     </label>
                     <select
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] text-xs text-[#141413] focus:bg-white focus:outline-none cursor-pointer"
+                      className="w-full px-3.5 py-2.5 rounded-field bg-surface-subtle border border-line text-xs text-fg focus:bg-surface focus:outline-none cursor-pointer"
                     >
                       <option value="Downsizing AI operations">Downsizing AI operations</option>
                       <option value="Switching to self-hosted gateway">Switching to self-hosted gateway</option>
@@ -606,11 +601,11 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-[#E4E4E0]">
+                <div className="flex items-center justify-between pt-3 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setDeactivateStep(1)}
-                    className="text-xs text-[#888882] hover:text-[#141413] font-medium"
+                    className="text-xs text-fg-muted hover:text-fg font-medium"
                   >
                     Back
                   </button>
@@ -624,7 +619,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                       setDeactivateError(null);
                       setDeactivateStep(3);
                     }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2A2A28] text-white text-xs font-semibold shadow-2xs transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-code hover:bg-[#2A2A28] text-white text-xs font-semibold shadow-2xs transition-colors"
                   >
                     <span>Proceed to Final Confirmation</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -637,11 +632,11 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             {deactivateStep === 3 && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h4 className="text-sm font-semibold text-red-700">
+                  <h4 className="text-sm font-semibold text-critical">
                     Step 3: Final Confirmation
                   </h4>
-                  <p className="text-xs text-[#555550]">
-                    To confirm deactivation, please type <strong className="text-red-700 font-mono">DEACTIVATE</strong> in the box below.
+                  <p className="text-xs text-fg-secondary">
+                    To confirm deactivation, please type <strong className="text-critical font-mono">DEACTIVATE</strong> in the box below.
                   </p>
                 </div>
 
@@ -651,18 +646,18 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                     value={confirmPhrase}
                     onChange={(e) => setConfirmPhrase(e.target.value)}
                     placeholder="Type DEACTIVATE"
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-red-300 text-xs font-mono text-[#141413] placeholder-[#888882] focus:border-red-600 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-field bg-surface border border-red-300 text-xs font-mono text-fg placeholder-fg-muted focus:border-red-600 focus:outline-none"
                   />
-                  <p className="text-[11px] text-[#888882]">
+                  <p className="text-label text-fg-muted">
                     Clicking the button below will immediately revoke your account and sign you out.
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-[#E4E4E0]">
+                <div className="flex items-center justify-between pt-3 border-t border-line">
                   <button
                     type="button"
                     onClick={() => setDeactivateStep(2)}
-                    className="text-xs text-[#888882] hover:text-[#141413] font-medium"
+                    className="text-xs text-fg-muted hover:text-fg font-medium"
                   >
                     Back
                   </button>

@@ -102,7 +102,7 @@ const response = await client.chat.completions.create({
       </div>
 
       {/* Editorial Gateway Console Artefact */}
-      <div className="mt-14 bg-inversion-dark rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
+      <div className="mt-14 bg-inversion-dark rounded-field border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
         {/* Terminal Titlebar */}
         <div className="h-11 px-5 bg-[#1B1B1A] border-b border-[#2A2A28] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ const response = await client.chat.completions.create({
               <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
               <span className="w-2.5 h-2.5 rounded-full bg-[#333330]" />
             </div>
-            <span className="font-mono text-[11px] text-[#A0A09B] ml-2">
+            <span className="font-mono text-label text-[#A0A09B] ml-2">
               https://gateway.spendguard.ai/v1/chat/completions
             </span>
           </div>
@@ -123,7 +123,7 @@ const response = await client.chat.completions.create({
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-0.5 rounded-full text-[11px] font-mono transition-colors ${
+                  className={`px-3 py-0.5 rounded-full text-label font-mono transition-colors ${
                     activeTab === tab
                       ? 'bg-[#333330] text-white font-semibold'
                       : 'text-[#888882] hover:text-white'
@@ -137,7 +137,7 @@ const response = await client.chat.completions.create({
             <button
               type="button"
               onClick={handleCopy}
-              className="p-1.5 rounded hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
+              className="p-1.5 rounded-control hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
               title="Copy snippet"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -151,7 +151,7 @@ const response = await client.chat.completions.create({
         </div>
 
         {/* Operational Telemetry Footer */}
-        <div className="px-5 py-3 bg-[#1B1B1A] border-t border-[#2A2A28] flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono text-[#A0A09B]">
+        <div className="px-5 py-3 bg-[#1B1B1A] border-t border-[#2A2A28] flex flex-wrap items-center justify-between gap-4 text-label font-mono text-[#A0A09B]">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1 text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

@@ -20,21 +20,37 @@ const SLACK_WEBHOOK_RE = /^https:\/\/hooks\.slack\.com\/(services|workflows|trig
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 40_000; // 3 attempts with 5s/10s backoff + 5s timeouts
 
-function StatusBadge({ config }: { config: SlackConfig | null }) {
+/** Shown in the field when a webhook is saved. The real URL is never sent to the browser. */
+export const MASKED_WEBHOOK = 'https://hooks.slack.com/services/T0••••/B0••••/••••';
+
+/**
+ * "Configured" means a webhook is stored for this project (the server's `slackUrlSaved`).
+ * Whether Slack has accepted a delivery is a separate fact, shown on its own line, so a saved
+ * webhook never reads as "not configured" just because nothing has been sent yet.
+ */
+export function slackStatus(config: SlackConfig | null): { label: string; tone: string; detail: string | null } | null {
   if (!config) return null;
-  let label = 'Not configured';
-  let tone = 'text-fg-muted';
-  if (config.slackConfigured) {
-    label = 'Configured';
-    tone = 'text-success';
-  } else if (config.lastSlackStatus === 'FAILED') {
-    label = 'Last send failed';
-    tone = 'text-critical';
-  } else if (config.slackUrlSaved) {
-    label = config.lastSlackStatus === 'QUEUED' ? 'Sending…' : 'Saved, not verified. Send a test alert';
-    tone = 'text-warning';
-  }
-  return <span className={`text-label font-semibold ${tone}`}>{label}</span>;
+  if (!config.slackUrlSaved) return { label: 'Not configured', tone: 'text-fg-muted', detail: null };
+  const detail =
+    config.lastSlackStatus === 'SENT'
+      ? 'Last delivery: sent to Slack.'
+      : config.lastSlackStatus === 'FAILED'
+        ? 'Last delivery attempt failed.'
+        : config.lastSlackStatus === 'QUEUED'
+          ? 'Sending a delivery…'
+          : 'Not tested yet. Send a test alert to verify it.';
+  return { label: 'Configured', tone: 'text-success', detail };
+}
+
+function StatusBadge({ config }: { config: SlackConfig | null }) {
+  const status = slackStatus(config);
+  if (!status) return null;
+  return (
+    <div className="text-right shrink-0" data-testid="slack-status">
+      <span className={`text-label font-semibold ${status.tone}`}>{status.label}</span>
+      {status.detail && <p className="text-label text-fg-muted">{status.detail}</p>}
+    </div>
+  );
 }
 
 /**
@@ -90,6 +106,23 @@ function SlackAlertForm({ projectId, projectName, isFallback }: { projectId: str
     };
   }, [projectId, loadConfig]);
 
+  // A delivery can succeed or fail while this page sits open, so re-read the real state whenever
+  // the tab becomes visible again instead of trusting what was loaded at mount.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      loadConfig(projectId)
+        .then((c) => mounted.current && setConfig(c))
+        .catch(() => undefined);
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [projectId, loadConfig]);
+
   const save = async (next: string | null) => {
     if (next !== null && !SLACK_WEBHOOK_RE.test(next.trim())) {
       setUrlError('Enter a Slack Incoming Webhook URL (https://hooks.slack.com/services/...).');
@@ -107,8 +140,12 @@ function SlackAlertForm({ projectId, projectName, isFallback }: { projectId: str
         setNotice({ kind: 'error', text: await readApiError(res, 'Could not save the webhook.') });
         return;
       }
+      // Show the PATCH result immediately, then reconcile with what the backend actually has stored.
       setConfig((await res.json()) as SlackConfig);
       setUrl('');
+      loadConfig(projectId)
+        .then((c) => mounted.current && setConfig(c))
+        .catch(() => undefined);
       setNotice({
         kind: 'ok',
         text: next === null ? 'Slack webhook removed.' : 'Webhook saved. Send a test alert to verify it works.',
@@ -195,7 +232,7 @@ function SlackAlertForm({ projectId, projectName, isFallback }: { projectId: str
                 setUrl(e.target.value);
                 setUrlError(null);
               }}
-              placeholder={config?.slackUrlSaved ? 'A webhook is saved. Paste a new URL to replace it' : 'https://hooks.slack.com/services/T000/B000/XXXX'}
+              placeholder={config?.slackUrlSaved ? MASKED_WEBHOOK : 'https://hooks.slack.com/services/T000/B000/XXXX'}
               autoComplete="off"
               spellCheck={false}
               aria-label="Slack Incoming Webhook URL"
@@ -203,7 +240,9 @@ function SlackAlertForm({ projectId, projectName, isFallback }: { projectId: str
               className="w-full px-3.5 py-2.5 rounded-field bg-surface border border-line text-xs font-mono text-fg placeholder-fg-muted focus:border-accent focus:outline-none"
             />
             {urlError && <p className="text-label text-critical">{urlError}</p>}
-            <p className="text-label text-fg-muted">The URL is stored encrypted and is never shown again.</p>
+            <p className="text-label text-fg-muted">
+              {config?.slackUrlSaved ? 'A webhook is saved for this project. Paste a new URL to replace it.' : ''} The URL is stored encrypted and is never shown again.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

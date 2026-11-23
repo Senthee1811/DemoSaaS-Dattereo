@@ -17,6 +17,8 @@ import { errorMessage } from '@/lib/types';
 import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 import { useEscapeToClose, ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { NumberInput } from '@/components/ui/NumberInput';
+import { RATE_LIMIT_RPM, isNumberInRange } from '@/lib/limits';
 
 interface ProviderKey {
   id: string;
@@ -611,14 +613,12 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
                 <div>
                   <label className="font-semibold text-fg block mb-1.5">Rate Limit (Requests per minute)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100000"
-                    step="60"
+                  <NumberInput
                     value={rateLimit}
-                    onChange={(e) => setRateLimit(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
+                    onValueChange={setRateLimit}
+                    range={RATE_LIMIT_RPM}
+                    step={60}
+                    aria-label="Rate limit in requests per minute"
                   />
                 </div>
 
@@ -633,7 +633,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   <button
                     type="button"
                     onClick={handleGenerateGatewayKey}
-                    disabled={isSubmitting || !keyName}
+                    disabled={isSubmitting || !keyName || !isNumberInRange(rateLimit, RATE_LIMIT_RPM)}
                     className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-code hover:bg-[#2E3033] disabled:opacity-50 transition-colors shadow-2xs"
                   >
                     {isSubmitting ? 'Generating...' : 'Generate Secret'}

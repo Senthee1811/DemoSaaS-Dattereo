@@ -26,6 +26,8 @@ import { ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { NumberInput } from '@/components/ui/NumberInput';
+import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -63,7 +65,9 @@ export default function OnboardingPage() {
 
   // Step 3: Project & Budget
   const [projectName, setProjectName] = useState('Production AI Assistant');
-  const [budgetMonthly, setBudgetMonthly] = useState(1000);
+  const [budgetInput, setBudgetInput] = useState('1000');
+  const budgetMonthly = Number(budgetInput);
+  const budgetValid = isNumberInRange(budgetInput, BUDGET_USD);
   const [hardBlockEnabled, setHardBlockEnabled] = useState(true);
 
   // Step 4: Gateway Key & Generated Snippet
@@ -566,20 +570,14 @@ console.log(response.choices[0].message.content);`;
                   </label>
                   <span className="text-caption font-mono text-accent font-semibold">Pre-Flight Guardrail</span>
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
-                    <DollarSign className="h-4 w-4" />
-                  </div>
-                  <input
-                    type="number"
-                    min={0.0001}
-                    max={99999999}
-                    step="any"
-                    value={budgetMonthly}
-                    onChange={(e) => setBudgetMonthly(Number(e.target.value))}
-                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border text-xs sm:text-sm font-mono text-fg focus:ring-1 focus:ring-accent focus:border-accent focus:outline-none"
-                  />
-                </div>
+                <NumberInput
+                  value={budgetInput}
+                  onValueChange={setBudgetInput}
+                  range={BUDGET_USD}
+                  step={50}
+                  prefix={<DollarSign className="h-3.5 w-3.5" />}
+                  aria-label="Monthly budget cap in USD"
+                />
               </div>
 
               {/* Hard block policy toggle */}
@@ -620,7 +618,7 @@ console.log(response.choices[0].message.content);`;
                 <button
                   type="button"
                   onClick={handleFinishStep3}
-                  disabled={isGenerating}
+                  disabled={isGenerating || !budgetValid}
                   className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
                 >
                   {isGenerating ? (

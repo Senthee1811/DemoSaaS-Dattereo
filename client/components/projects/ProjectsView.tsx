@@ -17,6 +17,8 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { useEscapeToClose, ConfirmDialog, Spinner, useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { NumberInput } from '@/components/ui/NumberInput';
+import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 
 export interface ProjectItem {
   id: string;
@@ -366,18 +368,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
               <div>
                 <label className="font-semibold text-fg block mb-1.5">Monthly Budget Limit (USD) *</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-fg-muted font-mono">$</span>
-                  <input
-                    type="number"
-                    min="0.0001"
-                    max="99999999"
-                    step="any"
-                    value={budgetMonthly}
-                    onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
-                  />
-                </div>
+                <NumberInput
+                  value={budgetMonthly}
+                  onValueChange={setBudgetMonthly}
+                  range={BUDGET_USD}
+                  step={100}
+                  prefix="$"
+                  aria-label="Monthly budget in USD"
+                />
               </div>
 
               <div className="pt-1">
@@ -409,7 +407,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               <button
                 type="button"
                 onClick={handleCreateProject}
-                disabled={isSubmitting || !name}
+                disabled={isSubmitting || !name || !isNumberInRange(budgetMonthly, BUDGET_USD)}
                 className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
@@ -437,18 +435,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-semibold text-fg block mb-1.5">Monthly Allocation (USD) *</label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-fg-muted font-mono">$</span>
-                  <input
-                    type="number"
-                    min="0.0001"
-                    max="99999999"
-                    step="any"
-                    value={budgetMonthly}
-                    onChange={(e) => setBudgetMonthly(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
-                  />
-                </div>
+                <NumberInput
+                  value={budgetMonthly}
+                  onValueChange={setBudgetMonthly}
+                  range={BUDGET_USD}
+                  step={100}
+                  prefix="$"
+                  aria-label="Monthly budget in USD"
+                />
               </div>
 
               <div className="pt-1">
@@ -480,7 +474,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
               <button
                 type="button"
                 onClick={handleUpdateProject}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isNumberInRange(budgetMonthly, BUDGET_USD)}
                 className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Saving...' : 'Save Allocation'}

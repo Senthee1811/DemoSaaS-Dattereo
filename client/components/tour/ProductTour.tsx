@@ -19,11 +19,17 @@ import {
 import { notifyStorageChange } from '@/lib/client-storage';
 import { TOUR_COMPLETED_KEY } from '@/lib/onboarding';
 import { NavTab } from '@/components/Sidebar';
+import type { SettingsTab } from '@/components/settings/SettingsView';
+import { Spinner } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 
 interface TourStep {
   step: number;
   tab: NavTab;
+  /** Settings section to open when tab is 'settings'. */
+  settingsSection?: SettingsTab;
+  /** An action the user can run from this step (real API call, never a mock). */
+  action?: 'test-alert';
   title: string;
   description: string;
   badge: string;
@@ -75,30 +81,41 @@ const TOUR_STEPS: TourStep[] = [
     step: 6,
     tab: 'alerts',
     title: '6. Alerts & Anomaly Detection',
-    description: 'Identify unusual spending patterns and budget thresholds. Automated Z-score outlier detection flags 3-Sigma cost spikes with instant Slack and Email alerts.',
+    description: 'Identify unusual spending patterns and budget thresholds. Automated Z-score outlier detection flags 3-sigma cost spikes. Every alert lands in this feed; with a Slack webhook it is also posted to Slack.',
     badge: 'Governance',
     icon: BellRing,
   },
   {
     step: 7,
+    tab: 'settings',
+    settingsSection: 'notifications',
+    title: '7. Slack Alerts',
+    description:
+      'Paste your Slack Incoming Webhook URL in Notifications to post budget and anomaly alerts to a channel. Try it: send a real test alert. Without a webhook it is recorded in the Alerts feed only; with one it is queued for Slack and shows Sent or Failed.',
+    badge: 'Notifications',
+    icon: BellRing,
+    action: 'test-alert',
+  },
+  {
+    step: 8,
     tab: 'audit',
-    title: '7. Audit Ledger & Compliance',
+    title: '8. Audit Ledger & Compliance',
     description: 'Inspect cryptographic request history, token consumption, and latency metrics. Export RFC-4180 CSV ledgers for financial compliance and cost attribution.',
     badge: 'Governance',
     icon: ScrollText,
   },
   {
-    step: 8,
+    step: 9,
     tab: 'team',
-    title: '8. Team & Access Control',
+    title: '9. Team & Access Control',
     description: 'Understand workspace roles and permissions (OWNER, ADMIN, MEMBER). Enforce strict tenant isolation and safeguard key access across teams.',
     badge: 'Organization',
     icon: Users,
   },
   {
-    step: 9,
+    step: 10,
     tab: 'billing',
-    title: '9. Billing & Subscription Limits',
+    title: '10. Billing & Subscription Limits',
     description: 'Monitor token quotas and manage subscription plans (Starter, Growth, Enterprise) with automated Stripe Checkout integration.',
     badge: 'Organization',
     icon: CreditCard,
@@ -108,7 +125,9 @@ const TOUR_STEPS: TourStep[] = [
 interface ProductTourProps {
   isActive: boolean;
   onClose: () => void;
-  onNavigateTab: (tab: NavTab) => void;
+  onNavigateTab: (tab: NavTab, settingsSection?: SettingsTab) => void;
+  /** Runs the real test-alert request (POST /api/v1/alerts) and reports the outcome. */
+  onSendTestAlert?: () => Promise<void>;
   /**
    * Called only when the user finishes the last step (not on Skip/Escape). The dashboard
    * decides from the shared onboarding check whether that leads anywhere.
@@ -121,8 +140,10 @@ export function ProductTour({
   onClose,
   onNavigateTab,
   onFinished,
+  onSendTestAlert,
 }: ProductTourProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [sendingTest, setSendingTest] = useState(false);
 
   const currentStep = TOUR_STEPS[currentStepIndex];
 
@@ -149,7 +170,7 @@ export function ProductTour({
   // Navigate to corresponding tab when step changes
   useEffect(() => {
     if (isActive && currentStep) {
-      onNavigateTab(currentStep.tab);
+      onNavigateTab(currentStep.tab, currentStep.settingsSection);
     }
   }, [isActive, currentStepIndex, currentStep, onNavigateTab]);
 
@@ -233,6 +254,24 @@ export function ProductTour({
           <p className="text-xs text-fg-secondary leading-relaxed">
             {currentStep.description}
           </p>
+          {currentStep.action === 'test-alert' && onSendTestAlert && (
+            <button
+              type="button"
+              disabled={sendingTest}
+              onClick={async () => {
+                setSendingTest(true);
+                try {
+                  await onSendTestAlert();
+                } finally {
+                  setSendingTest(false);
+                }
+              }}
+              className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-accent-border bg-accent-subtle text-accent text-xs font-semibold disabled:opacity-50"
+            >
+              {sendingTest ? <Spinner /> : <BellRing className="w-3.5 h-3.5" />}
+              <span>{sendingTest ? 'Sending…' : 'Send a real test alert'}</span>
+            </button>
+          )}
         </div>
       </div>
 

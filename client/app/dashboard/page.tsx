@@ -24,6 +24,7 @@ import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { useHydrated, useLocalStorageValue, useSessionStorageValue, useStoredUser } from '@/lib/client-storage';
 import type { DashboardAnalytics } from '@/lib/types';
 import type { ProjectItem } from '@/components/projects/ProjectsView';
+import { PageTransition } from '@/components/ui/motion';
 
 /** GET a JSON endpoint with the session token; rejects on non-2xx. */
 async function getJson<T>(url: string): Promise<T> {
@@ -215,6 +216,7 @@ export default function AppDashboard() {
         {/* Dynamic Viewport Container */}
         <main className="flex-1 overflow-y-auto px-6 py-6 bg-surface-subtle scroll-smooth">
           <div className="max-w-7xl mx-auto">
+            <PageTransition tabKey={currentTab}>
             {currentTab === 'overview' && (
               <OverviewView
                 analyticsData={analyticsData}
@@ -271,6 +273,7 @@ export default function AppDashboard() {
                 onNavigateToTeam={() => setCurrentTab('team')}
               />
             )}
+            </PageTransition>
           </div>
         </main>
       </div>

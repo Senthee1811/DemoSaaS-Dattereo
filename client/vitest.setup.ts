@@ -32,3 +32,23 @@ if (typeof window !== 'undefined') {
     disconnect() {}
   };
 }
+
+// Framer Motion: finish animations immediately in tests, and treat everything as in view so scroll reveals fire.
+import { MotionGlobalConfig } from 'framer-motion';
+MotionGlobalConfig.skipAnimations = true;
+if (typeof window !== 'undefined' && !('IntersectionObserver' in window)) {
+  (window as unknown as Record<string, unknown>).IntersectionObserver = class {
+    private cb: IntersectionObserverCallback;
+    constructor(cb: IntersectionObserverCallback) {
+      this.cb = cb;
+    }
+    observe(el: Element) {
+      this.cb([{ isIntersecting: true, target: el, intersectionRatio: 1 } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+    }
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  };
+}

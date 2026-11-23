@@ -24,6 +24,7 @@ import { RATE_LIMIT_RPM, isNumberInRange } from '@/lib/limits';
 import { useScope } from '@/lib/scope';
 import { CredentialProtection } from './CredentialProtection';
 import { Tip } from '@/components/ui/tooltip';
+import { Reveal } from '@/components/ui/motion';
 
 interface ProviderKey {
   id: string;
@@ -218,7 +219,9 @@ export function KeyVaultView() {
         </p>
       </div>
 
-      <CredentialProtection keys={providerKeys} />
+      <Reveal>
+        <CredentialProtection keys={providerKeys} />
+      </Reveal>
 
       {/* Section 1: Provider API Keys Table */}
       <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">

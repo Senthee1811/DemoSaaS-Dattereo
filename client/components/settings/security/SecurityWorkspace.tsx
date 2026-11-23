@@ -7,6 +7,7 @@ import { PasswordCard } from './PasswordCard';
 import { SessionsCard } from './SessionsCard';
 import { ActivityCard } from './ActivityCard';
 import type { SecurityOverviewData, SessionsData } from './types';
+import { Reveal } from '@/components/ui/motion';
 
 /**
  * Security & Authentication: four sections, each backed by a real endpoint
@@ -32,14 +33,22 @@ export function SecurityWorkspace() {
         <p className="text-xs text-fg-secondary">Manage how you sign in, where you are signed in, and what has happened on your account.</p>
       </div>
 
-      <SecurityOverview data={overview.data} loading={overview.loading} error={overview.error} />
+      <Reveal>
+        <SecurityOverview data={overview.data} loading={overview.loading} error={overview.error} />
+      </Reveal>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-        <PasswordCard overview={overview.data} onChanged={refreshAll} />
-        <SessionsCard data={sessions.data} loading={sessions.loading} error={sessions.error} onChanged={refreshAll} />
+        <Reveal delay={0.05}>
+          <PasswordCard overview={overview.data} onChanged={refreshAll} />
+        </Reveal>
+        <Reveal delay={0.1}>
+          <SessionsCard data={sessions.data} loading={sessions.loading} error={sessions.error} onChanged={refreshAll} />
+        </Reveal>
       </div>
 
-      <ActivityCard reloadKey={activityKey} />
+      <Reveal delay={0.05}>
+        <ActivityCard reloadKey={activityKey} />
+      </Reveal>
     </div>
   );
 }

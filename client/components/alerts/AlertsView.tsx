@@ -3,16 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
-  ShieldAlert,
-  AlertTriangle,
   Send,
-  Clock,
   Sliders,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch } from '@/lib/auth-fetch';
 import { useScopeProject } from '@/lib/scope';
+import { getAlertColor } from '@/lib/usage-color';
 
 interface AlertItem {
   id: string;
@@ -191,6 +189,7 @@ export function AlertsView({ onRefreshUnreadCount }: AlertsViewProps) {
           <div className="pt-3 border-t border-line flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <span className="text-fg-secondary font-medium">Test Trigger:</span>
+              <span aria-hidden className={`w-2.5 h-2.5 rounded-full ${getAlertColor(testThreshold).dot}`} data-testid="test-trigger-dot" />
               <select
                 value={testThreshold}
                 onChange={(e) => setTestThreshold(e.target.value as TestThreshold)}
@@ -231,8 +230,7 @@ export function AlertsView({ onRefreshUnreadCount }: AlertsViewProps) {
         <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
           <div className="divide-y divide-line">
             {alerts.map((alert) => {
-              const isHardBlock = alert.thresholdType === 'HARD_BLOCK';
-              const isAnomaly = alert.thresholdType === 'ANOMALY_DETECTED';
+              const tone = getAlertColor(alert.thresholdType);
 
               return (
                 <div
@@ -243,19 +241,9 @@ export function AlertsView({ onRefreshUnreadCount }: AlertsViewProps) {
                 >
                   <div className="flex items-start gap-3.5">
                     <div className="mt-0.5 shrink-0">
-                      {isHardBlock ? (
-                        <div className="w-8 h-8 rounded-field bg-critical-bg border border-critical-border text-critical flex items-center justify-center">
-                          <ShieldAlert className="w-4 h-4" />
-                        </div>
-                      ) : isAnomaly ? (
-                        <div className="w-8 h-8 rounded-field bg-warning-bg border border-warning-border text-warning flex items-center justify-center">
-                          <AlertTriangle className="w-4 h-4" />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-field bg-info-bg border border-info-border text-info flex items-center justify-center">
-                          <Clock className="w-4 h-4" />
-                        </div>
-                      )}
+                      <div className={`w-8 h-8 rounded-field border flex items-center justify-center ${tone.tile}`}>
+                        <tone.icon className="w-4 h-4" aria-hidden />
+                      </div>
                     </div>
 
                     <div className="space-y-1">

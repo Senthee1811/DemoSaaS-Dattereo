@@ -107,6 +107,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('10.9 the Scope dropdown is global: every project-scoped section reflects it', () => {
@@ -211,5 +212,27 @@ describe('10.8 the test alert targets the project in Scope, not the first/defaul
     await goTo(/Settings & Account/);
     await openNotificationsTab();
     expect(await screen.findByText(/first project: pick one in Scope to change it/)).toBeInTheDocument();
+  });
+});
+
+describe('11.5 Scope survives leaving the dashboard (a chart opens a real page)', () => {
+  it('remounting the dashboard (back from the usage page) restores the selected project', async () => {
+    const first = render(
+      <Providers>
+        <DashboardPage />
+      </Providers>,
+    );
+    const select = (await screen.findByLabelText('Scope Project Selection')) as HTMLSelectElement;
+    await waitFor(() => expect(within(select).getAllByRole('option').length).toBe(3));
+    await act(async () => fireEvent.change(select, { target: { value: AI_CHATBOT.id } }));
+    first.unmount();
+
+    render(
+      <Providers>
+        <DashboardPage />
+      </Providers>,
+    );
+    const again = (await screen.findByLabelText('Scope Project Selection')) as HTMLSelectElement;
+    await waitFor(() => expect(again.value).toBe(AI_CHATBOT.id));
   });
 });

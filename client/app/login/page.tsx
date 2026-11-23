@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldCheck, ArrowRight, Lock, Mail, TriangleAlert, CircleCheck, Loader2, Eye, EyeOff } from 'lucide-react';
 import { readApiError, saveSession } from '@/lib/auth-fetch';
 import { useQueryParam } from '@/lib/client-storage';
+import { InlineAlert } from '@/components/ui/feedback';
 import { errorMessage as toMessage } from '@/lib/types';
 
 export default function LoginPage() {
@@ -20,7 +21,10 @@ export default function LoginPage() {
   const deactivatedNotice = useQueryParam('deactivated') === 'true';
   const expired = useQueryParam('expired');
   const required = useQueryParam('required');
-  const sessionNotice = expired
+  const signedOut = useQueryParam('signedOut');
+  const sessionNotice = signedOut
+    ? 'You have been signed out.'
+    : expired
     ? 'Your session expired. Please sign in again.'
     : required
       ? 'Please sign in to continue.'
@@ -67,33 +71,33 @@ export default function LoginPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Logo */}
         <Link href="/" className="inline-flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center text-white">
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white">
             <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
-              SpendGuard <span className="text-[#FF6B35]">AI</span>
+            <span className="font-serif text-xl font-normal tracking-tight text-fg">
+              SpendGuard <span className="text-accent">AI</span>
             </span>
-            <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
+            <span className="text-caption font-mono text-fg-muted">by Dattreo</span>
           </div>
         </Link>
 
-        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-inversion-dark">
+        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-fg">
           Sign in to your FinOps workspace
         </h2>
-        <p className="mt-1.5 text-xs text-[#555550]">
+        <p className="mt-1.5 text-xs text-fg-secondary">
           Real-time AI spend governance, budget guardrails, and key vaults.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 rounded-3xl sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="bg-surface py-8 px-6 rounded-card sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {deactivatedNotice && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
-              <CircleCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="mb-5 p-3.5 rounded-field bg-warning-bg border border-warning-border flex items-start gap-2.5">
+              <CircleCheck className="w-4 h-4 text-warning shrink-0 mt-0.5" />
               <div className="space-y-0.5">
-                <p className="text-xs text-amber-900 font-semibold">Account Deactivated</p>
-                <p className="text-label text-amber-800 leading-relaxed">
+                <p className="text-xs text-warning font-semibold">Account Deactivated</p>
+                <p className="text-label text-warning leading-relaxed">
                   Your account has been deactivated and all active sessions have been invalidated. 
                   Workspace data and team members remain unaffected.
                 </p>
@@ -102,15 +106,13 @@ export default function LoginPage() {
           )}
 
           {sessionNotice && !deactivatedNotice && (
-            <div role="status" className="mb-5 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-              {sessionNotice}
-            </div>
+            <InlineAlert variant={signedOut ? 'success' : 'warning'} title={sessionNotice} className="mb-5" />
           )}
 
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
-              <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-800 font-medium leading-relaxed">
+            <div className="mb-5 p-3.5 rounded-field bg-critical-bg border border-critical-border flex items-start gap-2.5">
+              <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
+              <p className="text-xs text-critical font-medium leading-relaxed">
                 {errorMessage}
               </p>
             </div>
@@ -118,11 +120,11 @@ export default function LoginPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+              <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1.5">
                 Work Email
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
@@ -132,22 +134,22 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
+                  className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider">
+                <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-xs font-medium text-[#FF6B35] hover:underline">
+                <Link href="/forgot-password" className="text-xs font-medium text-accent hover:underline">
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -157,14 +159,14 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
+                  className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-inversion-dark transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-fg-muted hover:text-fg transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -176,16 +178,16 @@ export default function LoginPage() {
                 <input
                   type="checkbox"
                   defaultChecked
-                  className="w-3.5 h-3.5 rounded border-[#D0D0D0] text-[#FF6B35] focus:ring-[#FF6B35]"
+                  className="w-3.5 h-3.5 rounded-control border-line text-accent focus:ring-accent"
                 />
-                <span className="text-xs text-[#555550]">Keep me signed in</span>
+                <span className="text-xs text-fg-secondary">Keep me signed in</span>
               </label>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -203,15 +205,15 @@ export default function LoginPage() {
 
           {/* Secure Infrastructure Assurance */}
           <div className="mt-6 pt-4 border-t border-parchment-border text-center">
-            <span className="text-label font-mono text-[#888882]">
+            <span className="text-label font-mono text-fg-muted">
               Protected by sub-5ms Redis Lua pre-flight capacity reservations & AES-256-GCM encryption.
             </span>
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-[#555550]">
+        <p className="mt-6 text-center text-xs text-fg-secondary">
           Don&apos;t have an organization account?{' '}
-          <Link href="/register" className="font-semibold text-[#FF6B35] hover:underline">
+          <Link href="/register" className="font-semibold text-accent hover:underline">
             Register your organization
           </Link>
         </p>

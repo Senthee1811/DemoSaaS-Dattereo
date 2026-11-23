@@ -15,6 +15,7 @@ import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 
 interface ProviderKey {
   id: string;
@@ -46,6 +47,7 @@ interface KeyVaultViewProps {
 }
 
 export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps) {
+  const toast = useToast();
   const [providerKeys, setProviderKeys] = useState<ProviderKey[]>([]);
   const [gatewayKeys, setGatewayKeys] = useState<GatewayKey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -185,45 +187,38 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     }
   };
 
-  // Revoke Key
-  const handleRevokeKey = async (id: string, type: 'PROVIDER' | 'GATEWAY') => {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('spendguard_token') : null;
-      const res = await authFetch(`/api/v1/keys?id=${id}&type=${type}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        fetchKeys();
-      }
-    } catch (err) {
-      console.error('Failed to revoke key:', err);
-    }
+  // Revoke Key (Type D): confirmed in the shared dialog; the dialog shows any failure
+  const [pendingRevoke, setPendingRevoke] = useState<{ id: string; type: 'PROVIDER' | 'GATEWAY'; name: string } | null>(null);
+  const revokeKey = async (id: string, type: 'PROVIDER' | 'GATEWAY') => {
+    const res = await authFetch(`/api/v1/keys?id=${encodeURIComponent(id)}&type=${type}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await readApiError(res, 'The key could not be revoked.'));
+    fetchKeys();
+    toast.success(type === 'GATEWAY' ? 'Gateway key revoked' : 'Provider key removed');
   };
 
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div>
-        <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+        <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
           Key Vault & Gateway Tokens
         </h2>
-        <p className="text-xs text-[#5F6368] mt-1">
+        <p className="text-xs text-fg-secondary mt-1">
           Two-tier envelope encryption (AES-256-GCM). Zero plaintext provider credentials stored or returned.
         </p>
       </div>
 
       {/* Section 1: Provider API Keys Table */}
-      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-[#E4E4E0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#FF6B35]" />
-              <h3 className="font-serif text-lg font-normal text-[#141413]">
+              <Lock className="w-4 h-4 text-accent" />
+              <h3 className="font-serif text-lg font-normal text-fg">
                 Upstream Provider Credentials (AES-256-GCM Encrypted)
               </h3>
             </div>
-            <p className="text-xs text-[#5F6368] mt-0.5">
+            <p className="text-xs text-fg-secondary mt-0.5">
               Injected into upstream OpenAI, Anthropic, and Gemini API requests in memory.
             </p>
           </div>
@@ -234,7 +229,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               setTestResult(null);
               setShowAddProviderKeyModal(true);
             }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Connect Provider Key</span>
@@ -259,7 +254,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-surface-subtle text-fg-secondary font-semibold border-b border-line">
                 <tr>
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Provider</th>
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Key Alias</th>
@@ -270,31 +265,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+              <tbody className="divide-y divide-line text-fg">
                 {providerKeys.map((pk) => (
-                  <tr key={pk.id} className="hover:bg-[#FAF8F5] transition-colors">
+                  <tr key={pk.id} className="hover:bg-surface-subtle transition-colors">
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[#F3F3F0] border border-[#E4E4E0] text-[#141413]">
+                      <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-surface-muted border border-line text-fg">
                         <ProviderBadge provider={pk.provider} />
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-[#141413]">{pk.keyName}</td>
-                    <td className="py-3.5 px-4 text-[#5F6368]">{pk.projectName || pk.projectId}</td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-[#5F6368]">{pk.keyPrefix}••••••••</td>
+                    <td className="py-3.5 px-4 font-semibold text-fg">{pk.keyName}</td>
+                    <td className="py-3.5 px-4 text-fg-secondary">{pk.projectName || pk.projectId}</td>
+                    <td className="py-3.5 px-4 font-mono text-xs text-fg-secondary">{pk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-label text-[#0D9488] font-medium">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-success-bg border border-success-border text-label text-success font-medium">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Envelope AES-256</span>
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-[#80868B] text-label">
+                    <td className="py-3.5 px-4 text-fg-muted text-label">
                       {new Date(pk.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => handleRevokeKey(pk.id, 'PROVIDER')}
-                        className="px-3 py-1 rounded-full text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                        onClick={() => setPendingRevoke({ id: pk.id, type: 'PROVIDER', name: pk.keyName })}
+                        className="px-3 py-1 rounded-full text-xs font-semibold text-critical hover:bg-critical-bg transition-colors"
                       >
                         Revoke
                       </button>
@@ -308,16 +303,16 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
       </div>
 
       {/* Section 2: Scoped Client Gateway Tokens Table */}
-      <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-[#E4E4E0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
+        <div className="p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-[#FF6B35]" />
-              <h3 className="font-serif text-lg font-normal text-[#141413]">
+              <KeyRound className="w-4 h-4 text-accent" />
+              <h3 className="font-serif text-lg font-normal text-fg">
                 Scoped Client Gateway Tokens (`sg_live_*`)
               </h3>
             </div>
-            <p className="text-xs text-[#5F6368] mt-0.5">
+            <p className="text-xs text-fg-secondary mt-0.5">
               Issue tokens to backend applications with rate limits and project budget bounds.
             </p>
           </div>
@@ -325,7 +320,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
           <button
             type="button"
             onClick={() => setShowGenerateGatewayKeyModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-code hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Generate Gateway Key</span>
@@ -350,7 +345,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
+              <thead className="bg-surface-subtle text-fg-secondary font-semibold border-b border-line">
                 <tr>
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Token Name</th>
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Bound Project</th>
@@ -360,23 +355,23 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
+              <tbody className="divide-y divide-line text-fg">
                 {gatewayKeys.map((gk) => (
-                  <tr key={gk.id} className="hover:bg-[#FAF8F5] transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-[#141413]">{gk.keyName}</td>
-                    <td className="py-3.5 px-4 text-[#5F6368]">{gk.projectName || gk.projectId}</td>
-                    <td className="py-3.5 px-4 font-mono text-[#FF6B35] font-semibold">{gk.keyPrefix}••••••••</td>
-                    <td className="py-3.5 px-4 font-mono tabular-nums text-[#5F6368]">{gk.rateLimitRpm} rpm</td>
+                  <tr key={gk.id} className="hover:bg-surface-subtle transition-colors">
+                    <td className="py-3.5 px-4 font-semibold text-fg">{gk.keyName}</td>
+                    <td className="py-3.5 px-4 text-fg-secondary">{gk.projectName || gk.projectId}</td>
+                    <td className="py-3.5 px-4 font-mono text-accent font-semibold">{gk.keyPrefix}••••••••</td>
+                    <td className="py-3.5 px-4 font-mono tabular-nums text-fg-secondary">{gk.rateLimitRpm} rpm</td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-success-bg text-success border border-success-border">
                         Active
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => handleRevokeKey(gk.id, 'GATEWAY')}
-                        className="px-3 py-1 rounded-full text-xs font-semibold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                        onClick={() => setPendingRevoke({ id: gk.id, type: 'GATEWAY', name: gk.keyName })}
+                        className="px-3 py-1 rounded-full text-xs font-semibold text-critical hover:bg-critical-bg transition-colors"
                       >
                         Revoke
                       </button>
@@ -391,26 +386,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
       {/* Modal: Add Provider Key */}
       {showAddProviderKeyModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-              <h3 className="font-serif text-lg font-normal text-[#141413]">Connect Provider API Key</h3>
+        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="font-serif text-lg font-normal text-fg">Connect Provider API Key</h3>
               <button
                 type="button"
                 onClick={() => setShowAddProviderKeyModal(false)}
-                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-4 text-xs">
+              <InlineAlert variant="confirmation" title="What connecting a key does">
+                Gateway requests for this provider&apos;s models in the selected project are sent with this key and billed
+                to its account, starting with the next request. Keep one key per provider per project: if there are
+                several, which one is used is not defined.
+              </InlineAlert>
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Target Project *</label>
+                <label className="font-semibold text-fg block mb-1.5">Target Project *</label>
                 <select
                   value={modalProjectId}
                   onChange={(e) => setModalProjectId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs font-medium text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs font-medium text-fg focus:outline-none focus:border-accent"
                 >
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -421,7 +421,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">AI Provider *</label>
+                <label className="font-semibold text-fg block mb-1.5">AI Provider *</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['OPENAI', 'ANTHROPIC', 'GEMINI'] as const).map((prov) => (
                     <button
@@ -433,8 +433,8 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                       }}
                       className={`py-2 rounded-full text-xs font-semibold transition-colors border inline-flex items-center justify-center gap-1.5 ${
                         provider === prov
-                          ? 'bg-[#FFF7F2] text-[#FF6B35] border-[#FFD2C0]'
-                          : 'bg-white text-[#5F6368] border-[#E4E4E0] hover:bg-[#FAF8F5]'
+                          ? 'bg-accent-subtle text-accent border-accent-border'
+                          : 'bg-surface text-fg-secondary border-line hover:bg-surface-subtle'
                       }`}
                     >
                       <ProviderLogo provider={prov} size={16} />
@@ -445,24 +445,24 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               </div>
 
               <div>
-                <label className="font-semibold text-[#141413] block mb-1.5">Key Alias / Description *</label>
+                <label className="font-semibold text-fg block mb-1.5">Key Alias / Description *</label>
                 <input
                   type="text"
                   placeholder="e.g. Production Primary OpenAI"
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs text-fg focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-semibold text-[#141413]">Plaintext API Key (Write-Once) *</label>
+                  <label className="font-semibold text-fg">Plaintext API Key (Write-Once) *</label>
                   <button
                     type="button"
                     onClick={handleTestProvider}
                     disabled={isTestingProvider || !plainKey}
-                    className="text-label font-semibold text-[#FF6B35] hover:underline disabled:opacity-50"
+                    className="text-label font-semibold text-accent hover:underline disabled:opacity-50"
                   >
                     {isTestingProvider ? 'Testing live...' : '⚡ Test Connection'}
                   </button>
@@ -475,31 +475,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     setPlainKey(e.target.value);
                     setTestResult(null);
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs font-mono text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs font-mono text-fg focus:outline-none focus:border-accent"
                 />
                 {testResult && (
                   <div
-                    className={`mt-2 p-2.5 rounded-2xl text-xs font-medium flex items-center gap-2 ${
+                    className={`mt-2 p-2.5 rounded-field text-xs font-medium flex items-center gap-2 ${
                       testResult.valid
-                        ? 'bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]'
-                        : 'bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]'
+                        ? 'bg-success-bg text-success border border-success-border'
+                        : 'bg-critical-bg text-critical border border-critical-border'
                     }`}
                   >
                     <span>{testResult.valid ? '✓' : '✕'}</span>
                     <span>{testResult.message}</span>
                   </div>
                 )}
-                <p className="text-label text-[#80868B] mt-1">
+                <p className="text-label text-fg-muted mt-1">
                   Encrypted immediately with AES-256-GCM. Plaintext is never stored or returned.
                 </p>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
+            <div className="pt-3 border-t border-line flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowAddProviderKeyModal(false)}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-fg-secondary hover:bg-surface-muted transition-colors"
               >
                 Cancel
               </button>
@@ -507,7 +507,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                 type="button"
                 onClick={handleAddProviderKey}
                 disabled={isSubmitting || !plainKey || !keyName}
-                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Encrypting...' : 'Save & Encrypt'}
               </button>
@@ -518,17 +518,17 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
       {/* Modal: Generate Gateway Key */}
       {showGenerateGatewayKeyModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full border border-[#E4E4E0] shadow-xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-              <h3 className="font-serif text-lg font-normal text-[#141413]">Issue Gateway API Token</h3>
+        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <h3 className="font-serif text-lg font-normal text-fg">Issue Gateway API Token</h3>
               <button
                 type="button"
                 onClick={() => {
                   setShowGenerateGatewayKeyModal(false);
                   setNewGatewaySecret(null);
                 }}
-                className="p-1.5 text-[#80868B] hover:text-[#141413] rounded-full"
+                className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -536,7 +536,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
             {newGatewaySecret ? (
               <div className="space-y-4 text-xs">
-                <div className="p-3.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl text-[#0D9488]">
+                <div className="p-3.5 bg-success-bg border border-success-border rounded-field text-success">
                   <p className="font-semibold">Token Generated Successfully</p>
                   <p className="text-label mt-0.5">
                     Save this secret now. For security, it cannot be displayed again.
@@ -544,20 +544,20 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Gateway Secret Key</label>
+                  <label className="font-semibold text-fg block mb-1.5">Gateway Secret Key</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={newGatewaySecret}
-                      className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] bg-[#FAF8F5] font-mono text-xs font-semibold text-[#FF6B35]"
+                      className="w-full px-3.5 py-2.5 rounded-field border border-line bg-surface-subtle font-mono text-xs font-semibold text-accent"
                     />
                     <button
                       type="button"
                       onClick={() => handleCopy(newGatewaySecret, 'secret')}
-                      className="px-4 py-2.5 bg-[#F3F3F0] hover:bg-[#E4E4E0] rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
+                      className="px-4 py-2.5 bg-surface-muted hover:bg-surface-muted rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
                     >
-                      {copiedId === 'secret' ? <Check className="w-3.5 h-3.5 text-[#0D9488]" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedId === 'secret' ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedId === 'secret' ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
@@ -570,7 +570,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                       setShowGenerateGatewayKeyModal(false);
                       setNewGatewaySecret(null);
                     }}
-                    className="px-5 py-2 bg-[#141413] hover:bg-[#2E3033] text-white text-xs font-semibold rounded-full shadow-2xs transition-colors"
+                    className="px-5 py-2 bg-code hover:bg-[#2E3033] text-white text-xs font-semibold rounded-full shadow-2xs transition-colors"
                   >
                     Done
                   </button>
@@ -578,12 +578,16 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               </div>
             ) : (
               <div className="space-y-4 text-xs">
+                <InlineAlert variant="confirmation" title="Before you generate">
+                  The secret is shown once. Anyone holding it can spend this project&apos;s budget through the gateway,
+                  up to the limits set here, until the key is revoked.
+                </InlineAlert>
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Target Project *</label>
+                  <label className="font-semibold text-fg block mb-1.5">Target Project *</label>
                   <select
                     value={modalProjectId}
                     onChange={(e) => setModalProjectId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs font-medium text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs font-medium text-fg focus:outline-none focus:border-accent"
                   >
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -594,33 +598,33 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Token Label *</label>
+                  <label className="font-semibold text-fg block mb-1.5">Token Label *</label>
                   <input
                     type="text"
                     placeholder="e.g. Backend Production Server"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs text-fg focus:outline-none focus:border-accent"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-[#141413] block mb-1.5">Rate Limit (Requests per minute)</label>
+                  <label className="font-semibold text-fg block mb-1.5">Rate Limit (Requests per minute)</label>
                   <input
                     type="number"
                     min="60"
                     step="60"
                     value={rateLimit}
                     onChange={(e) => setRateLimit(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl border border-[#E4E4E0] font-mono text-xs text-[#141413] focus:outline-none focus:border-[#FF6B35]"
+                    className="w-full px-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
                   />
                 </div>
 
-                <div className="pt-3 border-t border-[#E4E4E0] flex justify-end gap-2.5">
+                <div className="pt-3 border-t border-line flex justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setShowGenerateGatewayKeyModal(false)}
-                    className="px-4 py-2 rounded-full text-xs font-semibold text-[#5F6368] hover:bg-[#F3F3F0] transition-colors"
+                    className="px-4 py-2 rounded-full text-xs font-semibold text-fg-secondary hover:bg-surface-muted transition-colors"
                   >
                     Cancel
                   </button>
@@ -628,7 +632,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     type="button"
                     onClick={handleGenerateGatewayKey}
                     disabled={isSubmitting || !keyName}
-                    className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#141413] hover:bg-[#2E3033] disabled:opacity-50 transition-colors shadow-2xs"
+                    className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-code hover:bg-[#2E3033] disabled:opacity-50 transition-colors shadow-2xs"
                   >
                     {isSubmitting ? 'Generating...' : 'Generate Secret'}
                   </button>
@@ -638,6 +642,31 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={pendingRevoke !== null}
+        tone="danger"
+        title={pendingRevoke?.type === 'GATEWAY' ? `Revoke gateway key "${pendingRevoke?.name}"?` : `Remove provider key "${pendingRevoke?.name}"?`}
+        description={
+          pendingRevoke?.type === 'GATEWAY'
+            ? 'The key is deleted and stops working immediately.'
+            : 'The encrypted credential is deleted from the vault.'
+        }
+        consequences={
+          pendingRevoke?.type === 'GATEWAY'
+            ? [
+                'Any app or script still using this key gets 401 on its next request.',
+                'Past requests made with it stay in the audit ledger, but will no longer show which key made them.',
+              ]
+            : [
+                "Requests for this provider's models in this project fail with missing_provider_key until another key is connected.",
+                'Past requests stay in the audit ledger.',
+              ]
+        }
+        reversible="This cannot be undone. A new key can be created, but this one cannot be restored."
+        confirmLabel={pendingRevoke?.type === 'GATEWAY' ? 'Revoke key' : 'Remove key'}
+        onConfirm={() => (pendingRevoke ? revokeKey(pendingRevoke.id, pendingRevoke.type) : undefined)}
+        onClose={() => setPendingRevoke(null)}
+      />
     </div>
   );
 }

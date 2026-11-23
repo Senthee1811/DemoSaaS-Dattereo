@@ -29,7 +29,7 @@ export function TeamMemberCard({
 
   return (
     <div
-      className={`inline-flex items-center gap-2.5 px-3 py-2 bg-white/95 backdrop-blur-md rounded-2xl border border-[#E8E8E8] shadow-[0_8px_24px_rgba(0,0,0,0.06),0_2px_8px_rgba(255,107,53,0.05)] transition-all hover:scale-105 hover:border-[#FFD9C7] ${className}`}
+      className={`inline-flex items-center gap-2.5 px-3 py-2 bg-white/95 backdrop-blur-md rounded-field border border-[#E8E8E8] shadow-[0_8px_24px_rgba(0,0,0,0.06),0_2px_8px_rgba(255,107,53,0.05)] transition-all hover:scale-105 hover:border-[#FFD9C7] ${className}`}
     >
       <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#E8E8E8] flex-shrink-0 bg-[#FFF1EA]">
         {/* Fallback initials if image fails or while loading */}

@@ -73,11 +73,11 @@ export function GatewayMonitorCard() {
   const currentReq = SAMPLE_REQUESTS[activeReqIdx];
 
   return (
-    <div className="relative w-full max-w-[460px] bg-[#111111] text-white rounded-3xl p-5 sm:p-6 shadow-[0_24px_50px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.08),0_0_30px_-5px_rgba(255,107,53,0.15)] transition-all">
+    <div className="relative w-full max-w-[460px] bg-[#111111] text-white rounded-card p-5 sm:p-6 shadow-[0_24px_50px_-10px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.08),0_0_30px_-5px_rgba(255,107,53,0.15)] transition-all">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3.5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#222222] border border-white/10 flex items-center justify-center text-[#FF6B35]">
+          <div className="w-7 h-7 rounded-control bg-[#222222] border border-white/10 flex items-center justify-center text-[#FF6B35]">
             <Cpu className="w-4 h-4" />
           </div>
           <div>
@@ -98,7 +98,7 @@ export function GatewayMonitorCard() {
       </div>
 
       {/* Real-time Request Throughput Visualizer (Replacing Audio Waveform) */}
-      <div className="my-4 p-3.5 rounded-2xl bg-white/[0.04] border border-white/5">
+      <div className="my-4 p-3.5 rounded-field bg-white/[0.04] border border-white/5">
         <div className="flex items-center justify-between mb-2">
           <span className="text-label font-medium tracking-wide text-white/60 uppercase">
             Live Request Throughput
@@ -127,7 +127,7 @@ export function GatewayMonitorCard() {
       </div>
 
       {/* Request Log Line */}
-      <div className={`p-3 rounded-xl bg-white/[0.06] border border-white/10 font-mono text-[11.5px] transition-transform duration-200 ${isSimulating ? 'scale-[0.98]' : 'scale-100'}`}>
+      <div className={`p-3 rounded-menu bg-white/[0.06] border border-white/10 font-mono text-[11.5px] transition-transform duration-200 ${isSimulating ? 'scale-[0.98]' : 'scale-100'}`}>
         <div className="flex items-center justify-between text-white/90">
           <span className="text-[#FFA06E] font-semibold">{currentReq.provider}/{currentReq.model}</span>
           <span className="text-white/50">{currentReq.time}</span>
@@ -150,7 +150,7 @@ export function GatewayMonitorCard() {
         <button
           type="button"
           onClick={handleSimulateRequest}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF6B35] hover:bg-[#FF8A4C] text-white text-[11.5px] font-semibold shadow-md shadow-[#FF6B35]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-[#FF6B35] hover:bg-[#FF8A4C] text-white text-[11.5px] font-semibold shadow-md shadow-[#FF6B35]/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           <span>Simulate Next Request</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

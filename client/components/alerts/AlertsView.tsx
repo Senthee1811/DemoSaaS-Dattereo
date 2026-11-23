@@ -110,10 +110,10 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-normal text-[#141413] tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
             Alerts & Anomaly Notifications
           </h2>
-          <p className="text-xs text-[#5F6368] mt-1">
+          <p className="text-xs text-fg-secondary mt-1">
             Budget threshold warnings, hard blocks and spend-spike detections, shown in-app and, when a Slack webhook is set in Settings, posted to Slack.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             <button
               type="button"
               onClick={() => handleMarkAsRead(undefined, true)}
-              className="px-4 py-2 rounded-full bg-white hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] font-semibold text-xs shadow-2xs transition-colors"
+              className="px-4 py-2 rounded-full bg-surface hover:bg-surface-muted text-fg border border-line font-semibold text-xs shadow-2xs transition-colors"
             >
               Mark All as Read ({unreadCount})
             </button>
@@ -132,37 +132,37 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
           <button
             type="button"
             onClick={() => setShowConfig(!showConfig)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FAF8F5] hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] text-xs font-semibold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-subtle hover:bg-surface-muted text-fg border border-line text-xs font-semibold shadow-2xs transition-colors"
           >
-            <Sliders className="w-3.5 h-3.5 text-[#5F6368]" />
+            <Sliders className="w-3.5 h-3.5 text-fg-secondary" />
             <span>Test Alert</span>
           </button>
         </div>
       </div>
 
       {/* Aggregate Alert Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-surface p-5 rounded-card border border-line shadow-2xs">
         <div>
-          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Unread Incidents</span>
-          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${unreadCount > 0 ? 'text-[#FF6B35]' : 'text-[#141413]'}`}>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Unread Incidents</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${unreadCount > 0 ? 'text-accent' : 'text-fg'}`}>
             {unreadCount}
           </p>
         </div>
         <div>
-          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Hard-Blocks Tripped</span>
-          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${hardBlockCount > 0 ? 'text-[#DC2626]' : 'text-[#141413]'}`}>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Hard-Blocks Tripped</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${hardBlockCount > 0 ? 'text-critical' : 'text-fg'}`}>
             {hardBlockCount}
           </p>
         </div>
         <div>
-          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Statistical Spikes</span>
-          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${spikeCount > 0 ? 'text-[#D97706]' : 'text-[#141413]'}`}>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Statistical Spikes</span>
+          <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${spikeCount > 0 ? 'text-warning' : 'text-fg'}`}>
             {spikeCount}
           </p>
         </div>
         <div>
-          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Delivery</span>
-          <p className="font-serif text-2xl font-normal text-[#141413] mt-1">
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-fg-secondary">Delivery</span>
+          <p className="font-serif text-2xl font-normal text-fg mt-1">
             {alerts.some((a) => a.channel === 'SLACK') ? 'In-app + Slack' : 'In-app'}
           </p>
         </div>
@@ -170,26 +170,26 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
 
       {/* Webhook Channel Configuration Accordion */}
       {showConfig && (
-        <div className="bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
-            <h3 className="font-serif text-lg font-normal text-[#141413]">Test Alert</h3>
-            <span className="text-xs text-[#5F6368]">In-app, plus Slack if configured</span>
+        <div className="bg-surface p-6 rounded-card border border-line shadow-2xs space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-line">
+            <h3 className="font-serif text-lg font-normal text-fg">Test Alert</h3>
+            <span className="text-xs text-fg-secondary">In-app, plus Slack if configured</span>
           </div>
 
-          <p className="text-xs text-[#5F6368]">
+          <p className="text-xs text-fg-secondary">
             A test alert goes through the same path as real ones. It always appears in this feed, and it is also sent to
             Slack when the project has a webhook (Settings → Notifications). The status next to each alert shows what
             actually happened. Email delivery of budget alerts is not available yet.
           </p>
 
           {/* Test Dispatch Bar */}
-          <div className="pt-3 border-t border-[#E4E4E0] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="pt-3 border-t border-line flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
-              <span className="text-[#5F6368] font-medium">Test Trigger:</span>
+              <span className="text-fg-secondary font-medium">Test Trigger:</span>
               <select
                 value={testThreshold}
                 onChange={(e) => setTestThreshold(e.target.value as TestThreshold)}
-                className="px-3 py-1.5 rounded-full border border-[#E4E4E0] text-xs bg-[#FAF8F5] cursor-pointer"
+                className="px-3 py-1.5 rounded-full border border-line text-xs bg-surface-subtle cursor-pointer"
               >
                 <option value="PERCENT_80">80% Threshold Warning</option>
                 <option value="HARD_BLOCK">Emergency 100% Hard-Block</option>
@@ -203,7 +203,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
               onClick={handleSendTestAlert}
               disabled={isSendingTest || !testProjectId}
               title={testProjectId ? undefined : 'Create a project first'}
-              className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-full bg-code hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{isSendingTest ? 'Sending...' : 'Send Test Alert'}</span>
@@ -223,8 +223,8 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
           compact
         />
       ) : (
-        <div className="bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs overflow-hidden">
-          <div className="divide-y divide-[#E4E4E0]">
+        <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
+          <div className="divide-y divide-line">
             {alerts.map((alert) => {
               const isHardBlock = alert.thresholdType === 'HARD_BLOCK';
               const isAnomaly = alert.thresholdType === 'ANOMALY_DETECTED';
@@ -233,21 +233,21 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                 <div
                   key={alert.id}
                   className={`p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                    !alert.isRead ? 'bg-[#FFFDFB]' : 'hover:bg-[#FAF8F5]'
+                    !alert.isRead ? 'bg-surface-subtle' : 'hover:bg-surface-subtle'
                   }`}
                 >
                   <div className="flex items-start gap-3.5">
                     <div className="mt-0.5 shrink-0">
                       {isHardBlock ? (
-                        <div className="w-8 h-8 rounded-2xl bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-field bg-critical-bg border border-critical-border text-critical flex items-center justify-center">
                           <ShieldAlert className="w-4 h-4" />
                         </div>
                       ) : isAnomaly ? (
-                        <div className="w-8 h-8 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] text-[#D97706] flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-field bg-warning-bg border border-warning-border text-warning flex items-center justify-center">
                           <AlertTriangle className="w-4 h-4" />
                         </div>
                       ) : (
-                        <div className="w-8 h-8 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] text-[#2563EB] flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-field bg-info-bg border border-info-border text-info flex items-center justify-center">
                           <Clock className="w-4 h-4" />
                         </div>
                       )}
@@ -255,16 +255,16 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-[#141413]">{alert.title}</span>
+                        <span className="font-semibold text-xs text-fg">{alert.title}</span>
                         {!alert.isRead && (
-                          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
+                          <span className="w-2 h-2 rounded-full bg-accent" />
                         )}
-                        <span className="text-caption font-mono text-[#80868B]">
+                        <span className="text-caption font-mono text-fg-muted">
                           {alert.projectName || alert.projectId}
                         </span>
                       </div>
-                      <p className="text-xs text-[#5F6368] leading-relaxed max-w-2xl">{alert.message}</p>
-                      <div className="flex items-center gap-2 pt-1 text-label text-[#80868B] font-mono tabular-nums">
+                      <p className="text-xs text-fg-secondary leading-relaxed max-w-2xl">{alert.message}</p>
+                      <div className="flex items-center gap-2 pt-1 text-label text-fg-muted font-mono tabular-nums">
                         <span>{new Date(alert.triggeredAt).toLocaleString()}</span>
                         <span>•</span>
                         <span>Channel: {alert.channel}</span>
@@ -272,7 +272,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                           <span
                             title={alert.deliveryError || undefined}
                             className={
-                              alert.status === 'SENT' ? 'text-[#0D9488]' : alert.status === 'FAILED' ? 'text-[#DC2626]' : 'text-[#D97706]'
+                              alert.status === 'SENT' ? 'text-success' : alert.status === 'FAILED' ? 'text-critical' : 'text-warning'
                             }
                           >
                             {alert.status === 'SENT'
@@ -291,7 +291,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                       <button
                         type="button"
                         onClick={() => handleMarkAsRead(alert.id)}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#5F6368] hover:text-[#141413] hover:bg-[#F3F3F0] transition-colors"
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-fg-secondary hover:text-fg hover:bg-surface-muted transition-colors"
                       >
                         Acknowledge
                       </button>

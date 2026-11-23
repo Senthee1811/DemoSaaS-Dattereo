@@ -10,12 +10,12 @@ interface BudgetAlertCardProps {
 export function BudgetAlertCard({ className = '' }: BudgetAlertCardProps) {
   return (
     <div
-      className={`w-full max-w-[340px] bg-white rounded-2xl border border-[#FFE0D2] p-4 shadow-[0_16px_36px_rgba(255,107,53,0.12),0_4px_12px_rgba(0,0,0,0.04)] animate-float-slow transition-all hover:border-[#FF6B35] ${className}`}
+      className={`w-full max-w-[340px] bg-white rounded-field border border-[#FFE0D2] p-4 shadow-[0_16px_36px_rgba(255,107,53,0.12),0_4px_12px_rgba(0,0,0,0.04)] animate-float-slow transition-all hover:border-[#FF6B35] ${className}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-[#FFF0EA]">
         <div className="flex items-center gap-1.5 text-[#FF6B35]">
-          <div className="w-5 h-5 rounded-md bg-[#FFF1EA] flex items-center justify-center">
+          <div className="w-5 h-5 rounded-control bg-[#FFF1EA] flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-[#FF6B35]" />
           </div>
           <span className="text-label font-extrabold tracking-wider uppercase">

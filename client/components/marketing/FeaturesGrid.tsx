@@ -78,11 +78,11 @@ export function FeaturesGrid() {
           return (
             <div
               key={idx}
-              className="bg-white rounded-2xl p-6 border border-parchment-border shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
+              className="bg-white rounded-field p-6 border border-parchment-border shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex flex-col justify-between transition-colors hover:border-[#CDC7BC]"
             >
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-parchment-ivory text-inversion-dark border border-parchment-border flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-menu bg-parchment-ivory text-inversion-dark border border-parchment-border flex items-center justify-center">
                     <Icon className="w-4 h-4 text-[#FF6B35]" strokeWidth={2} />
                   </div>
                   <span className="text-caption font-mono text-[#666660] bg-parchment-ivory px-2.5 py-0.5 rounded-full border border-parchment-border">

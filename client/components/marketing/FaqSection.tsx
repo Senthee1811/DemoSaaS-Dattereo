@@ -72,7 +72,7 @@ export function FaqSection() {
           return (
             <div
               key={idx}
-              className={`rounded-2xl border transition-all ${
+              className={`rounded-field border transition-all ${
                 isOpen
                   ? 'bg-white border-inversion-dark shadow-[0_2px_8px_rgba(0,0,0,0.03)]'
                   : 'bg-white border-parchment-border hover:border-[#CDC7BC]'

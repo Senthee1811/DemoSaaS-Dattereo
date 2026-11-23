@@ -89,12 +89,12 @@ export function DayRequestsPanel({ day, onClose }: { day: string; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="day-panel-title">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/40 cursor-default" tabIndex={-1} />
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-overlay cursor-default" tabIndex={-1} />
 
-      <div className="relative w-full max-w-2xl h-full bg-white border-l border-sg-border shadow-2xl flex flex-col">
+      <div className="relative w-full max-w-2xl h-full bg-surface border-l border-sg-border shadow-2xl flex flex-col">
         <div className="p-5 border-b border-sg-border flex items-start justify-between gap-3">
           <div>
-            <h3 id="day-panel-title" className="font-serif text-lg font-normal text-inversion-dark">
+            <h3 id="day-panel-title" className="font-serif text-lg font-normal text-fg">
               Requests on {day} <span className="text-xs font-mono text-sg-text-muted">UTC</span>
             </h3>
             {rows && (
@@ -132,7 +132,7 @@ export function DayRequestsPanel({ day, onClose }: { day: string; onClose: () =>
               <button
                 type="button"
                 onClick={retry}
-                className="px-4 py-1.5 rounded-full bg-white hover:bg-sg-surface-muted border border-sg-border text-xs font-semibold"
+                className="px-4 py-1.5 rounded-full bg-surface hover:bg-sg-surface-muted border border-sg-border text-xs font-semibold"
               >
                 Try again
               </button>
@@ -165,7 +165,7 @@ export function DayRequestsPanel({ day, onClose }: { day: string; onClose: () =>
                         {new Date(r.timestamp).toISOString().slice(11, 19)}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="inline-flex items-center gap-1.5 font-medium text-inversion-dark">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-fg">
                           <ProviderLogo provider={r.provider} size={14} />
                           {r.model}
                         </span>

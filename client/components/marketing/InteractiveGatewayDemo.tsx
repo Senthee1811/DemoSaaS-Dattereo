@@ -103,7 +103,7 @@ export function InteractiveGatewayDemo() {
       </div>
 
       {/* Sandbox Workspace Card */}
-      <div className="bg-white rounded-2xl border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-field border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12">
           {/* Controls Panel (5 cols) */}
           <div className="lg:col-span-5 p-6 bg-parchment-ivory border-b lg:border-b-0 lg:border-r border-parchment-border flex flex-col justify-between space-y-5">
@@ -118,7 +118,7 @@ export function InteractiveGatewayDemo() {
                       key={model.id}
                       type="button"
                       onClick={() => setSelectedModel(model)}
-                      className={`p-2.5 rounded-xl text-left border text-xs transition-colors ${
+                      className={`p-2.5 rounded-menu text-left border text-xs transition-colors ${
                         selectedModel.id === model.id
                           ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35] font-semibold text-inversion-dark'
                           : 'bg-white border-parchment-border text-[#555550] hover:bg-[#F3EFE9]'
@@ -145,7 +145,7 @@ export function InteractiveGatewayDemo() {
                         key={proj.id}
                         type="button"
                         onClick={() => setSelectedProject(proj)}
-                        className={`w-full p-2.5 rounded-xl text-left border transition-colors ${
+                        className={`w-full p-2.5 rounded-menu text-left border transition-colors ${
                           selectedProject.id === proj.id
                             ? 'bg-white border-[#FF6B35] ring-1 ring-[#FF6B35]'
                             : 'bg-white border-parchment-border hover:bg-[#F3EFE9]'
@@ -225,12 +225,12 @@ export function InteractiveGatewayDemo() {
               {/* Status Header */}
               <div className="mt-4">
                 {lastResult?.blocked ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FEF2F2]/10 border border-[#DC2626]/40 text-[#EF4444] text-xs font-mono font-semibold">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-[#FEF2F2]/10 border border-[#DC2626]/40 text-[#EF4444] text-xs font-mono font-semibold">
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>HTTP 429 HARD-BLOCKED (BUDGET EXCEEDED)</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#F0FDF4]/10 border border-[#0D9488]/40 text-[#34D399] text-xs font-mono font-semibold">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control bg-[#F0FDF4]/10 border border-[#0D9488]/40 text-[#34D399] text-xs font-mono font-semibold">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>HTTP 200 OK — ATOMIC CAPACITY RESERVED</span>
                   </div>
@@ -240,7 +240,7 @@ export function InteractiveGatewayDemo() {
               {/* Headers breakdown */}
               <div className="mt-4 space-y-2 font-mono text-xs">
                 <div className="text-caption text-[#71717A] uppercase tracking-wider">SpendGuard Headers</div>
-                <div className="p-3 bg-[#232428] rounded border border-white/5 space-y-1.5 text-label">
+                <div className="p-3 bg-[#232428] rounded-control border border-white/5 space-y-1.5 text-label">
                   <div className="flex justify-between">
                     <span className="text-[#A1A1AA]">x-spendguard-model:</span>
                     <span className="text-white">{selectedModel.id}</span>

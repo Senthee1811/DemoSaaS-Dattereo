@@ -102,7 +102,7 @@ const response = await client.chat.completions.create({
       </div>
 
       {/* Editorial Gateway Console Artefact */}
-      <div className="mt-14 bg-inversion-dark rounded-2xl border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
+      <div className="mt-14 bg-inversion-dark rounded-field border border-[#2A2A28] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden max-w-4xl mx-auto text-white">
         {/* Terminal Titlebar */}
         <div className="h-11 px-5 bg-[#1B1B1A] border-b border-[#2A2A28] flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ const response = await client.chat.completions.create({
             <button
               type="button"
               onClick={handleCopy}
-              className="p-1.5 rounded hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
+              className="p-1.5 rounded-control hover:bg-[#2A2A28] text-[#A0A09B] hover:text-white transition-colors"
               title="Copy snippet"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}

@@ -104,31 +104,31 @@ export default function ForgotPasswordPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Brand Logo */}
         <Link href="/" className="inline-flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center text-white">
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white">
             <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
-              SpendGuard <span className="text-[#FF6B35]">AI</span>
+            <span className="font-serif text-xl font-normal tracking-tight text-fg">
+              SpendGuard <span className="text-accent">AI</span>
             </span>
-            <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
+            <span className="text-caption font-mono text-fg-muted">by Dattreo</span>
           </div>
         </Link>
 
-        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-inversion-dark">
+        <h2 className="mt-6 font-serif text-2xl sm:text-3xl font-normal tracking-tight text-fg">
           Recover your workspace access
         </h2>
-        <p className="mt-1.5 text-xs text-[#555550]">
+        <p className="mt-1.5 text-xs text-fg-secondary">
           Secure, time-limited password recovery for SpendGuard AI accounts.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 rounded-3xl sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="bg-surface py-8 px-6 rounded-card sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5">
-              <TriangleAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-800 font-medium leading-relaxed">
+            <div className="mb-5 p-3.5 rounded-field bg-critical-bg border border-critical-border flex items-start gap-2.5">
+              <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
+              <p className="text-xs text-critical font-medium leading-relaxed">
                 {errorMessage}
               </p>
             </div>
@@ -136,19 +136,19 @@ export default function ForgotPasswordPage() {
 
           {resetSuccess ? (
             <div className="text-center py-4 space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 mx-auto flex items-center justify-center text-emerald-600">
+              <div className="w-12 h-12 rounded-full bg-success-bg border border-success-border mx-auto flex items-center justify-center text-success">
                 <CircleCheck className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-lg font-normal text-inversion-dark">
+              <h3 className="font-serif text-lg font-normal text-fg">
                 Password Reset Successfully
               </h3>
-              <p className="text-xs text-[#555550] max-w-sm mx-auto">
+              <p className="text-xs text-fg-secondary max-w-sm mx-auto">
                 Your credentials have been securely updated using PBKDF2 hashing. You may now sign in with your new password.
               </p>
               <div className="pt-2">
                 <Link
                   href="/login"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors"
                 >
                   <span>Sign In Now</span>
                   <ArrowRight className="w-4 h-4" />
@@ -157,26 +157,26 @@ export default function ForgotPasswordPage() {
             </div>
           ) : shownMessage ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-[#FFF7F2] border border-[#FFD2C0] flex items-start gap-3">
-                <CircleCheck className="w-4 h-4 text-[#FF6B35] shrink-0 mt-0.5" />
-                <div className="text-xs text-inversion-dark space-y-1">
-                  <p className="font-semibold text-[#FF6B35]">Request Received</p>
-                  <p className="text-[#555550]">{shownMessage}</p>
+              <div className="p-4 rounded-field bg-accent-subtle border border-accent-border flex items-start gap-3">
+                <CircleCheck className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <div className="text-xs text-fg space-y-1">
+                  <p className="font-semibold text-accent">Request Received</p>
+                  <p className="text-fg-secondary">{shownMessage}</p>
                 </div>
               </div>
 
-              <p className="text-label text-[#555550]">
+              <p className="text-label text-fg-secondary">
                 Check your inbox for a link to choose a new password. It expires in 1 hour.
               </p>
 
               {/* Reset Password Form when token is available */}
               <form className="space-y-3.5 pt-2" onSubmit={handlePerformReset}>
                 <div>
-                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1">
                     Reset Token
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                       <KeyRound className="h-4 w-4" />
                     </div>
                     <input
@@ -185,17 +185,17 @@ export default function ForgotPasswordPage() {
                       value={tokenInput}
                       onChange={(e) => setTokenInput(e.target.value)}
                       placeholder="Paste recovery token"
-                      className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm font-mono text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm font-mono text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1">
                     New Password
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                       <Lock className="h-4 w-4" />
                     </div>
                     <input
@@ -205,14 +205,14 @@ export default function ForgotPasswordPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Min. 8 characters"
-                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                     />
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-inversion-dark"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-fg-muted hover:text-fg"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -220,11 +220,11 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1">
                     Confirm New Password
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                       <Lock className="h-4 w-4" />
                     </div>
                     <input
@@ -234,14 +234,14 @@ export default function ForgotPasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Confirm new password"
-                      className="block w-full pl-10 pr-10 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35]"
+                      className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
                     />
                     <button
                       type="button"
                       tabIndex={-1}
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#888882] hover:text-inversion-dark"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-fg-muted hover:text-fg"
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -251,7 +251,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="w-full mt-2 inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
+                  className="w-full mt-2 inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
                 >
                   {isResetting ? (
                     <>
@@ -267,11 +267,11 @@ export default function ForgotPasswordPage() {
           ) : (
             <form className="space-y-4" onSubmit={handleRequestReset}>
               <div>
-                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1.5">
                   Account Work Email
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-fg-muted">
                     <Mail className="h-4 w-4" />
                   </div>
                   <input
@@ -280,7 +280,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="sarah.chen@company.com"
-                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-2xl border border-parchment-border bg-white text-xs sm:text-sm text-inversion-dark placeholder-[#A0A09B] focus:outline-none focus:ring-1 focus:ring-[#FF6B35] focus:border-[#FF6B35] transition-colors"
+                    className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                   />
                 </div>
               </div>
@@ -288,7 +288,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm shadow-2xs transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -308,7 +308,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 pt-4 border-t border-parchment-border text-center">
             <Link
               href="/login"
-              className="text-xs font-semibold text-[#FF6B35] hover:underline"
+              className="text-xs font-semibold text-accent hover:underline"
             >
               ← Back to sign in
             </Link>

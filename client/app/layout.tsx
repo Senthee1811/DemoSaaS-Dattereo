@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
+import { THEME_INIT_SCRIPT } from "@/lib/theme-script";
 
 // Self-hosted at build time by next/font (no runtime request to Google, no layout shift).
 // Exposed as CSS variables consumed by the --font-* tokens in globals.css.
@@ -30,9 +32,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`scroll-smooth ${inter.variable} ${sourceSerif.variable} ${jetbrainsMono.variable}`}
+      // The theme script adds the "dark" class before React hydrates
+      suppressHydrationWarning
     >
-      <body className="bg-[#FBFBFA] text-[#18191B] antialiased selection:bg-[#FF6B35] selection:text-white min-h-screen">
-        {children}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="bg-canvas text-fg antialiased selection:bg-accent selection:text-white min-h-screen">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

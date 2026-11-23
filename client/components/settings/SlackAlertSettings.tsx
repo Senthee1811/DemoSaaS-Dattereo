@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2, Send, Trash2 } from 'lucide-react';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
+import { ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 
 interface SlackConfig {
   slackUrlSaved: boolean;
@@ -26,16 +27,16 @@ const POLL_TIMEOUT_MS = 40_000; // 3 attempts with 5s/10s backoff + 5s timeouts
 function StatusBadge({ config }: { config: SlackConfig | null }) {
   if (!config) return null;
   let label = 'Not configured';
-  let tone = 'text-[#888882]';
+  let tone = 'text-fg-muted';
   if (config.slackConfigured) {
     label = 'Configured';
-    tone = 'text-[#0D9488]';
+    tone = 'text-success';
   } else if (config.lastSlackStatus === 'FAILED') {
     label = 'Last send failed';
-    tone = 'text-[#DC2626]';
+    tone = 'text-critical';
   } else if (config.slackUrlSaved) {
     label = config.lastSlackStatus === 'QUEUED' ? 'Sending…' : 'Saved, not verified. Send a test alert';
-    tone = 'text-[#D97706]';
+    tone = 'text-warning';
   }
   return <span className={`text-label font-semibold ${tone}`}>{label}</span>;
 }
@@ -46,8 +47,10 @@ export function SlackAlertSettings() {
   const [config, setConfig] = useState<SlackConfig | null>(null);
   const [url, setUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'save' | 'remove' | 'test' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'test' | null>(null);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const toast = useToast();
   const [loadError, setLoadError] = useState<string | null>(null);
   const mounted = useRef(true);
 
@@ -93,7 +96,7 @@ export function SlackAlertSettings() {
     }
     setUrlError(null);
     setNotice(null);
-    setBusy(next === null ? 'remove' : 'save');
+    setBusy('save');
     try {
       const res = await authFetch('/api/v1/alerts/config', {
         method: 'PATCH',
@@ -161,25 +164,25 @@ export function SlackAlertSettings() {
   };
 
   return (
-    <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-3">
+    <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
-          <p className="text-xs font-semibold text-[#141413]">Slack Webhook Notifications</p>
-          <p className="text-label text-[#888882]">
+          <p className="text-xs font-semibold text-fg">Slack Webhook Notifications</p>
+          <p className="text-label text-fg-muted">
             Post budget and anomaly alerts for a project to a Slack channel through your own Incoming Webhook.
           </p>
         </div>
         <StatusBadge config={config} />
       </div>
 
-      {loadError && <p className="text-label text-[#DC2626]">{loadError}</p>}
+      {loadError && <p className="text-label text-critical">{loadError}</p>}
 
       {projects.length === 0 && !loadError ? (
-        <p className="text-label text-[#888882]">Create a project first. Slack alerts are configured per project.</p>
+        <p className="text-label text-fg-muted">Create a project first. Slack alerts are configured per project.</p>
       ) : (
         <>
           <div className="flex items-center gap-2 text-xs">
-            <label htmlFor="slack-project" className="text-[#555550]">Project</label>
+            <label htmlFor="slack-project" className="text-fg-secondary">Project</label>
             <select
               id="slack-project"
               value={projectId}
@@ -191,7 +194,7 @@ export function SlackAlertSettings() {
                 setUrl('');
                 setUrlError(null);
               }}
-              className="px-3 py-1 rounded-full border border-[#E4E4E0] bg-white text-xs cursor-pointer"
+              className="px-3 py-1 rounded-full border border-line bg-surface text-xs cursor-pointer"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -212,10 +215,10 @@ export function SlackAlertSettings() {
               spellCheck={false}
               aria-label="Slack Incoming Webhook URL"
               aria-invalid={urlError ? true : undefined}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#E4E4E0] text-xs font-mono text-[#141413] placeholder-[#888882] focus:border-[#FF6B35] focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-field bg-surface border border-line text-xs font-mono text-fg placeholder-fg-muted focus:border-accent focus:outline-none"
             />
-            {urlError && <p className="text-label text-[#DC2626]">{urlError}</p>}
-            <p className="text-label text-[#888882]">The URL is stored encrypted and is never shown again.</p>
+            {urlError && <p className="text-label text-critical">{urlError}</p>}
+            <p className="text-label text-fg-muted">The URL is stored encrypted and is never shown again.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -223,7 +226,7 @@ export function SlackAlertSettings() {
               type="button"
               onClick={() => save(url)}
               disabled={busy !== null || !url.trim() || !projectId}
-              className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-full bg-code hover:bg-[#2E3033] text-white font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy === 'save' ? 'Saving…' : 'Save webhook'}
             </button>
@@ -232,7 +235,7 @@ export function SlackAlertSettings() {
               onClick={sendTest}
               disabled={busy !== null || !config?.slackUrlSaved}
               title={config?.slackUrlSaved ? undefined : 'Save a webhook first'}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0] font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface hover:bg-surface-muted text-fg border border-line font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {busy === 'test' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               <span>{busy === 'test' ? 'Waiting for Slack…' : 'Send test alert'}</span>
@@ -240,26 +243,42 @@ export function SlackAlertSettings() {
             {config?.slackUrlSaved && (
               <button
                 type="button"
-                onClick={() => save(null)}
+                onClick={() => setConfirmRemove(true)}
                 disabled={busy !== null}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[#DC2626] hover:bg-[#FEF2F2] font-semibold text-xs transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-critical hover:bg-critical-bg font-semibold text-xs transition-colors disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>{busy === 'remove' ? 'Removing…' : 'Remove'}</span>
+                <span>Remove</span>
               </button>
             )}
           </div>
 
-          {notice && (
-            <p role="status" className={`text-label ${notice.kind === 'ok' ? 'text-[#0D9488]' : 'text-[#DC2626]'}`}>
-              {notice.text}
-            </p>
-          )}
+          {notice && <InlineAlert variant={notice.kind === 'ok' ? 'success' : 'error'} title={notice.text} />}
           {!notice && config?.lastSlackStatus === 'FAILED' && config.lastSlackError && (
-            <p className="text-label text-[#DC2626]">Last delivery failed: {config.lastSlackError}</p>
+            <InlineAlert variant="error" title="Last delivery failed">{config.lastSlackError}</InlineAlert>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove}
+        tone="danger"
+        title="Remove this project's Slack webhook?"
+        description="Budget and anomaly alerts for this project stop being posted to Slack. They still appear in the in-app Alerts feed."
+        reversible="The stored URL is deleted. To turn Slack alerts back on, paste the webhook URL again."
+        confirmLabel="Remove webhook"
+        onConfirm={async () => {
+          const res = await authFetch('/api/v1/alerts/config', {
+            method: 'PATCH',
+            body: JSON.stringify({ projectId, slackWebhookUrl: null }),
+          });
+          if (!res.ok) throw new Error(await readApiError(res, 'Could not remove the webhook.'));
+          setConfig((await res.json()) as SlackConfig);
+          setNotice(null);
+          toast.success('Slack webhook removed');
+        }}
+        onClose={() => setConfirmRemove(false)}
+      />
     </div>
   );
 }

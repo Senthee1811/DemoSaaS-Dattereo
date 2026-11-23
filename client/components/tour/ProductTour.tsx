@@ -180,23 +180,23 @@ export function ProductTour({
 
   return (
     <aside 
-      className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[420px] bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xl p-5 space-y-4 animate-in slide-in-from-bottom-5 duration-200"
+      className="fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] sm:w-[420px] bg-surface rounded-card border border-line shadow-2xl p-5 space-y-4 animate-in slide-in-from-bottom-5 duration-200"
       aria-label="Product tour guide"
     >
       {/* Top Bar with Badge, Progress & Dismiss */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-caption font-mono font-semibold text-[#FF6B35]">
+          <span className="px-2.5 py-0.5 rounded-full bg-accent-subtle border border-accent-border text-caption font-mono font-semibold text-accent">
             {currentStep.badge}
           </span>
-          <span className="text-label font-mono text-[#888882]">
+          <span className="text-label font-mono text-fg-muted">
             Step {currentStep.step} of {TOUR_STEPS.length}
           </span>
         </div>
 
         <button
           onClick={handleFinish}
-          className="p-1 rounded-full text-[#888882] hover:text-[#141413] hover:bg-[#F3F3F0] transition-colors"
+          className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
           aria-label="Skip tour"
         >
           <X className="w-4 h-4" />
@@ -204,33 +204,33 @@ export function ProductTour({
       </div>
 
       {/* Progress Line */}
-      <div className="w-full h-1 bg-[#F3F3F0] rounded-full overflow-hidden">
+      <div className="w-full h-1 bg-surface-muted rounded-full overflow-hidden">
         <div 
-          className="h-full bg-[#FF6B35] transition-all duration-300 ease-out"
+          className="h-full bg-accent transition-all duration-300 ease-out"
           style={{ width: `${progressPct}%` }}
         />
       </div>
 
       {/* Step Content */}
       <div className="flex items-start gap-3.5">
-        <div className="w-9 h-9 rounded-2xl bg-[#FFF7F2] border border-[#FFD2C0] text-[#FF6B35] flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-field bg-accent-subtle border border-accent-border text-accent flex items-center justify-center shrink-0">
           <Icon className="w-5 h-5" />
         </div>
         <div className="space-y-1">
-          <h3 className="font-serif text-base font-normal text-[#141413] tracking-tight">
+          <h3 className="font-serif text-base font-normal text-fg tracking-tight">
             {currentStep.title}
           </h3>
-          <p className="text-xs text-[#555550] leading-relaxed">
+          <p className="text-xs text-fg-secondary leading-relaxed">
             {currentStep.description}
           </p>
         </div>
       </div>
 
       {/* Footer Navigation Controls */}
-      <div className="flex items-center justify-between pt-2 border-t border-[#E4E4E0]/60">
+      <div className="flex items-center justify-between pt-2 border-t border-line/60">
         <button
           onClick={handleFinish}
-          className="text-xs text-[#888882] hover:text-[#141413] transition-colors font-medium"
+          className="text-xs text-fg-muted hover:text-fg transition-colors font-medium"
         >
           Skip tour
         </button>
@@ -239,7 +239,7 @@ export function ProductTour({
           {currentStepIndex > 0 && (
             <button
               onClick={handlePrev}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E4E4E0] hover:bg-[#FAF8F5] text-xs font-medium text-[#141413] transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-line hover:bg-surface-subtle text-xs font-medium text-fg transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
@@ -248,7 +248,7 @@ export function ProductTour({
 
           <button
             onClick={handleNext}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white text-xs font-semibold transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-semibold transition-colors shadow-2xs"
           >
             <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish & Configure' : 'Next'}</span>
             {currentStepIndex === TOUR_STEPS.length - 1 ? (

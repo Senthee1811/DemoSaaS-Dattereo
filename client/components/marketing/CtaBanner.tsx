@@ -7,7 +7,7 @@ import { ArrowRight, Terminal, CheckCircle2 } from 'lucide-react';
 export function CtaBanner() {
   return (
     <section className="w-full py-16 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto">
-      <div className="rounded-3xl bg-inversion-dark border border-[#2A2A28] text-white p-8 sm:p-14 lg:p-16 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+      <div className="rounded-card bg-inversion-dark border border-[#2A2A28] text-white p-8 sm:p-14 lg:p-16 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#242422] border border-[#333330] text-xs font-mono text-[#D6D6D0]">
@@ -27,15 +27,15 @@ export function CtaBanner() {
 
           {/* Architecture Guarantees Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
-            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+            <div className="p-3.5 rounded-menu bg-[#1B1B1A] border border-[#2A2A28]">
               <span className="text-caption font-mono text-[#888882] block uppercase">Verification Latency</span>
               <span className="text-sm font-mono font-bold text-white tabular-nums">&lt; 5.0ms (Redis Lua)</span>
             </div>
-            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+            <div className="p-3.5 rounded-menu bg-[#1B1B1A] border border-[#2A2A28]">
               <span className="text-caption font-mono text-[#888882] block uppercase">Over-Budget Mode</span>
               <span className="text-sm font-mono font-bold text-[#FF6B35]">Fail-Closed HTTP 429</span>
             </div>
-            <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
+            <div className="p-3.5 rounded-menu bg-[#1B1B1A] border border-[#2A2A28]">
               <span className="text-caption font-mono text-[#888882] block uppercase">Key Storage</span>
               <span className="text-sm font-mono font-bold text-white">AES-256-GCM Envelope</span>
             </div>

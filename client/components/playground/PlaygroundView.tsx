@@ -135,7 +135,7 @@ response = client.chat.completions.create(
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div>
-        <h2 className="font-serif text-2xl font-normal text-inversion-dark tracking-tight">
+        <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
           Gateway Test Bench & Sandbox
         </h2>
         <p className="text-xs text-sg-text-secondary mt-1">
@@ -145,10 +145,10 @@ response = client.chat.completions.create(
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Request Form (7 cols) */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-sg-border shadow-2xs space-y-5">
+        <div className="lg:col-span-7 bg-surface p-6 rounded-card border border-sg-border shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3.5 border-b border-sg-border">
-            <h3 className="font-serif text-lg font-normal text-inversion-dark flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-[#FF6B35]" />
+            <h3 className="font-serif text-lg font-normal text-fg flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-accent" />
               <span>Inference Request Config</span>
             </h3>
 
@@ -158,7 +158,7 @@ response = client.chat.completions.create(
               <select
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="bg-parchment-ivory border border-sg-border rounded-full px-3 py-1 text-xs text-inversion-dark font-medium cursor-pointer"
+                className="bg-parchment-ivory border border-sg-border rounded-full px-3 py-1 text-xs text-fg font-medium cursor-pointer"
               >
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -190,7 +190,7 @@ response = client.chat.completions.create(
               rows={4}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              className="w-full p-3.5 rounded-2xl border border-sg-border font-mono text-xs text-inversion-dark focus:outline-none focus:border-[#FF6B35] leading-relaxed resize-none shadow-2xs"
+              className="w-full p-3.5 rounded-field border border-sg-border font-mono text-xs text-fg focus:outline-none focus:border-accent leading-relaxed resize-none shadow-2xs"
               placeholder="Enter your inference prompt here..."
             />
           </div>
@@ -200,7 +200,7 @@ response = client.chat.completions.create(
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="font-medium text-sg-text-secondary">Temperature</span>
-                <span className="font-mono tabular-nums text-inversion-dark">{temperature}</span>
+                <span className="font-mono tabular-nums text-fg">{temperature}</span>
               </div>
               <input
                 type="range"
@@ -209,14 +209,14 @@ response = client.chat.completions.create(
                 step="0.1"
                 value={temperature}
                 onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="w-full accent-[#FF6B35]"
+                className="w-full accent-accent"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="font-medium text-sg-text-secondary">Max Tokens</span>
-                <span className="font-mono tabular-nums text-inversion-dark">{maxTokens}</span>
+                <span className="font-mono tabular-nums text-fg">{maxTokens}</span>
               </div>
               <input
                 type="range"
@@ -225,7 +225,7 @@ response = client.chat.completions.create(
                 step="256"
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                className="w-full accent-[#FF6B35]"
+                className="w-full accent-accent"
               />
             </div>
           </div>
@@ -235,7 +235,7 @@ response = client.chat.completions.create(
               type="button"
               onClick={handleExecuteRequest}
               disabled={isLoading || !prompt || !selectedProjectId || !selectedModel}
-              className="w-full py-3 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs shadow-2xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               <span>{isLoading ? 'Executing Atomic Reservation...' : 'Send Request via SpendGuard Gateway'}</span>
@@ -246,13 +246,13 @@ response = client.chat.completions.create(
         {/* Right Column: Telemetry & Results (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           {/* Response & Telemetry Panel */}
-          <div className="bg-white p-6 rounded-3xl border border-sg-border shadow-2xs space-y-3.5">
+          <div className="bg-surface p-6 rounded-card border border-sg-border shadow-2xs space-y-3.5">
             <div className="flex items-center justify-between pb-2.5 border-b border-sg-border">
-              <h3 className="font-serif text-lg font-normal text-inversion-dark">Gateway Telemetry</h3>
+              <h3 className="font-serif text-lg font-normal text-fg">Gateway Telemetry</h3>
               {executionResult && (
                 <span className={`px-2.5 py-0.5 rounded-full text-label font-mono font-semibold ${
                   executionResult.status === 200
-                    ? 'bg-sg-success-bg text-[#0D9488] border border-sg-success-border'
+                    ? 'bg-sg-success-bg text-success border border-sg-success-border'
                     : 'bg-sg-critical-bg text-sg-critical border border-sg-critical-border'
                 }`}>
                   HTTP {executionResult.status}
@@ -263,16 +263,16 @@ response = client.chat.completions.create(
             {executionResult ? (
               <div className="space-y-3 text-xs">
                 {/* Cost & Latency Metrics */}
-                <div className="grid grid-cols-2 gap-2.5 bg-parchment-ivory p-3.5 rounded-2xl border border-sg-border font-mono tabular-nums">
+                <div className="grid grid-cols-2 gap-2.5 bg-parchment-ivory p-3.5 rounded-field border border-sg-border font-mono tabular-nums">
                   <div>
                     <span className="text-caption text-sg-text-secondary uppercase block">Incurred Cost</span>
-                    <span className="text-sm font-bold text-[#0D9488]">
+                    <span className="text-sm font-bold text-success">
                       {executionResult.headers?.['x-spendguard-cost'] ? `$${executionResult.headers['x-spendguard-cost']}` : '$0.00000'}
                     </span>
                   </div>
                   <div>
                     <span className="text-caption text-sg-text-secondary uppercase block">Proxy Latency</span>
-                    <span className="text-sm font-bold text-inversion-dark">
+                    <span className="text-sm font-bold text-fg">
                       {executionResult.headers?.['x-spendguard-latency'] || '0ms'}
                     </span>
                   </div>
@@ -283,7 +283,7 @@ response = client.chat.completions.create(
                   <span className="text-label font-mono font-medium text-sg-text-secondary uppercase block mb-1.5">
                     Upstream Model Output
                   </span>
-                  <div className="p-3.5 bg-parchment-ivory border border-sg-border rounded-2xl font-mono text-xs text-inversion-dark max-h-56 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+                  <div className="p-3.5 bg-parchment-ivory border border-sg-border rounded-field font-mono text-xs text-fg max-h-56 overflow-y-auto leading-relaxed whitespace-pre-wrap">
                     {executionResult.data?.choices?.[0]?.message?.content || 
                      executionResult.data?.error?.message || 
                      JSON.stringify(executionResult.data, null, 2)}
@@ -299,7 +299,7 @@ response = client.chat.completions.create(
           </div>
 
           {/* Quick SDK / cURL Preview */}
-          <div className="bg-white p-5 rounded-3xl border border-sg-border shadow-2xs space-y-3">
+          <div className="bg-surface p-5 rounded-card border border-sg-border shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 p-0.5 rounded-full bg-parchment-ivory border border-sg-border">
                 {(['curl', 'node', 'python'] as const).map((tab) => (
@@ -310,7 +310,7 @@ response = client.chat.completions.create(
                     className={`px-3 py-1 rounded-full text-label font-mono transition-colors ${
                       codeTab === tab
                         ? 'bg-inversion-dark text-white shadow-2xs font-semibold'
-                        : 'text-sg-text-secondary hover:text-inversion-dark'
+                        : 'text-sg-text-secondary hover:text-fg'
                     }`}
                   >
                     {tab.toUpperCase()}
@@ -321,14 +321,14 @@ response = client.chat.completions.create(
               <button
                 type="button"
                 onClick={handleCopySnippet}
-                className="text-label text-sg-text-secondary hover:text-inversion-dark flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-parchment-ivory transition-colors"
+                className="text-label text-sg-text-secondary hover:text-fg flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-parchment-ivory transition-colors"
               >
-                {copied ? <Check className="w-3 h-3 text-[#0D9488]" /> : <Copy className="w-3 h-3" />}
+                {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
 
-            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-2xl font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
+            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-field font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
               <code>{getCodeSnippet()}</code>
             </pre>
           </div>

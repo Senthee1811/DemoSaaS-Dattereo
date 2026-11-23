@@ -79,10 +79,10 @@ export function TeamView() {
   return (
     <div className="space-y-6 pb-12">
       {inviteNotice && (
-        <div role="status" className="p-3.5 rounded-2xl border border-sg-border bg-white text-xs space-y-1.5">
+        <div role="status" className="p-3.5 rounded-field border border-sg-border bg-surface text-xs space-y-1.5">
           <div className="flex items-start justify-between gap-3">
-            <p className="font-semibold text-inversion-dark">{inviteNotice.email} was added to {orgName}.</p>
-            <button type="button" onClick={() => setInviteNotice(null)} aria-label="Dismiss" className="text-sg-text-secondary hover:text-inversion-dark">
+            <p className="font-semibold text-fg">{inviteNotice.email} was added to {orgName}.</p>
+            <button type="button" onClick={() => setInviteNotice(null)} aria-label="Dismiss" className="text-sg-text-secondary hover:text-fg">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -97,7 +97,7 @@ export function TeamView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-normal text-inversion-dark tracking-tight">
+          <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
             Team & Role-Based Access Control
           </h2>
           <p className="text-xs text-sg-text-secondary mt-1">
@@ -108,7 +108,7 @@ export function TeamView() {
         <button
           type="button"
           onClick={() => setShowInviteModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent hover:bg-accent-hover text-white font-semibold text-xs shadow-2xs transition-colors self-start sm:self-auto"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span>Invite Member</span>
@@ -116,9 +116,9 @@ export function TeamView() {
       </div>
 
       {/* Team Members Table */}
-      <div className="bg-white rounded-3xl border border-sg-border shadow-2xs overflow-hidden">
+      <div className="bg-surface rounded-card border border-sg-border shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-sg-border flex items-center justify-between">
-          <h3 className="font-serif text-lg font-normal text-inversion-dark">
+          <h3 className="font-serif text-lg font-normal text-fg">
             Organization Members ({users.length})
           </h3>
           <span className="text-xs text-sg-text-secondary font-medium flex items-center gap-1.5 bg-parchment-ivory px-3 py-1 rounded-full border border-sg-border">
@@ -148,7 +148,7 @@ export function TeamView() {
                   <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Joined</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-sg-border text-inversion-dark">
+              <tbody className="divide-y divide-sg-border text-fg">
                 {users.map((u) => {
                   const initials = u.name
                     ? u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -158,10 +158,10 @@ export function TeamView() {
                     <tr key={u.id} className="hover:bg-parchment-ivory transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-parchment-ivory border border-sg-border flex items-center justify-center font-bold text-xs text-inversion-dark">
+                          <div className="w-8 h-8 rounded-full bg-parchment-ivory border border-sg-border flex items-center justify-center font-bold text-xs text-fg">
                             {initials}
                           </div>
-                          <span className="font-semibold text-xs text-inversion-dark">{u.name}</span>
+                          <span className="font-semibold text-xs text-fg">{u.name}</span>
                         </div>
                       </td>
 
@@ -170,10 +170,10 @@ export function TeamView() {
                       <td className="py-3.5 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-caption font-semibold ${
                           u.role === 'OWNER'
-                            ? 'bg-sg-success-bg text-[#0D9488] border border-sg-success-border'
+                            ? 'bg-sg-success-bg text-success border border-sg-success-border'
                             : u.role === 'ADMIN'
-                            ? 'bg-[#EFF6FF] text-sg-chart-secondary border border-[#BFDBFE]'
-                            : 'bg-[#F3F3F0] text-sg-text-secondary border border-sg-border'
+                            ? 'bg-info-bg text-sg-chart-secondary border border-info-border'
+                            : 'bg-surface-muted text-sg-text-secondary border border-sg-border'
                         }`}>
                           {u.role}
                         </span>
@@ -195,14 +195,14 @@ export function TeamView() {
 
       {/* Modal: Invite Member */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-sg-border shadow-xl space-y-5">
+        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface rounded-card p-6 max-w-md w-full border border-sg-border shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-sg-border">
-              <h3 className="font-serif text-lg font-normal text-inversion-dark">Invite Organization Member</h3>
+              <h3 className="font-serif text-lg font-normal text-fg">Invite Organization Member</h3>
               <button
                 type="button"
                 onClick={() => setShowInviteModal(false)}
-                className="p-1.5 text-sg-text-muted hover:text-inversion-dark rounded-full"
+                className="p-1.5 text-sg-text-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -210,33 +210,33 @@ export function TeamView() {
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-inversion-dark block mb-1.5">Full Name *</label>
+                <label className="font-semibold text-fg block mb-1.5">Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Alex Rivera"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-sg-border text-xs text-fg focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-inversion-dark block mb-1.5">Email Address *</label>
+                <label className="font-semibold text-fg block mb-1.5">Email Address *</label>
                 <input
                   type="email"
                   placeholder="alex.rivera@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-sg-border text-xs text-fg focus:outline-none focus:border-accent"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-inversion-dark block mb-1.5">Access Role *</label>
+                <label className="font-semibold text-fg block mb-1.5">Access Role *</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as 'ADMIN' | 'MEMBER')}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-sg-border text-xs text-inversion-dark bg-parchment-ivory focus:outline-none focus:border-[#FF6B35]"
+                  className="w-full px-3.5 py-2.5 rounded-field border border-sg-border text-xs text-fg bg-parchment-ivory focus:outline-none focus:border-accent"
                 >
                   <option value="MEMBER">Member — Read-only analytics & self-service tokens</option>
                   <option value="ADMIN">FinOps Admin — Configure project budgets & key vault</option>
@@ -245,7 +245,7 @@ export function TeamView() {
             </div>
 
             {inviteError && (
-              <p role="alert" className="text-xs text-[#B91C1C] bg-sg-critical-bg border border-sg-critical-border rounded-xl p-2.5">
+              <p role="alert" className="text-xs text-critical bg-sg-critical-bg border border-sg-critical-border rounded-menu p-2.5">
                 {inviteError}
               </p>
             )}
@@ -254,7 +254,7 @@ export function TeamView() {
               <button
                 type="button"
                 onClick={() => { setShowInviteModal(false); setInviteError(''); }}
-                className="px-4 py-2 rounded-full text-xs font-semibold text-sg-text-secondary hover:bg-[#F3F3F0] transition-colors"
+                className="px-4 py-2 rounded-full text-xs font-semibold text-sg-text-secondary hover:bg-surface-muted transition-colors"
               >
                 Cancel
               </button>
@@ -262,7 +262,7 @@ export function TeamView() {
                 type="button"
                 onClick={handleInvite}
                 disabled={isSubmitting || !name || !email}
-                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-[#FF6B35] hover:bg-[#E55A25] disabled:opacity-50 transition-colors shadow-2xs"
+                className="px-5 py-2 rounded-full text-xs font-semibold text-white bg-accent hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-2xs"
               >
                 {isSubmitting ? 'Sending Invite...' : 'Send Invitation'}
               </button>

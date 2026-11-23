@@ -28,7 +28,7 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
 
   if (catalog.status === 'loading') {
     return (
-      <div role="status" className="text-xs text-[#5F6368] py-6">
+      <div role="status" className="text-xs text-fg-secondary py-6">
         Loading models…
       </div>
     );
@@ -36,13 +36,13 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
 
   if (catalog.status === 'error') {
     return (
-      <div role="alert" className="rounded-2xl border border-[#F5C6B8] bg-[#FFF7F2] p-4 text-xs text-[#141413]">
+      <div role="alert" className="rounded-field border border-accent-border bg-accent-subtle p-4 text-xs text-fg">
         <p className="font-semibold">Couldn&apos;t load the model list.</p>
-        <p className="text-[#5F6368] mt-1">{catalog.message}</p>
+        <p className="text-fg-secondary mt-1">{catalog.message}</p>
         <button
           type="button"
           onClick={catalog.reload}
-          className="mt-3 px-3 py-1.5 rounded-full bg-[#FF6B35] text-white font-semibold"
+          className="mt-3 px-3 py-1.5 rounded-full bg-accent text-white font-semibold"
         >
           Retry
         </button>
@@ -61,27 +61,27 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
             type="button"
             onClick={() => onSelect(m.model)}
             aria-pressed={selectedModel === m.model}
-            className={`p-3 rounded-2xl text-left transition-colors border ${
+            className={`p-3 rounded-field text-left transition-colors border ${
               selectedModel === m.model
-                ? 'bg-[#FFF7F2] border-[#FFD2C0] shadow-2xs'
-                : 'bg-white border-[#E4E4E0] hover:bg-[#FAF8F5]'
+                ? 'bg-accent-subtle border-accent-border shadow-2xs'
+                : 'bg-surface border-line hover:bg-surface-subtle'
             }`}
           >
-            <div className="text-xs font-semibold text-[#141413] truncate">{m.displayName}</div>
-            <div className="text-caption text-[#5F6368] mt-0.5 inline-flex items-center gap-1.5">
+            <div className="text-xs font-semibold text-fg truncate">{m.displayName}</div>
+            <div className="text-caption text-fg-secondary mt-0.5 inline-flex items-center gap-1.5">
               <ProviderLogo provider={m.provider} size={14} />
               <span>{providerLabel(m.provider)}</span>
             </div>
-            <div className="text-caption font-mono text-[#5F6368] mt-1">
+            <div className="text-caption font-mono text-fg-secondary mt-1">
               ${fmt(m.inputPricePerMillion)} in / ${fmt(m.outputPricePerMillion)} out
             </div>
             {m.providerStatus === 'missing' && (
-              <div className="text-caption font-semibold text-[#B45309] mt-1">Provider no longer lists this model</div>
+              <div className="text-caption font-semibold text-warning mt-1">Provider no longer lists this model</div>
             )}
           </button>
         ))}
       </div>
-      <p className="text-caption text-[#5F6368] mt-2">
+      <p className="text-caption text-fg-secondary mt-2">
         Prices per 1M tokens.{' '}
         {asOf ? `Pricing as of ${asOf}` : 'Pricing date unavailable'} — a maintained table, not a live provider feed.
       </p>

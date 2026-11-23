@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { ProviderId } from '@/lib/providers';
 
 /** One row of GET /api/v1/pricing (the backend's `model_pricing` table). */
 export interface CatalogModel {
   model: string;
-  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
+  provider: ProviderId;
   displayName: string;
   inputPricePerMillion: number;
   outputPricePerMillion: number;

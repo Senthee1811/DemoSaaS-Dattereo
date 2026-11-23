@@ -20,7 +20,8 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useModelCatalog } from '@/lib/model-catalog';
 import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { providerLabel } from '@/lib/providers';
 
 interface AuditLog {
   id: string;

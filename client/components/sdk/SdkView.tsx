@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Cpu,
 } from 'lucide-react';
+import { providerNames } from '@/lib/providers';
 
 interface SdkViewProps {
   projects: Array<{ id: string; name: string }>;
@@ -200,7 +201,7 @@ console.log(response.content);`
             <span>Multi-Provider Fallbacks</span>
           </div>
           <p className="text-xs text-fg-secondary leading-relaxed">
-            Switch between OpenAI, Claude, Gemini, and Groq models by changing the model parameter without changing SDK code.
+            Switch between {providerNames()} models by changing the model parameter without changing SDK code.
           </p>
         </div>
       </div>

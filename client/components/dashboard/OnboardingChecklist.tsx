@@ -15,6 +15,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
 
 interface OnboardingChecklistProps {
   projectsCount: number;
@@ -41,7 +42,7 @@ export function OnboardingChecklist({
   const tasks = [
     {
       id: 'provider',
-      label: 'Connect an AI provider key (OpenAI, Anthropic, Gemini, Groq)',
+      label: `Connect an AI provider key (${providerNames()})`,
       isComplete: hasProviderKeys,
       action: onNavigateToKeys,
       actionLabel: 'Connect Provider',

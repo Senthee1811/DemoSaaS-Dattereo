@@ -19,7 +19,8 @@ import { OnboardingChecklist } from './OnboardingChecklist';
 import type { PieSlice } from './OverviewCharts';
 import type { DashboardAnalytics } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { providerLabel } from '@/lib/providers';
 
 type DateFilter = '24h' | '7d' | '30d' | 'mtd';
 const DATE_FILTERS: Array<{ id: DateFilter; label: string }> = [

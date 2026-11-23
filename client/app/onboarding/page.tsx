@@ -25,13 +25,14 @@ import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-s
 import { ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
-import { PROVIDER_LIST, ProviderBadge, ProviderLogo, providerKeyPlaceholder, providerLabel, type ProviderId } from '@/components/ui/ProviderLogo';
+import { ProviderBadge } from '@/components/ui/ProviderLogo';
+import { ProviderSelect } from '@/components/ui/ProviderSelect';
+import { DEFAULT_PROVIDER_ID, providerKeyPlaceholder, providerLabel, type ProviderId } from '@/lib/providers';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-const PROVIDER_OPTIONS = PROVIDER_LIST;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function OnboardingPage() {
   const accessToken = useLocalStorageValue('spendguard_token');
 
   // Step 2: Provider Connection
-  const [provider, setProvider] = useState<ProviderId>('OPENAI');
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER_ID);
   // Cheapest currently-priced model for the chosen provider, from the live catalog (no bundled list)
   const catalog = useModelCatalog();
   const testModel = catalog.status === 'ready' ? cheapestModelFor(catalog.models, provider) : undefined;
@@ -406,29 +407,15 @@ console.log(response.choices[0].message.content);`;
                 <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1.5">
                   Select Provider
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {PROVIDER_OPTIONS.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setProvider(p.id);
-                        setTestResult(null);
-                      }}
-                      className={`p-3 rounded-field border text-left transition-all ${
-                        provider === p.id
-                          ? 'border-accent bg-accent-subtle text-fg shadow-xs'
-                          : 'border-parchment-border hover:border-line bg-surface text-fg-secondary'
-                      }`}
-                    >
-                      <div className="text-xs font-bold inline-flex items-center gap-1.5">
-                        <ProviderLogo provider={p.id} size={14} />
-                        {p.label}
-                      </div>
-                      <div className="text-caption font-mono text-fg-muted mt-0.5">{p.desc}</div>
-                    </button>
-                  ))}
-                </div>
+                <ProviderSelect
+                  value={provider}
+                  onValueChange={(id) => {
+                    setProvider(id as ProviderId);
+                    setTestResult(null);
+                    setProviderKeyError(null);
+                  }}
+                  aria-label="AI provider"
+                />
               </div>
 
               {/* API Key Input with Connection Test */}

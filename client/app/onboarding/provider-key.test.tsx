@@ -45,6 +45,14 @@ afterEach(() => {
   localStorage.clear();
 });
 
+/** Opens the provider dropdown (keyboard, as jsdom has no pointer layout) and picks an option. */
+async function chooseProvider(label: string) {
+  const trigger = screen.getByRole('combobox', { name: 'AI provider' });
+  trigger.focus();
+  await act(async () => fireEvent.keyDown(trigger, { key: 'Enter' }));
+  await act(async () => fireEvent.click(await screen.findByRole('option', { name: new RegExp(label) })));
+}
+
 async function goToProviderStep() {
   render(<OnboardingPage />);
   await act(async () => fireEvent.click(await screen.findByRole('button', { name: /Next: Connect Provider/i })));
@@ -94,7 +102,7 @@ describe('7.6 onboarding: provider key', () => {
 
   it('(8.6) Groq is offered, and an empty Groq key is blocked exactly like the others', async () => {
     await goToProviderStep();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Groq/ })));
+    await chooseProvider('Groq');
 
     expect(screen.getByLabelText('Groq API key')).toHaveAttribute('placeholder', 'gsk_...');
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Next: Configure Budget/i })));
@@ -105,7 +113,7 @@ describe('7.6 onboarding: provider key', () => {
 
   it('(8.6) a Groq key is stored with provider GROQ; skipping stores none', async () => {
     await goToProviderStep();
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Groq/ })));
+    await chooseProvider('Groq');
     fireEvent.change(screen.getByLabelText('Groq API key'), { target: { value: 'gsk_real' } });
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Next: Configure Budget/i })));
     await act(async () => fireEvent.click(await screen.findByRole('button', { name: /Generate Gateway Token/i })));

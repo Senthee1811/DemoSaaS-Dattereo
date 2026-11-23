@@ -17,6 +17,7 @@ import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
 import { useErrorDialog, useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
 
 interface SubscriptionData {
   orgId: string;
@@ -90,7 +91,7 @@ export function BillingView() {
         'Up to 3 production projects',
         '50,000 requests / month included',
         'Pre-flight Redis budget validation',
-        'OpenAI, Anthropic, Gemini & Groq routing',
+        `${providerNames()} routing`,
         'Standard Email alert notifications',
         '7-day immutable audit trail',
       ],

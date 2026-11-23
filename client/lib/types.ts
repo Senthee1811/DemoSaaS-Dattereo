@@ -1,5 +1,6 @@
+import type { ProviderId } from '@/lib/providers';
 export type UserRole = 'OWNER' | 'ADMIN' | 'MEMBER';
-export type Provider = 'OPENAI' | 'GEMINI' | 'CLAUDE';
+export type Provider = ProviderId;
 export type ThresholdType = 'PERCENT_50' | 'PERCENT_80' | 'PERCENT_90' | 'HARD_BLOCK' | 'ANOMALY_DETECTED';
 export type AlertChannel = 'IN_APP' | 'SLACK' | 'EMAIL' | 'WEBHOOK';
 

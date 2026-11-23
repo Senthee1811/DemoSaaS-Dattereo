@@ -1,3 +1,5 @@
+import { providerForModel } from './providers';
+
 /**
  * SpendGuard AI — Developer FinOps Precision Tokens
  * High-signal, accessible contrast color mapping for charts and UI state.
@@ -34,29 +36,15 @@ export const TOKENS = {
   },
 } as const;
 
-const PROVIDER_SHADES = {
-  openai: ['#FF6B35', '#FB923C', '#F97316', '#EA580C'],
-  anthropic: ['#2563EB', '#3B82F6', '#1D4ED8', '#60A5FA'],
-  gemini: ['#0D9488', '#14B8A6', '#059669', '#2DD4BF'],
-  groq: ['#7C3AED', '#8B5CF6', '#6D28D9', '#A78BFA'],
-} as const;
-
 /**
- * Chart colour for a model, keyed by provider family with a stable per-model shade, so it
- * works for any model ID the backend serves instead of a bundled per-model table.
+ * Chart colour for a model: the shades of the provider whose model ids it matches (see
+ * lib/providers.ts), with a stable per-model shade, so it works for any model ID the backend
+ * serves and a new provider needs no change here. Unknown models are grey.
  */
 export function modelChartColor(model: string): string {
   const id = model.toLowerCase();
-  const family = id.startsWith('claude')
-    ? PROVIDER_SHADES.anthropic
-    : id.startsWith('gemini')
-      ? PROVIDER_SHADES.gemini
-      : id.startsWith('gpt') || /^o\d/.test(id)
-        ? PROVIDER_SHADES.openai
-        : /^(llama-|meta-llama\/|openai\/|qwen\/|moonshotai\/|groq\/)/.test(id)
-          ? PROVIDER_SHADES.groq
-          : null;
-  if (!family) return '#71717A';
+  const family = providerForModel(id)?.chartShades;
+  if (!family || family.length === 0) return '#71717A';
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return family[hash % family.length];

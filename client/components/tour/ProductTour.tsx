@@ -22,6 +22,7 @@ import { NavTab } from '@/components/Sidebar';
 import type { SettingsTab } from '@/components/settings/SettingsView';
 import { Spinner } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
 
 interface TourStep {
   step: number;
@@ -57,7 +58,7 @@ const TOUR_STEPS: TourStep[] = [
     step: 3,
     tab: 'keys',
     title: '3. Key Vault & Credentials',
-    description: 'Securely manage upstream provider keys (OpenAI, Anthropic, Gemini, Groq) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.',
+    description: `Securely manage upstream provider keys (${providerNames()}) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.`,
     badge: 'Governance',
     icon: KeyRound,
   },

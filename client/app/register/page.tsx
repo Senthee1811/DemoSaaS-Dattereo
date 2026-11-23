@@ -20,6 +20,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { providerNames } from '@/lib/providers';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -131,7 +132,7 @@ export default function RegisterPage() {
           Create your FinOps organization
         </h2>
         <p className="mt-1.5 text-xs text-fg-secondary">
-          Enforce sub-5ms Redis budget reservations across OpenAI, Anthropic, Gemini, and Groq.
+          Enforce sub-5ms Redis budget reservations across {providerNames()}.
         </p>
       </div>
 

@@ -78,7 +78,7 @@ export function Header({
             value={selectedProjectId}
             onChange={(e) => onSelectProject(e.target.value)}
             aria-label="Scope Project Selection"
-            className="bg-transparent text-fg font-semibold focus:outline-none cursor-pointer pr-1 text-xs"
+            className="bg-transparent text-fg font-semibold focus:outline-none cursor-pointer pr-1 text-xs max-w-[9rem] sm:max-w-[14rem] truncate"
           >
             <option value="" className="bg-surface text-fg">
               All Projects (Organization)

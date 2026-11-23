@@ -222,7 +222,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                 <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
                   Workspace Membership
                 </span>
-                <p className="text-xs font-semibold text-fg truncate">
+                <p className="text-xs font-semibold text-fg truncate" title={user.orgName || 'Workspace'}>
                   {user.orgName || 'Workspace'}
                 </p>
                 <div className="flex items-center gap-1.5 text-caption text-fg-secondary">

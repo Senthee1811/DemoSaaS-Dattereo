@@ -124,9 +124,9 @@ export function TeamView() {
           <h3 className="font-serif text-lg font-normal text-fg">
             Organization Members ({users.length})
           </h3>
-          <span className="text-xs text-sg-text-secondary font-medium flex items-center gap-1.5 bg-parchment-ivory px-3 py-1 rounded-full border border-sg-border">
-            <Building2 className="w-3.5 h-3.5" />
-            {orgName}
+          <span className="text-xs text-sg-text-secondary font-medium flex items-center gap-1.5 bg-parchment-ivory px-3 py-1 rounded-full border border-sg-border max-w-[16rem] min-w-0" title={orgName}>
+            <Building2 className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{orgName}</span>
           </span>
         </div>
 
@@ -174,7 +174,9 @@ export function TeamView() {
                         <Badge tone={u.role === 'OWNER' ? 'success' : u.role === 'ADMIN' ? 'info' : 'neutral'}>{u.role}</Badge>
                       </td>
 
-                      <td className="py-3.5 px-4 text-sg-text-secondary">{orgName}</td>
+                      <td className="py-3.5 px-4 text-sg-text-secondary">
+                        <span className="block max-w-[12rem] truncate" title={orgName}>{orgName}</span>
+                      </td>
 
                       <td className="py-3.5 px-4 text-right text-sg-text-muted text-label">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}

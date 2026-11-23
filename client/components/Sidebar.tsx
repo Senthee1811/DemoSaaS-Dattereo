@@ -146,7 +146,7 @@ export function Sidebar({
         {/* Organization Badge */}
         <div className="px-4 py-2.5 border-b border-line bg-surface-subtle shrink-0">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-fg font-semibold truncate text-label">{orgName}</span>
+            <span className="text-fg font-semibold truncate min-w-0 text-label" title={orgName}>{orgName}</span>
             <Badge tone="success">Active</Badge>
           </div>
         </div>

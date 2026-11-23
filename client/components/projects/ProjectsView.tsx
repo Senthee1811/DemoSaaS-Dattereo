@@ -227,10 +227,13 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   return (
                     <tr key={proj.id} className="hover:bg-surface-subtle transition-colors">
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-xs text-fg">{proj.name}</div>
-                        <div className="text-label font-mono text-fg-muted">id: {proj.id}</div>
+                        {/* Names wrap (they matter); the UUID truncates but copies whole (select-all) */}
+                        <div className="font-semibold text-xs text-fg break-words max-w-xs">{proj.name}</div>
+                        <div className="text-label font-mono text-fg-muted max-w-[14rem] truncate select-all" title={proj.id}>
+                          id: {proj.id}
+                        </div>
                         {proj.description && (
-                          <div className="text-label text-fg-secondary mt-0.5 line-clamp-1">{proj.description}</div>
+                          <div className="text-label text-fg-secondary mt-0.5 line-clamp-1 max-w-xs" title={proj.description}>{proj.description}</div>
                         )}
                       </td>
 

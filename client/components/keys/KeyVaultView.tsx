@@ -279,9 +279,13 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     <td className="py-3.5 px-4">
                       <Badge leading={<ProviderLogo provider={pk.provider} size={12} />}>{providerLabel(pk.provider)}</Badge>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-fg">{pk.keyName}</td>
-                    <td className="py-3.5 px-4 text-fg-secondary">{pk.projectName || pk.projectId}</td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-fg-secondary">{pk.keyPrefix}••••••••</td>
+                    <td className="py-3.5 px-4 font-semibold text-fg">
+                      <span className="block max-w-[14rem] truncate" title={pk.keyName}>{pk.keyName}</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-fg-secondary">
+                      <span className="block max-w-[12rem] truncate" title={pk.projectName || pk.projectId}>{pk.projectName || pk.projectId}</span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-xs text-fg-secondary whitespace-nowrap">{pk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4">
                       <Badge tone="success" icon={ShieldCheck}>Envelope AES-256</Badge>
                     </td>
@@ -361,9 +365,13 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               <tbody className="divide-y divide-line text-fg">
                 {gatewayKeys.map((gk) => (
                   <tr key={gk.id} className="hover:bg-surface-subtle transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-fg">{gk.keyName}</td>
-                    <td className="py-3.5 px-4 text-fg-secondary">{gk.projectName || gk.projectId}</td>
-                    <td className="py-3.5 px-4 font-mono text-accent font-semibold">{gk.keyPrefix}••••••••</td>
+                    <td className="py-3.5 px-4 font-semibold text-fg">
+                      <span className="block max-w-[14rem] truncate" title={gk.keyName}>{gk.keyName}</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-fg-secondary">
+                      <span className="block max-w-[12rem] truncate" title={gk.projectName || gk.projectId}>{gk.projectName || gk.projectId}</span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-accent font-semibold whitespace-nowrap">{gk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4 font-mono tabular-nums text-fg-secondary">{gk.rateLimitRpm} rpm</td>
                     <td className="py-3.5 px-4">
                       <Badge tone="success">Active</Badge>

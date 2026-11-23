@@ -16,7 +16,7 @@ import {
 import { BarChart3, PieChart as PieIcon } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { DailySpendPoint } from '@/lib/types';
-import { DayRequestsPanel } from './DayRequestsPanel';
+import { DayRequestsPanel, ModelRequestsPanel } from './RequestsDrilldownPanel';
 import { useChartTheme } from '@/lib/chart-theme';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { Badge } from '@/components/ui/Badge';
@@ -46,6 +46,8 @@ export function OverviewCharts({
 }: OverviewChartsProps) {
   // The UTC day ("YYYY-MM-DD") whose individual requests are open in the side panel
   const [openDay, setOpenDay] = useState<string | null>(null);
+  // The model whose requests are open from the spend-by-model chart (same panel, different filter)
+  const [openModel, setOpenModel] = useState<string | null>(null);
   const chart = useChartTheme();
 
   // Clicking a point/bar selects its day. activeTooltipIndex is the hovered data index.
@@ -58,6 +60,7 @@ export function OverviewCharts({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
       {openDay && <DayRequestsPanel day={openDay} onClose={() => setOpenDay(null)} />}
+      {openModel && <ModelRequestsPanel model={openModel} onClose={() => setOpenModel(null)} />}
       {/* Daily Spend Velocity Chart (8 cols) */}
       <div className="lg:col-span-8 bg-surface p-6 rounded-card border border-line shadow-2xs">
         <div>
@@ -179,6 +182,8 @@ export function OverviewCharts({
                       outerRadius={70}
                       paddingAngle={3}
                       dataKey="value"
+                      onClick={(slice: { name?: string }) => slice?.name && setOpenModel(slice.name)}
+                      style={{ cursor: 'pointer' }}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -204,7 +209,13 @@ export function OverviewCharts({
                 {pieData.map((m) => {
                   const pct = totalSpend > 0 ? ((m.value / totalSpend) * 100).toFixed(1) : '0.0';
                   return (
-                    <div key={m.name} className="flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      key={m.name}
+                      onClick={() => setOpenModel(m.name)}
+                      aria-label={`Show requests for ${m.name}`}
+                      className="w-full flex items-center justify-between text-xs rounded-control px-1.5 py-1 -mx-1.5 hover:bg-surface-muted text-left"
+                    >
                       <div className="flex items-center gap-2 truncate">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
                         {m.provider && <ProviderLogo provider={m.provider} size={12} className="text-fg-secondary" />}
@@ -214,7 +225,7 @@ export function OverviewCharts({
                         <span className="text-fg-secondary">${m.value.toFixed(4)}</span>
                         <span className="text-label font-semibold text-fg">({pct}%)</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

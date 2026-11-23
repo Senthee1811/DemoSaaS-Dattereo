@@ -48,6 +48,11 @@ export function ScopeProvider({
   return <ScopeContext.Provider value={value}>{children}</ScopeContext.Provider>;
 }
 
+/** The scope id when there is one, '' otherwise (also outside a ScopeProvider, for reusable pieces). */
+export function useScopeId(): string {
+  return useContext(ScopeContext)?.scopeId ?? '';
+}
+
 export function useScope(): ScopeValue {
   const ctx = useContext(ScopeContext);
   if (!ctx) throw new Error('useScope must be used inside <ScopeProvider> (the dashboard provides it)');

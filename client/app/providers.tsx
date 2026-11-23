@@ -1,9 +1,13 @@
 'use client';
 
 import React from 'react';
-import { ToastProvider } from '@/components/ui/feedback';
+import { ErrorDialogProvider, ToastProvider } from '@/components/ui/feedback';
 
 /** Client-side providers shared by every page. */
 export function Providers({ children }: { children: React.ReactNode }) {
-  return <ToastProvider>{children}</ToastProvider>;
+  return (
+    <ToastProvider>
+      <ErrorDialogProvider>{children}</ErrorDialogProvider>
+    </ToastProvider>
+  );
 }

@@ -15,7 +15,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
-import { useEscapeToClose, useToast } from '@/components/ui/feedback';
+import { useErrorDialog, useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 
 interface SubscriptionData {
@@ -26,7 +26,7 @@ interface SubscriptionData {
 }
 
 export function BillingView() {
-  const toast = useToast();
+  const showError = useErrorDialog();
   const [subData, setSubData] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [annual, setAnnual] = useState(false);
@@ -71,10 +71,10 @@ export function BillingView() {
         // External Stripe Checkout page — a full navigation is required
         window.location.assign(data.checkoutUrl);
       } else {
-        toast.error('Checkout could not be started', 'Please try again.');
+        showError({ title: 'Checkout could not be started', message: 'The payment provider did not return a checkout page.', hint: 'Please try again in a moment.' });
       }
     } catch (err: unknown) {
-      toast.error('Checkout failed', errorMessage(err));
+      showError({ title: 'Checkout failed', message: errorMessage(err), hint: 'No payment was taken.' });
     } finally {
       setCheckoutLoading(null);
     }

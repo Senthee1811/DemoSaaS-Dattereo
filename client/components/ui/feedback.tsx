@@ -7,9 +7,20 @@
  *   It stays open while the action runs, shows the real error on failure, and closes only on
  *   success or an explicit cancel. Never use window.alert/confirm, and never replace a needed
  *   confirmation with a toast.
+ * - ErrorDialog (useErrorDialog): failures with a message worth reading.
  * - Spinner: inline and button loading indicator.
+ * Dialogs are shadcn/ui AlertDialog (Radix): focus trap, Escape, ARIA and portal come from Radix.
  */
-import React, { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './alert-dialog';
 import { CircleCheck, CircleX, TriangleAlert, Info, X, Loader2, ShieldAlert } from 'lucide-react';
 
 export type FeedbackVariant = 'success' | 'error' | 'warning' | 'info' | 'confirmation';
@@ -206,11 +217,6 @@ export function ConfirmDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
-  const titleId = useId();
-  const descId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const restoreFocus = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => {
     if (busy) return; // never abandon a request that is still running
@@ -218,41 +224,6 @@ export function ConfirmDialog({
     setTyped('');
     onClose();
   }, [busy, onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    restoreFocus.current = document.activeElement as HTMLElement | null;
-    // Destructive dialogs focus Cancel, so Enter never confirms by accident
-    cancelRef.current?.focus();
-    return () => restoreFocus.current?.focus?.();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        close();
-      } else if (e.key === 'Tab' && panelRef.current) {
-        // Keep focus inside the dialog
-        const nodes = panelRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [href]');
-        if (nodes.length === 0) return;
-        const first = nodes[0];
-        const last = nodes[nodes.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
-  }, [open, close]);
-
-  if (!open) return null;
 
   const confirmEnabled = !busy && (!requireText || typed.trim() === requireText);
 
@@ -281,34 +252,31 @@ export function ConfirmDialog({
   const Icon = tone === 'default' ? Info : TriangleAlert;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-overlay" onClick={close} aria-hidden />
-      <div
-        ref={panelRef}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className="relative w-full max-w-md bg-surface border border-line rounded-dialog shadow-2xl p-6 space-y-4"
+    <AlertDialog open={open} onOpenChange={(next) => !next && close()}>
+      <AlertDialogContent
+        // Radix focuses the first focusable element; Cancel comes first so Enter never confirms by accident
+        onEscapeKeyDown={(e) => busy && e.preventDefault()}
       >
         <div className="flex items-start gap-3">
           <span className={`p-2 rounded-full ${iconTone}`}>
             <Icon className="w-4 h-4" aria-hidden />
           </span>
-          <div className="space-y-1.5 min-w-0">
-            <h2 id={titleId} className="font-serif text-lg text-fg">{title}</h2>
-            <div id={descId} className="text-xs text-fg-secondary leading-relaxed space-y-2">
-              <div>{description}</div>
-              {consequences && consequences.length > 0 && (
-                <ul className="list-disc pl-4 space-y-1">
-                  {consequences.map((c) => (
-                    <li key={c}>{c}</li>
-                  ))}
-                </ul>
-              )}
-              {reversible && <p className="font-semibold text-fg">{reversible}</p>}
-            </div>
-          </div>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div>
+                <div>{description}</div>
+                {consequences && consequences.length > 0 && (
+                  <ul className="list-disc pl-4 space-y-1">
+                    {consequences.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                )}
+                {reversible && <p className="font-semibold text-fg">{reversible}</p>}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
         </div>
 
         {requireText && (
@@ -333,16 +301,9 @@ export function ConfirmDialog({
           </InlineAlert>
         )}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={close}
-            disabled={busy}
-            className="px-4 py-2 rounded-full border border-line bg-surface text-fg text-xs font-semibold hover:bg-surface-muted disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>{cancelLabel}</AlertDialogCancel>
+          {/* A plain button, not AlertDialog.Action: Action would close before the request finished */}
           <button
             type="button"
             onClick={run}
@@ -353,8 +314,55 @@ export function ConfirmDialog({
             {busy && <Spinner />}
             <span>{confirmLabel}</span>
           </button>
-        </div>
-      </div>
-    </div>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
+}
+
+/* ── Error dialog: failures that need more than a one-line toast ─────────── */
+
+interface ErrorDetails {
+  title: string;
+  message: string;
+  /** What the user can do next. */
+  hint?: string;
+}
+
+const ErrorDialogContext = createContext<((details: ErrorDetails) => void) | null>(null);
+
+export function ErrorDialogProvider({ children }: { children: React.ReactNode }) {
+  const [details, setDetails] = useState<ErrorDetails | null>(null);
+  return (
+    <ErrorDialogContext.Provider value={setDetails}>
+      {children}
+      <AlertDialog open={details !== null} onOpenChange={(next) => !next && setDetails(null)}>
+        <AlertDialogContent>
+          <div className="flex items-start gap-3">
+            <span className="p-2 rounded-full text-critical bg-critical-bg">
+              <CircleX className="w-4 h-4" aria-hidden />
+            </span>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{details?.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                <div>
+                  <p className="text-fg break-words">{details?.message}</p>
+                  {details?.hint && <p>{details.hint}</p>}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </ErrorDialogContext.Provider>
+  );
+}
+
+/** Opens the shared error dialog. Outside a provider it falls back to the console. */
+export function useErrorDialog(): (details: ErrorDetails) => void {
+  const ctx = useContext(ErrorDialogContext);
+  return ctx ?? ((d) => console.error(d.title, d.message));
 }

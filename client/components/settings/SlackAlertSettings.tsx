@@ -175,7 +175,7 @@ export function SlackAlertSettings() {
         <StatusBadge config={config} />
       </div>
 
-      {loadError && <p className="text-label text-critical">{loadError}</p>}
+      {loadError && <InlineAlert variant="error" title="Could not load Slack settings">{loadError}</InlineAlert>}
 
       {projects.length === 0 && !loadError ? (
         <p className="text-label text-fg-muted">Create a project first. Slack alerts are configured per project.</p>

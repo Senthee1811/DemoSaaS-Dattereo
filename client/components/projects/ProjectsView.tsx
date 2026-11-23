@@ -15,7 +15,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
-import { useEscapeToClose, ConfirmDialog, Spinner, useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, ConfirmDialog, Spinner, useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 
 export interface ProjectItem {
@@ -40,6 +40,7 @@ interface ProjectsViewProps {
 
 export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const toast = useToast();
+  const showError = useErrorDialog();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   useEscapeToClose(showCreateModal, () => setShowCreateModal(false));
@@ -84,7 +85,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       await setBlocked(project, false);
       toast.success(`Traffic resumed for ${project.name}`);
     } catch (err) {
-      toast.error('Could not lift the freeze', errorMessage(err));
+      showError({ title: `Could not unfreeze ${project.name}`, message: errorMessage(err), hint: 'The project is still frozen. Try again.' });
     } finally {
       setUnfreezingId(null);
     }

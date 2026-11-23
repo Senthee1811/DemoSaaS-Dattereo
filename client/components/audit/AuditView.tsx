@@ -18,7 +18,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useModelCatalog } from '@/lib/model-catalog';
-import { useToast } from '@/components/ui/feedback';
+import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
@@ -52,6 +52,7 @@ interface AuditViewProps {
 
 export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
   const toast = useToast();
+  const showError = useErrorDialog();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProject, setFilterProject] = useState(selectedProjectId || '');
   const [filterModel, setFilterModel] = useState('');
@@ -113,7 +114,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
     try {
       const res = await authFetch(url);
       if (!res.ok) {
-        toast.error('Export failed', await readApiError(res, 'Please try again.'));
+        showError({ title: 'Audit export failed', message: await readApiError(res, 'The server could not produce the export.'), hint: 'Try again, or narrow the export to one project.' });
         return;
       }
       const blob = await res.blob();
@@ -128,7 +129,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
       toast.success('Audit export downloaded', link.download);
     } catch (err) {
       console.error('CSV export failed:', err);
-      toast.error('Export failed', 'Check your connection and try again.');
+      showError({ title: 'Audit export failed', message: 'The server could not be reached.', hint: 'Check your connection and try again.' });
     }
   };
 

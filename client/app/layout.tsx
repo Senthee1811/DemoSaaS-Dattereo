@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], display: "swap", vari
 
 export const metadata: Metadata = {
   title: "SpendGuard AI · by Dattreo — Real-Time AI FinOps & Governance Gateway",
-  description: "Enterprise AI FinOps platform by Dattreo. Sub-5ms atomic budget reservations, multi-provider routing (OpenAI, Claude, Gemini), statistical anomaly detection, and immutable audit ledgers.",
+  description: "Enterprise AI FinOps platform by Dattreo. Sub-5ms atomic budget reservations, multi-provider routing (OpenAI, Claude, Gemini, Groq), statistical anomaly detection, and immutable audit ledgers.",
   keywords: ["AI FinOps", "LLM Cost Management", "SpendGuard", "Dattreo", "OpenAI Proxy", "AI Budget Enforcement", "Token Cost Tracking"],
   authors: [{ name: "Dattreo", url: "https://www.dattreo.com" }],
 };

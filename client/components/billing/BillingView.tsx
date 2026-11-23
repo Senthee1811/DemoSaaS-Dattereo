@@ -90,7 +90,7 @@ export function BillingView() {
         'Up to 3 production projects',
         '50,000 requests / month included',
         'Pre-flight Redis budget validation',
-        'OpenAI, Anthropic & Gemini routing',
+        'OpenAI, Anthropic, Gemini & Groq routing',
         'Standard Email alert notifications',
         '7-day immutable audit trail',
       ],

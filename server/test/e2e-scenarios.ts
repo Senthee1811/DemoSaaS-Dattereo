@@ -356,6 +356,7 @@ async function run() {
 
   // ── Phase 1 hardening ────────────────────────────────────────────────────
   await phase1(A);
+  await groqProvider(A);
 
   // ── 15. Rate limit covers every route alias (run last: it exhausts the IP window) ──
   console.log('\n▶ Gateway IP rate limit');
@@ -464,6 +465,78 @@ async function pollAlert(token: string, projectId: string, id: string, timeoutMs
     await new Promise((res) => setTimeout(res, 1000));
   }
   return last;
+}
+
+/**
+ * Phase 8: Groq as the fourth gateway provider. Needs the backend started with
+ *   GROQ_BASE_URL=<mock>/v1   and   GROQ_API_KEY=gsk_platform_...  (never to be used for tenants)
+ * and a database migrated with 20261123140000_add_groq_provider.
+ */
+async function groqProvider(A: string) {
+  const GROQ_MODEL = 'openai/gpt-oss-120b';
+  const ask = (secret: string, model: string) =>
+    api('POST', '/v1/chat/completions', { token: secret, body: { model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 50 } });
+  const addGroqKey = (projectId: string, plainKey: string) =>
+    api('POST', '/api/v1/keys', { token: A, body: { type: 'PROVIDER', projectId, provider: 'GROQ', keyName: 'Groq Primary Key', plainKey } });
+
+  console.log('\n▶ Phase 8 · Groq: no platform fallback, priced models only');
+  {
+    const proj = await newProject(A, 'Groq No Key', 10);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await ask(key.secret, GROQ_MODEL);
+    const after = await mockStats();
+    check('Groq model with no tenant key → 400 missing_provider_key', r.status === 400 && r.body.error?.code === 'missing_provider_key', r.body);
+    check('missing Groq key → 0 upstream calls', after.calls === before.calls, { before, after });
+    check('the Groq error names Groq, not another provider', String(r.body.error?.message).includes('Groq'), r.body.error);
+    check('platform GROQ_API_KEY is never sent upstream', after.platformKeyCalls === mockAtStart.platformKeyCalls, { mockAtStart, after });
+  }
+  {
+    const proj = await newProject(A, 'Groq Unpriced', 10);
+    await addGroqKey(proj.id, 'gsk_e2e_tenant_key_1234');
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await ask(key.secret, 'llama-3.3-70b-versatile');
+    const after = await mockStats();
+    check('unpriced Groq model → 400 model_not_priced', r.status === 400 && r.body.error?.code === 'model_not_priced', r.body);
+    check('unpriced Groq model → 0 upstream calls', after.calls === before.calls, { before, after });
+  }
+
+  console.log('\n▶ Phase 8 · Groq: request, cost, limits');
+  {
+    const proj = await newProject(A, 'Groq Works', 10);
+    const empty = await addGroqKey(proj.id, '   ');
+    check('empty Groq key → 400 (nothing stored)', empty.status === 400, empty.body);
+    const saved = await addGroqKey(proj.id, 'gsk_e2e_tenant_key_1234');
+    check('Groq key stored (201) and only a masked preview comes back', saved.status === 201 && saved.body.provider === 'GROQ' && !JSON.stringify(saved.body).includes('gsk_e2e_tenant_key_1234'), saved.body);
+    const key = await newGatewayKey(A, proj.id);
+    const before = await mockStats();
+    const r = await ask(key.secret, GROQ_MODEL);
+    const after = await mockStats();
+    check('priced Groq model succeeds through the gateway', r.status === 200 && r.body.provider === 'GROQ' && r.body.usage?.total_tokens === 1600, r.body);
+    check('the request reached the Groq endpoint once', after.calls === before.calls + 1 && after.byModel[GROQ_MODEL] === (before.byModel[GROQ_MODEL] || 0) + 1, { before, after });
+    // $0.15 in / $0.60 out per 1M tokens: 1200 in + 400 out = 0.00018 + 0.00024
+    check('cost uses the Groq rate card', Math.abs(Number(r.headers.get('x-spendguard-cost')) - 0.00042) < 1e-9, r.headers.get('x-spendguard-cost'));
+
+    const listed = await api('GET', `/api/v1/keys?projectId=${proj.id}`, { token: A });
+    check('Key Vault lists the key as GROQ', listed.body.providerKeys?.some((k: any) => k.provider === 'GROQ'), listed.body.providerKeys);
+
+    const noGroq = await newGatewayKey(A, proj.id, { allowedProviders: ['OPENAI'] });
+    const blocked = await ask(noGroq.secret, GROQ_MODEL);
+    check('a key limited to OPENAI cannot call a Groq model (403)', blocked.status === 403, blocked.body);
+
+    const onlyGroq = await newGatewayKey(A, proj.id, { allowedProviders: ['GROQ'] });
+    const allowed = await ask(onlyGroq.secret, GROQ_MODEL);
+    check('a key limited to GROQ can', allowed.status === 200, allowed.body);
+
+    // The per-key token cap is one number per gateway key (not per provider): a Groq request counts against it
+    const tpmKey = await newGatewayKey(A, proj.id, { rateLimitTpm: 100 });
+    const tpm = await api('POST', '/v1/chat/completions', {
+      token: tpmKey.secret,
+      body: { model: GROQ_MODEL, messages: [{ role: 'user', content: 'x'.repeat(6400) }], max_tokens: 50 },
+    });
+    check('per-key TPM applies to Groq requests (429 tpm_exceeded)', tpm.status === 429 && tpm.body.error?.code === 'tpm_exceeded', tpm.body);
+  }
 }
 
 async function newProject(token: string, name: string, budgetMonthly: number, extra: Record<string, unknown> = {}) {

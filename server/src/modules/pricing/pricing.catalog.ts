@@ -1,4 +1,4 @@
-export type ProviderName = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+export type ProviderName = 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
 
 export interface ModelPricingConfig {
   provider: ProviderName;
@@ -30,6 +30,12 @@ export interface ModelPricingConfig {
  *  - gemini-3.8-flash / gemini-3.6-flash: $1.50 in / $7.50 out from 2027-01-01
  *  - claude-haiku-5-5: prices below are for prompts up to 100k tokens ($0.50 / $2.50 above)
  *  - gemini-3.1-pro-preview: prices below are for prompts up to 200k tokens
+ *
+ * Groq (checked 2026-11-23, console.groq.com/docs/model/<id>): only models whose price was
+ * actually shown are listed. llama-3.1-8b-instant and llama-3.3-70b-versatile are served but
+ * their pricing was not published on the model pages, so they stay UNPRICED (the gateway
+ * rejects them with 400 model_not_priced) until someone confirms a rate and adds it through
+ * POST /api/v1/pricing.
  */
 export const PRICING_CATALOG: Record<string, ModelPricingConfig> = {
   // OpenAI
@@ -53,4 +59,8 @@ export const PRICING_CATALOG: Record<string, ModelPricingConfig> = {
   'gemini-3.6-flash': { provider: 'GEMINI', inputPricePerMillion: 0.75, outputPricePerMillion: 3.75, cachedInputPrice: 0.075, displayName: 'Gemini 3.6 Flash' },
   'gemini-3.5-flash-lite': { provider: 'GEMINI', inputPricePerMillion: 0.3, outputPricePerMillion: 2.5, displayName: 'Gemini 3.5 Flash-Lite' },
   'gemini-3.1-flash-lite': { provider: 'GEMINI', inputPricePerMillion: 0.25, outputPricePerMillion: 1.5, displayName: 'Gemini 3.1 Flash-Lite' },
+
+  // Groq
+  'openai/gpt-oss-120b': { provider: 'GROQ', inputPricePerMillion: 0.15, outputPricePerMillion: 0.6, cachedInputPrice: 0.075, displayName: 'GPT-OSS 120B', contextWindow: 131072 },
+  'openai/gpt-oss-20b': { provider: 'GROQ', inputPricePerMillion: 0.075, outputPricePerMillion: 0.3, cachedInputPrice: 0.037, displayName: 'GPT-OSS 20B', contextWindow: 131072 },
 };

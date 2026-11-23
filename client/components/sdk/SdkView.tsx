@@ -200,7 +200,7 @@ console.log(response.content);`
             <span>Multi-Provider Fallbacks</span>
           </div>
           <p className="text-xs text-fg-secondary leading-relaxed">
-            Switch between OpenAI, Claude, and Gemini by changing the model parameter without changing SDK code.
+            Switch between OpenAI, Claude, Gemini, and Groq models by changing the model parameter without changing SDK code.
           </p>
         </div>
       </div>

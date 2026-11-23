@@ -146,7 +146,7 @@ export function HelpCenterModal({
                 <div className="space-y-3 text-xs text-fg-secondary leading-relaxed">
                   <div className="p-3.5 rounded-field bg-surface-subtle border border-line-strong space-y-1">
                     <p className="font-semibold text-fg">1. AES-256-GCM Provider Key Storage</p>
-                    <p>Enter your upstream OpenAI, Anthropic, or Gemini keys in the Key Vault. SpendGuard encrypts them with AES-256-GCM using initialization vectors and authenticated tags. Plaintext keys never touch logs or databases.</p>
+                    <p>Enter your upstream OpenAI, Anthropic, Gemini, or Groq keys in the Key Vault. SpendGuard encrypts them with AES-256-GCM using initialization vectors and authenticated tags. Plaintext keys never touch logs or databases.</p>
                   </div>
                   <div className="p-3.5 rounded-field bg-surface-subtle border border-line-strong space-y-1">
                     <p className="font-semibold text-fg">2. Scoped Virtual Gateway Tokens</p>
@@ -245,7 +245,7 @@ console.log(completion.choices[0].message.content);`}
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h3 className="font-serif text-xl font-normal text-fg">Provider Vault Configuration</h3>
-                  <p className="text-xs text-fg-secondary">Connect and rotate OpenAI, Anthropic, and Gemini credentials.</p>
+                  <p className="text-xs text-fg-secondary">Connect and rotate OpenAI, Anthropic, Gemini, and Groq credentials.</p>
                 </div>
                 <div className="space-y-3 text-xs text-fg-secondary">
                   <p>In the <strong>Key Vault</strong> workspace, you can register multiple provider credentials. Each key is encrypted immediately upon submission.</p>

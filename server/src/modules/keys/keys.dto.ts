@@ -15,7 +15,7 @@ import {
 } from 'class-validator';
 import { LIMITS, Trim } from '@/common/validation';
 
-export const PROVIDER_NAMES = ['OPENAI', 'ANTHROPIC', 'GEMINI'] as const;
+export const PROVIDER_NAMES = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'GROQ'] as const;
 export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
 /**

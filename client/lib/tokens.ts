@@ -38,6 +38,7 @@ const PROVIDER_SHADES = {
   openai: ['#FF6B35', '#FB923C', '#F97316', '#EA580C'],
   anthropic: ['#2563EB', '#3B82F6', '#1D4ED8', '#60A5FA'],
   gemini: ['#0D9488', '#14B8A6', '#059669', '#2DD4BF'],
+  groq: ['#7C3AED', '#8B5CF6', '#6D28D9', '#A78BFA'],
 } as const;
 
 /**
@@ -52,7 +53,9 @@ export function modelChartColor(model: string): string {
       ? PROVIDER_SHADES.gemini
       : id.startsWith('gpt') || /^o\d/.test(id)
         ? PROVIDER_SHADES.openai
-        : null;
+        : /^(llama-|meta-llama\/|openai\/|qwen\/|moonshotai\/|groq\/)/.test(id)
+          ? PROVIDER_SHADES.groq
+          : null;
   if (!family) return '#71717A';
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;

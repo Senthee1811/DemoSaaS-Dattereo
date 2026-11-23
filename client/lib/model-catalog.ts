@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 /** One row of GET /api/v1/pricing (the backend's `model_pricing` table). */
 export interface CatalogModel {
   model: string;
-  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
   displayName: string;
   inputPricePerMillion: number;
   outputPricePerMillion: number;

@@ -41,7 +41,7 @@ export function OnboardingChecklist({
   const tasks = [
     {
       id: 'provider',
-      label: 'Connect an AI provider key (OpenAI, Anthropic, Gemini)',
+      label: 'Connect an AI provider key (OpenAI, Anthropic, Gemini, Groq)',
       isComplete: hasProviderKeys,
       action: onNavigateToKeys,
       actionLabel: 'Connect Provider',

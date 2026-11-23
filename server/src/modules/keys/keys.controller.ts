@@ -44,7 +44,7 @@ export class KeysController {
       throw new BadRequestException('plainKey is required: enter the provider API key (or skip this step and add it later).');
     }
     if (!body.provider) {
-      throw new BadRequestException('provider is required for a PROVIDER key (OPENAI, ANTHROPIC or GEMINI).');
+      throw new BadRequestException('provider is required for a PROVIDER key (OPENAI, ANTHROPIC, GEMINI or GROQ).');
     }
     return this.keysService.storeProviderKey(
       { projectId: body.projectId, provider: body.provider, keyName: body.keyName, plainKey },

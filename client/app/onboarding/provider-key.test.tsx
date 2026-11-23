@@ -92,6 +92,26 @@ describe('7.6 onboarding: provider key', () => {
     expect(provider?.body).toMatchObject({ provider: 'OPENAI', plainKey: 'sk-real-key', projectId: PROJECT_ID });
   });
 
+  it('(8.6) Groq is offered, and an empty Groq key is blocked exactly like the others', async () => {
+    await goToProviderStep();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Groq/ })));
+
+    expect(screen.getByLabelText('Groq API key')).toHaveAttribute('placeholder', 'gsk_...');
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Next: Configure Budget/i })));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Enter your Groq API key, or choose "Skip for now"/);
+    expect(posts).toHaveLength(0);
+  });
+
+  it('(8.6) a Groq key is stored with provider GROQ; skipping stores none', async () => {
+    await goToProviderStep();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Groq/ })));
+    fireEvent.change(screen.getByLabelText('Groq API key'), { target: { value: 'gsk_real' } });
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /Next: Configure Budget/i })));
+    await act(async () => fireEvent.click(await screen.findByRole('button', { name: /Generate Gateway Token/i })));
+    expect(posts.find((p) => p.body?.type === 'PROVIDER')?.body).toMatchObject({ provider: 'GROQ', plainKey: 'gsk_real', keyName: 'Groq Primary Key' });
+  });
+
   it('(b) Key Vault shows the missing provider key honestly', async () => {
     render(<KeyVaultView projects={[{ id: PROJECT_ID, name: 'Production AI Assistant' }]} />);
     expect(await screen.findByText('Provider key: not configured')).toBeInTheDocument();

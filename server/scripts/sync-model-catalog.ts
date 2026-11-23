@@ -3,7 +3,7 @@
  *
  * Checks every provider's models-list endpoint against the `model_pricing` table and FLAGS
  * rows the provider no longer lists. It never deletes or deactivates anything.
- * Needs MODEL_CATALOG_OPENAI_API_KEY / _ANTHROPIC_ / _GEMINI_ (read-only keys); providers
+ * Needs MODEL_CATALOG_OPENAI_API_KEY / _ANTHROPIC_ / _GEMINI_ / _GROQ_ (read-only keys); providers
  * without a key are skipped.
  *
  * Exit codes: 0 = clean, 2 = at least one model is flagged missing, 1 = a check failed.

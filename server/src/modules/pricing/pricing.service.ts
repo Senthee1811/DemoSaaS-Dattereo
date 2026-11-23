@@ -135,12 +135,15 @@ export class PricingService implements OnModuleInit {
   /**
    * Resolves AI Provider for a model name
    */
-  resolveProvider(modelName: string): 'OPENAI' | 'ANTHROPIC' | 'GEMINI' {
+  resolveProvider(modelName: string): 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ' {
     const config = this.memoryCache.get(modelName);
     if (config) return config.provider;
 
     if (modelName.startsWith('claude')) return 'ANTHROPIC';
     if (modelName.startsWith('gemini')) return 'GEMINI';
+    // Groq hosts open models under their own IDs ('llama-...', 'openai/gpt-oss-...', 'qwen/...').
+    // Priced ones are resolved from the catalog above; this only covers a model not in it yet.
+    if (/^(llama-|meta-llama\/|openai\/|qwen\/|moonshotai\/|groq\/)/.test(modelName)) return 'GROQ';
     return 'OPENAI';
   }
 
@@ -226,7 +229,7 @@ export class PricingService implements OnModuleInit {
    */
   async upsertModelPrice(dto: {
     model: string;
-    provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+    provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
     inputPricePerMillion: number;
     outputPricePerMillion: number;
     displayName?: string;

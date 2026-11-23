@@ -42,7 +42,7 @@ export class PricingController {
     @Body()
     body: {
       model: string;
-      provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+      provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
       inputPricePerMillion: number;
       outputPricePerMillion: number;
       displayName?: string;

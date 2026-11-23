@@ -16,6 +16,7 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
 import { useEscapeToClose, useToast } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface SubscriptionData {
   orgId: string;
@@ -140,9 +141,7 @@ export function BillingView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-surface rounded-card border border-line shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-caption font-mono font-bold uppercase tracking-wider text-accent bg-accent-subtle border border-accent-border px-2 py-0.5 rounded-full">
-              Subscription
-            </span>
+            <Badge tone="accent" mono className="uppercase tracking-wider">Subscription</Badge>
             <span className="text-xs text-fg-secondary font-medium flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5" />
               {orgName}
@@ -165,9 +164,7 @@ export function BillingView() {
             <div className="text-caption font-mono font-medium text-fg-secondary uppercase tracking-wider">Current Tier</div>
             <div className="text-xs font-semibold text-fg capitalize flex items-center gap-2 mt-0.5">
               <span>{currentTier} Plan</span>
-              <span className="px-2 py-0.2 rounded-full text-caption font-semibold bg-success-bg text-success border border-success-border">
-                {subData?.status || 'Active'}
-              </span>
+              <Badge tone="success">{subData?.status || 'Active'}</Badge>
             </div>
           </div>
         </div>
@@ -195,9 +192,7 @@ export function BillingView() {
           <span className={`text-xs font-medium ${annual ? 'text-fg font-semibold' : 'text-fg-secondary'}`}>
             Annual Billing
           </span>
-          <span className="px-2 py-0.5 rounded-full text-caption font-bold bg-success-bg text-success border border-success-border">
-            Save 20%
-          </span>
+          <Badge tone="success">Save 20%</Badge>
         </div>
       </div>
 
@@ -225,11 +220,9 @@ export function BillingView() {
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-xl font-normal text-fg">{plan.name}</h3>
                     {isCurrent ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-accent-subtle text-accent border border-accent-border">
-                        Active Tier
-                      </span>
+                      <Badge tone="accent">Active Tier</Badge>
                     ) : plan.popular ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-code text-white">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-caption font-semibold leading-4 bg-code text-white">
                         Recommended
                       </span>
                     ) : null}
@@ -318,9 +311,7 @@ export function BillingView() {
                 <div className="text-caption text-fg-muted">Expires 12/28</div>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-caption font-semibold bg-success-bg text-success">
-              Default
-            </span>
+            <Badge tone="success">Default</Badge>
           </div>
 
           <p className="text-label text-fg-secondary">

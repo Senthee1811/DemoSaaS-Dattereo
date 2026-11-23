@@ -23,6 +23,7 @@ import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
 import { SlackAlertSettings } from './SlackAlertSettings';
 import { useEscapeToClose } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -225,9 +226,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                   {user.orgName || 'Workspace'}
                 </p>
                 <div className="flex items-center gap-1.5 text-caption text-fg-secondary">
-                  <span className="px-1.5 py-0.2 rounded-full bg-accent-subtle text-accent font-mono font-semibold border border-accent-border">
-                    {user.role || 'MEMBER'}
-                  </span>
+                  <Badge tone="accent" mono>{user.role || 'MEMBER'}</Badge>
                   <span>{accountStatus?.organization?.memberCount || 1} members</span>
                 </div>
               </div>
@@ -255,9 +254,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                   <h3 className="font-serif text-base font-normal text-fg">
                     Deactivate User Account
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-critical-bg text-critical text-caption font-mono font-semibold">
-                    Irreversible Session Revocation
-                  </span>
+                  <Badge tone="critical" mono>Irreversible Session Revocation</Badge>
                 </div>
                 <p className="text-xs text-fg-secondary leading-relaxed max-w-3xl">
                   Deactivating your account permanently invalidates all active JWT sessions and refresh tokens.
@@ -397,9 +394,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                 <p className="text-xs font-semibold text-fg">AES-256-GCM Envelope Encryption</p>
                 <p className="text-label text-fg-muted">All provider API keys are sealed with master vault rotation support</p>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-success-bg text-success text-caption font-mono font-semibold border border-success-border">
-                ENFORCED
-              </span>
+              <Badge tone="success" mono>ENFORCED</Badge>
             </div>
           </div>
         </div>

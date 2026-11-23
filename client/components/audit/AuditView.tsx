@@ -19,6 +19,8 @@ import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useModelCatalog } from '@/lib/model-catalog';
 import { useToast } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
+import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
 interface AuditLog {
   id: string;
@@ -305,9 +307,9 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-mono text-label px-2.5 py-0.5 rounded-full bg-surface-muted text-fg border border-sg-border">
+                      <Badge mono leading={<ProviderLogo provider={log.provider} size={12} />} title={`${providerLabel(log.provider)} · ${log.model}`}>
                         {log.model}
-                      </span>
+                      </Badge>
                     </td>
 
                     <td className="py-3.5 px-4 font-mono tabular-nums text-right text-sg-text-secondary">
@@ -324,20 +326,11 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
 
                     <td className="py-3.5 px-4 text-center">
                       {log.isBlocked ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-critical-bg text-sg-critical border border-sg-critical-border">
-                          <ShieldAlert className="w-3 h-3" />
-                          <span>429 Blocked</span>
-                        </span>
+                        <Badge tone="critical" icon={ShieldAlert}>429 Blocked</Badge>
                       ) : log.isAnomaly ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-warning-bg text-sg-warning border border-sg-warning-border" title={log.anomalyReason}>
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>Spike (Z&gt;3)</span>
-                        </span>
+                        <Badge tone="warning" icon={AlertTriangle} title={log.anomalyReason}>Spike (Z&gt;3)</Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-success-bg text-success border border-sg-success-border">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>200 OK</span>
-                        </span>
+                        <Badge tone="success" icon={ShieldCheck}>200 OK</Badge>
                       )}
                     </td>
                   </tr>

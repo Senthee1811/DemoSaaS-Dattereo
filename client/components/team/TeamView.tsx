@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { useEscapeToClose } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface UserItem {
   id: string;
@@ -170,15 +171,7 @@ export function TeamView() {
                       <td className="py-3.5 px-4 font-mono text-label text-sg-text-secondary">{u.email}</td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-caption font-semibold ${
-                          u.role === 'OWNER'
-                            ? 'bg-sg-success-bg text-success border border-sg-success-border'
-                            : u.role === 'ADMIN'
-                            ? 'bg-info-bg text-sg-chart-secondary border border-info-border'
-                            : 'bg-surface-muted text-sg-text-secondary border border-sg-border'
-                        }`}>
-                          {u.role}
-                        </span>
+                        <Badge tone={u.role === 'OWNER' ? 'success' : u.role === 'ADMIN' ? 'info' : 'neutral'}>{u.role}</Badge>
                       </td>
 
                       <td className="py-3.5 px-4 text-sg-text-secondary">{orgName}</td>

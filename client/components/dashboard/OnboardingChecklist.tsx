@@ -14,6 +14,7 @@ import {
   Network,
   FlaskConical,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 interface OnboardingChecklistProps {
   projectsCount: number;
@@ -101,9 +102,7 @@ export function OnboardingChecklist({
               <h3 className="font-serif text-base font-normal text-fg tracking-tight">
                 FinOps Activation Checklist
               </h3>
-              <span className="text-label font-mono font-semibold px-2 py-0.5 rounded-full bg-surface-subtle border border-line-strong text-fg-secondary">
-                {completedCount} of {tasks.length} completed ({progressPct}%)
-              </span>
+              <Badge mono>{completedCount} of {tasks.length} completed ({progressPct}%)</Badge>
             </div>
             <p className="text-xs text-fg-muted">
               Follow these recommended steps to establish fail-closed financial guardrails.

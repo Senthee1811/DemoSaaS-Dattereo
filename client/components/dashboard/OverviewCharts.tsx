@@ -18,9 +18,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import type { DailySpendPoint } from '@/lib/types';
 import { DayRequestsPanel } from './DayRequestsPanel';
 import { useChartTheme } from '@/lib/chart-theme';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { Badge } from '@/components/ui/Badge';
 
 export interface PieSlice {
   name: string;
+  provider?: string;
   value: number;
   color: string;
 }
@@ -77,9 +80,7 @@ export function OverviewCharts({
                   ))}
                 </select>
               )}
-              <span className="text-label font-mono text-fg-muted bg-surface-subtle px-2.5 py-1 rounded-full border border-line">
-                UTC Daily Buckets
-              </span>
+              <Badge mono>UTC Daily Buckets</Badge>
             </div>
           </div>
 
@@ -206,7 +207,8 @@ export function OverviewCharts({
                     <div key={m.name} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2 truncate">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
-                        <span className="font-mono text-fg truncate">{m.name}</span>
+                        {m.provider && <ProviderLogo provider={m.provider} size={12} className="text-fg-secondary" />}
+                        <span className="font-mono text-fg truncate" title={m.name}>{m.name}</span>
                       </div>
                       <div className="flex items-center gap-2 font-mono tabular-nums text-xs shrink-0">
                         <span className="text-fg-secondary">${m.value.toFixed(4)}</span>

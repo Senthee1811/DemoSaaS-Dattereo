@@ -15,7 +15,7 @@ import OnboardingPage from './page';
 import { KeyVaultView } from '@/components/keys/KeyVaultView';
 
 const PROJECT_ID = '3c66dcd5-9588-479c-ac9d-83c024ad1032';
-const posts: Array<{ url: string; body: any }> = [];
+const posts: Array<{ url: string; body: Record<string, unknown> | undefined }> = [];
 
 function mockApi() {
   vi.stubGlobal(

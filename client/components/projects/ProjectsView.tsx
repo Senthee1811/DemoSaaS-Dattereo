@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { useEscapeToClose, ConfirmDialog, useToast } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 export interface ProjectItem {
   id: string;
@@ -232,20 +233,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
                       <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-critical-bg text-critical border border-critical-border">
-                            <ShieldAlert className="w-3 h-3" />
-                            <span>BLOCKED</span>
-                          </span>
+                          <Badge tone="critical" icon={ShieldAlert}>BLOCKED</Badge>
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-warning-bg text-warning border border-warning-border">
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>WARNING (80%)</span>
-                          </span>
+                          <Badge tone="warning" icon={AlertTriangle}>WARNING (80%)</Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-success-bg text-success border border-success-border">
-                            <ShieldCheck className="w-3 h-3" />
-                            <span>HEALTHY</span>
-                          </span>
+                          <Badge tone="success" icon={ShieldCheck}>HEALTHY</Badge>
                         )}
                       </td>
 
@@ -271,13 +263,11 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`text-label font-medium px-2 py-0.5 rounded-full ${
-                          proj.budgetHardBlockEnabled
-                            ? 'bg-surface-muted text-fg border border-line'
-                            : 'bg-transparent text-fg-muted'
-                        }`}>
-                          {proj.budgetHardBlockEnabled ? 'Fail-Closed (429)' : 'Soft Warning Only'}
-                        </span>
+                        {proj.budgetHardBlockEnabled ? (
+                          <Badge>Fail-Closed (429)</Badge>
+                        ) : (
+                          <span className="text-label text-fg-muted">Soft warning only</span>
+                        )}
                       </td>
 
                       <td className="py-3.5 px-4 text-right">

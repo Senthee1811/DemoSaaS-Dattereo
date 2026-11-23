@@ -12,6 +12,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import { useEscapeToClose } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -112,9 +113,7 @@ export function WelcomeModal({
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
                   <p className="text-xs sm:text-sm font-semibold">Start Interactive Product Tour</p>
-                  <span className="text-caption px-1.5 py-0.2 rounded-full bg-surface text-accent font-mono font-bold uppercase tracking-wider">
-                    Recommended
-                  </span>
+                  <Badge tone="accent" mono className="uppercase tracking-wider">Recommended</Badge>
                 </div>
                 <p className="text-label text-white/80">9-step walkthrough of spend telemetry, budget caps, and virtual gateway</p>
               </div>

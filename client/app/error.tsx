@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, RefreshCw, Home, ShieldCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 export default function ErrorBoundary({
   error,
@@ -26,9 +27,7 @@ export default function ErrorBoundary({
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="font-serif font-medium tracking-tight text-fg text-sm">SpendGuard</span>
-              <span className="text-micro uppercase font-mono font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-surface-muted text-fg-secondary border border-line-strong">
-                AI
-              </span>
+              <Badge mono className="uppercase tracking-wider">AI</Badge>
             </div>
             <span className="text-caption text-fg-muted font-mono mt-0.5">by Dattreo</span>
           </div>

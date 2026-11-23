@@ -19,6 +19,7 @@ import {
   Compass,
   Settings2,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 export type NavTab = 
   | 'overview' 
@@ -124,9 +125,7 @@ export function Sidebar({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="font-serif font-medium tracking-tight text-fg text-sm">SpendGuard</span>
-                <span className="text-micro uppercase font-mono font-bold tracking-wider px-1 py-0.2 rounded-full bg-surface-muted text-fg-secondary border border-line">
-                  AI
-                </span>
+                <Badge mono className="uppercase tracking-wider">AI</Badge>
               </div>
               <span className="text-caption text-fg-muted font-mono mt-0.5">by Dattreo</span>
             </div>
@@ -148,9 +147,7 @@ export function Sidebar({
         <div className="px-4 py-2.5 border-b border-line bg-surface-subtle shrink-0">
           <div className="flex items-center justify-between text-xs">
             <span className="text-fg font-semibold truncate text-label">{orgName}</span>
-            <span className="px-2 py-0.5 rounded-full text-caption font-medium bg-success-bg text-success border border-success-border">
-              Active
-            </span>
+            <Badge tone="success">Active</Badge>
           </div>
         </div>
 

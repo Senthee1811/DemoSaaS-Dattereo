@@ -19,6 +19,7 @@ import {
 import { notifyStorageChange } from '@/lib/client-storage';
 import { TOUR_COMPLETED_KEY } from '@/lib/onboarding';
 import { NavTab } from '@/components/Sidebar';
+import { Badge } from '@/components/ui/Badge';
 
 interface TourStep {
   step: number;
@@ -197,9 +198,7 @@ export function ProductTour({
       {/* Top Bar with Badge, Progress & Dismiss */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-accent-subtle border border-accent-border text-caption font-mono font-semibold text-accent">
-            {currentStep.badge}
-          </span>
+          <Badge tone="accent" mono>{currentStep.badge}</Badge>
           <span className="text-label font-mono text-fg-muted">
             Step {currentStep.step} of {TOUR_STEPS.length}
           </span>

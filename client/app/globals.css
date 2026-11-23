@@ -372,3 +372,8 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Badge icons render at their real size: the global icon zoom pushed them off the text baseline */
+.sg-badge svg {
+  zoom: 1;
+}

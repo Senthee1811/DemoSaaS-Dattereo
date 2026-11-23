@@ -18,6 +18,8 @@ import { CardSkeleton, ChartSkeleton } from '@/components/ui/LoadingSkeleton';
 import { OnboardingChecklist } from './OnboardingChecklist';
 import type { PieSlice } from './OverviewCharts';
 import type { DashboardAnalytics } from '@/lib/types';
+import { Badge } from '@/components/ui/Badge';
+import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
 type DateFilter = '24h' | '7d' | '30d' | 'mtd';
 const DATE_FILTERS: Array<{ id: DateFilter; label: string }> = [
@@ -101,6 +103,7 @@ export function OverviewView({
     .filter((m) => Number(m.spend) > 0)
     .map((m): PieSlice => ({
       name: m.model,
+      provider: m.provider,
       value: Number(Number(m.spend).toFixed(4)),
       color: modelChartColor(m.model)
     }));
@@ -252,9 +255,7 @@ export function OverviewView({
               <span className="font-serif text-3xl font-normal text-fg tabular-nums tracking-tight">
                 {summary.anomalyCount || 0}
               </span>
-              <span className="text-label font-semibold text-warning bg-warning-bg px-2 py-0.5 rounded-full border border-warning-border">
-                Spikes Flagged
-              </span>
+              <Badge tone="warning">Spikes Flagged</Badge>
             </div>
           </div>
           <div className="mt-4 text-label text-fg-secondary">
@@ -317,9 +318,9 @@ export function OverviewView({
                       {req.id.slice(0, 14)}...
                     </td>
                     <td className="py-3 px-3">
-                      <span className="font-mono font-medium text-fg bg-surface-subtle px-2 py-0.5 rounded-full border border-line">
+                      <Badge mono leading={<ProviderLogo provider={req.provider} size={12} />} title={`${providerLabel(req.provider)} · ${req.model}`}>
                         {req.model}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="py-3 px-3 font-mono tabular-nums text-fg">
                       {(req.total_tokens || req.tokens_in + req.tokens_out || 0).toLocaleString()}
@@ -332,17 +333,11 @@ export function OverviewView({
                     </td>
                     <td className="py-3 px-3">
                       {req.is_blocked ? (
-                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-critical-bg text-critical border border-critical-border">
-                          429 BLOCKED
-                        </span>
+                        <Badge tone="critical" mono>429 BLOCKED</Badge>
                       ) : req.is_anomaly ? (
-                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-warning-bg text-warning border border-warning-border">
-                          FLAGGED SPIKE
-                        </span>
+                        <Badge tone="warning" mono>FLAGGED SPIKE</Badge>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-success-bg text-success border border-success-border">
-                          200 OK
-                        </span>
+                        <Badge tone="success" mono>200 OK</Badge>
                       )}
                     </td>
                     <td className="py-3 px-3 text-right text-fg-muted font-mono text-label">

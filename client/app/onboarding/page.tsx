@@ -845,7 +845,7 @@ console.log(response.choices[0].message.content);`;
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-success" />
                     <span className="text-xs font-semibold text-fg font-mono tabular-nums">${budgetMonthly.toLocaleString()}/mo</span>
-                    <span className="text-caption font-mono text-accent bg-accent-subtle px-2 py-0.5 rounded-full border border-accent-border">Hard Block Enforced</span>
+                    <Badge tone="accent" mono>Hard Block Enforced</Badge>
                   </div>
                 </div>
 
@@ -854,7 +854,7 @@ console.log(response.choices[0].message.content);`;
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-success" />
                     <span className="text-xs font-mono text-fg">{gatewayKey.substring(0, 11)}••••••••</span>
-                    <span className="text-caption font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">SHA-256 Hashed</span>
+                    <Badge mono>SHA-256 Hashed</Badge>
                   </div>
                 </div>
               </div>

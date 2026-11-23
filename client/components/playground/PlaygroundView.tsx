@@ -11,6 +11,7 @@ import {
 import { authFetch } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ModelPicker } from './ModelPicker';
+import { Badge } from '@/components/ui/Badge';
 
 interface ExecutionResult {
   status: number;
@@ -250,13 +251,9 @@ response = client.chat.completions.create(
             <div className="flex items-center justify-between pb-2.5 border-b border-sg-border">
               <h3 className="font-serif text-lg font-normal text-fg">Gateway Telemetry</h3>
               {executionResult && (
-                <span className={`px-2.5 py-0.5 rounded-full text-label font-mono font-semibold ${
-                  executionResult.status === 200
-                    ? 'bg-sg-success-bg text-success border border-sg-success-border'
-                    : 'bg-sg-critical-bg text-sg-critical border border-sg-critical-border'
-                }`}>
-                  HTTP {executionResult.status}
-                </span>
+                <Badge tone={executionResult.status === 200 ? 'success' : 'critical'} mono>
+                  {`HTTP ${executionResult.status}`}
+                </Badge>
               )}
             </div>
 

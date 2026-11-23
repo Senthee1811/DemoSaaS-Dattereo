@@ -14,8 +14,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
-import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 import { useEscapeToClose, ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
+import { Badge } from '@/components/ui/Badge';
 
 interface ProviderKey {
   id: string;
@@ -274,18 +275,13 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                 {providerKeys.map((pk) => (
                   <tr key={pk.id} className="hover:bg-surface-subtle transition-colors">
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-surface-muted border border-line text-fg">
-                        <ProviderBadge provider={pk.provider} />
-                      </span>
+                      <Badge leading={<ProviderLogo provider={pk.provider} size={12} />}>{providerLabel(pk.provider)}</Badge>
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-fg">{pk.keyName}</td>
                     <td className="py-3.5 px-4 text-fg-secondary">{pk.projectName || pk.projectId}</td>
                     <td className="py-3.5 px-4 font-mono text-xs text-fg-secondary">{pk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-success-bg border border-success-border text-label text-success font-medium">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Envelope AES-256</span>
-                      </span>
+                      <Badge tone="success" icon={ShieldCheck}>Envelope AES-256</Badge>
                     </td>
                     <td className="py-3.5 px-4 text-fg-muted text-label">
                       {new Date(pk.createdAt).toLocaleDateString()}
@@ -368,9 +364,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     <td className="py-3.5 px-4 font-mono text-accent font-semibold">{gk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4 font-mono tabular-nums text-fg-secondary">{gk.rateLimitRpm} rpm</td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-success-bg text-success border border-success-border">
-                        Active
-                      </span>
+                      <Badge tone="success">Active</Badge>
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button

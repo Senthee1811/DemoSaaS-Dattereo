@@ -6,11 +6,16 @@ export type ProviderId = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
 const PROVIDERS: Record<ProviderId, { label: string; path: string }> = {
   OPENAI: { label: 'OpenAI', path: siOpenai.path },
   ANTHROPIC: { label: 'Anthropic', path: siAnthropic.path },
-  GEMINI: { label: 'Google Gemini', path: siGooglegemini.path },
+  GEMINI: { label: 'Gemini', path: siGooglegemini.path },
 };
 
+/** Accepts the API enum ('GEMINI') or lower case ('gemini'). Display only: the enum never changes. */
+function lookup(provider: string) {
+  return PROVIDERS[(provider || '').toUpperCase() as ProviderId];
+}
+
 export function providerLabel(provider: string): string {
-  return PROVIDERS[provider as ProviderId]?.label ?? provider;
+  return lookup(provider)?.label ?? provider;
 }
 
 /**
@@ -30,7 +35,7 @@ export function ProviderLogo({
   /** Set when the logo stands alone (no adjacent text) so it has an accessible name. */
   title?: string;
 }) {
-  const meta = PROVIDERS[provider as ProviderId];
+  const meta = lookup(provider);
   if (!meta) return null;
   return (
     <svg

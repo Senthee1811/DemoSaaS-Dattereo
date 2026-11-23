@@ -33,6 +33,16 @@ async function getJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+const SCOPE_STORAGE_KEY = 'spendguard_scope';
+
+function readStoredScope(): string {
+  try {
+    return typeof window === 'undefined' ? '' : (window.sessionStorage.getItem(SCOPE_STORAGE_KEY) ?? '');
+  } catch {
+    return '';
+  }
+}
+
 export default function AppDashboard() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
@@ -41,7 +51,18 @@ export default function AppDashboard() {
   const showError = useErrorDialog();
   const [settingsSection, setSettingsSection] = useState<SettingsTab>('account');
   // The ONE raw scope value. Everything else reads it through <ScopeProvider> (lib/scope.tsx).
-  const [rawScopeId, setScopeId] = useState<string>('');
+  // Kept in sessionStorage so it survives leaving the dashboard (e.g. a chart's detailed-usage
+  // page) and coming back. It is validated against the project list, so a stale id is harmless.
+  const [rawScopeId, setRawScopeId] = useState<string>(readStoredScope);
+  const setScopeId = useCallback((id: string) => {
+    setRawScopeId(id);
+    try {
+      if (id) sessionStorage.setItem(SCOPE_STORAGE_KEY, id);
+      else sessionStorage.removeItem(SCOPE_STORAGE_KEY);
+    } catch {
+      /* storage unavailable: scope still works for this visit */
+    }
+  }, []);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const selectedProjectId = projects.some((p) => p.id === rawScopeId) ? rawScopeId : '';
   const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);

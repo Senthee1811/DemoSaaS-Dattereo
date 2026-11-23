@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,7 +17,8 @@ import {
 import { BarChart3, PieChart as PieIcon } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { DailySpendPoint } from '@/lib/types';
-import { DayRequestsPanel, ModelRequestsPanel } from './RequestsDrilldownPanel';
+import { useScopeId } from '@/lib/scope';
+import { usageHref } from '@/lib/usage-route';
 import { useChartTheme } from '@/lib/chart-theme';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { Badge } from '@/components/ui/Badge';
@@ -44,37 +46,38 @@ export function OverviewCharts({
   totalSpend,
   onNavigateToPlayground,
 }: OverviewChartsProps) {
-  // The UTC day ("YYYY-MM-DD") whose individual requests are open in the side panel
-  const [openDay, setOpenDay] = useState<string | null>(null);
-  // The model whose requests are open from the spend-by-model chart (same panel, different filter)
-  const [openModel, setOpenModel] = useState<string | null>(null);
+  const router = useRouter();
+  const scopeId = useScopeId();
   const chart = useChartTheme();
+
+  // Both charts navigate to the same detailed-usage route; only the target differs. The project
+  // in the URL is the global Scope at the moment of the click.
+  const openDay = (day: string) => router.push(usageHref(scopeId, { metric: 'daily', day }));
+  const openModel = (model: string) => router.push(usageHref(scopeId, { metric: 'model', model }));
 
   // Clicking a point/bar selects its day. activeTooltipIndex is the hovered data index.
   const handleChartClick = (state: { activeTooltipIndex?: number | string | null; activeLabel?: number | string }) => {
     const idx = Number(state?.activeTooltipIndex);
     const point = Number.isInteger(idx) ? dailySpend[idx] : dailySpend.find((p) => p.date === state?.activeLabel);
-    if (point) setOpenDay(point.date);
+    if (point) openDay(point.date);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      {openDay && <DayRequestsPanel day={openDay} onClose={() => setOpenDay(null)} />}
-      {openModel && <ModelRequestsPanel model={openModel} onClose={() => setOpenModel(null)} />}
       {/* Daily Spend Velocity Chart (8 cols) */}
       <div className="lg:col-span-8 bg-surface p-6 rounded-card border border-line shadow-2xs">
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-serif text-lg font-normal text-fg tracking-tight">Daily Spend Velocity</h3>
-              <p className="text-xs text-fg-secondary mt-0.5">30-day trailing inference expenditure · click a day to see its requests</p>
+              <p className="text-xs text-fg-secondary mt-0.5">30-day trailing inference expenditure · click a day for its detailed usage</p>
             </div>
             <div className="flex items-center gap-2">
               {dailySpend.length > 0 && (
                 <select
                   aria-label="Inspect the requests of a day"
                   value=""
-                  onChange={(e) => e.target.value && setOpenDay(e.target.value)}
+                  onChange={(e) => e.target.value && openDay(e.target.value)}
                   className="text-label font-mono text-fg-secondary bg-surface px-2.5 py-1 rounded-full border border-line cursor-pointer"
                 >
                   <option value="">Inspect a day…</option>
@@ -182,7 +185,7 @@ export function OverviewCharts({
                       outerRadius={70}
                       paddingAngle={3}
                       dataKey="value"
-                      onClick={(slice: { name?: string }) => slice?.name && setOpenModel(slice.name)}
+                      onClick={(slice: { name?: string }) => slice?.name && openModel(slice.name)}
                       style={{ cursor: 'pointer' }}
                     >
                       {pieData.map((entry, index) => (
@@ -212,7 +215,7 @@ export function OverviewCharts({
                     <button
                       type="button"
                       key={m.name}
-                      onClick={() => setOpenModel(m.name)}
+                      onClick={() => openModel(m.name)}
                       aria-label={`Show requests for ${m.name}`}
                       className="w-full flex items-center justify-between text-xs rounded-control px-1.5 py-1 -mx-1.5 hover:bg-surface-muted text-left"
                     >

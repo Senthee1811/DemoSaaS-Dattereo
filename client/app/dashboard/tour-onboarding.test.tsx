@@ -70,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('7.4 tour completion never re-triggers onboarding', () => {

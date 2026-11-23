@@ -82,12 +82,14 @@ export function InlineAlert({
   return (
     <div
       role={variant === 'error' || variant === 'warning' ? 'alert' : 'status'}
-      className={`flex items-start gap-2.5 p-3 rounded-field border text-xs ${box} ${className}`}
+      className={`flex items-start gap-2.5 p-3.5 rounded-field border text-xs leading-4 ${box} ${className}`}
     >
-      <Icon className={`w-4 h-4 mt-px ${tone}`} aria-hidden />
-      <div className="space-y-0.5 text-fg">
-        {title && <p className="font-semibold">{title}</p>}
-        {children && <div className="text-fg-secondary">{children}</div>}
+      {/* Icon box is exactly one text line tall (h-4 = leading-4), so it sits on the first line
+          whether the message is one line or wraps; shrink-0 stops long text squeezing it. */}
+      <Icon className={`w-4 h-4 shrink-0 ${tone}`} aria-hidden />
+      <div className="min-w-0 flex-1 space-y-1 text-fg">
+        {title && <p className="font-semibold leading-4">{title}</p>}
+        {children && <div className={`text-fg-secondary ${title ? 'leading-relaxed' : 'leading-4'}`}>{children}</div>}
       </div>
     </div>
   );

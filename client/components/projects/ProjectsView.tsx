@@ -1,14 +1,13 @@
 'use client';
 
+import { getUsageColor } from '@/lib/usage-color';
 import React, { useState } from 'react';
 import {
   Plus,
   ShieldAlert,
-  ShieldCheck,
   Settings2,
   Lock,
   Unlock,
-  AlertTriangle,
   X,
   FolderKanban,
 } from 'lucide-react';
@@ -209,9 +208,9 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                 {projects.map((proj) => {
                   const currentSpend = Number(proj.currentMonthlySpend || 0);
                   const budget = Number(proj.budgetMonthly || 1000);
-                  const utilization = budget > 0 ? Math.min(100, Math.round((currentSpend / budget) * 100)) : 0;
-                  const isExceeded = currentSpend >= budget;
-                  const isWarning = utilization >= 80 && !isExceeded;
+                  const rawPercent = budget > 0 ? (currentSpend / budget) * 100 : 0;
+                  const utilization = Math.min(100, Math.round(rawPercent));
+                  const usage = getUsageColor(rawPercent, { blocked: proj.isBlocked });
 
                   return (
                     <tr key={proj.id} className="hover:bg-surface-subtle transition-colors">
@@ -233,10 +232,8 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                           ) : (
                             <Badge tone="critical" icon={Lock} title={proj.blockReason || 'Frozen by an administrator'}>Frozen</Badge>
                           )
-                        ) : isWarning ? (
-                          <Badge tone="warning" icon={AlertTriangle}>WARNING (80%)</Badge>
                         ) : (
-                          <Badge tone="success" icon={ShieldCheck}>HEALTHY</Badge>
+                          <Badge tone={usage.tone} icon={usage.icon}>{usage.label}</Badge>
                         )}
                       </td>
 
@@ -248,15 +245,13 @@ export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewP
                         <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
                           <div
                             style={{ width: `${utilization}%` }}
-                            className={`h-full transition-all duration-300 ${
-                              proj.isBlocked ? 'bg-critical' : isWarning ? 'bg-warning' : 'bg-accent'
-                            }`}
+                            className={`h-full transition-all duration-300 ${usage.bar}`}
                           />
                         </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-mono tabular-nums text-xs font-semibold">
-                        <span className={isExceeded ? 'text-critical' : isWarning ? 'text-warning' : 'text-fg'}>
+                        <span className={usage.text}>
                           {utilization}%
                         </span>
                       </td>

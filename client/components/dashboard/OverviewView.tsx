@@ -1,5 +1,6 @@
 'use client';
 
+import { getUsageColor } from '@/lib/usage-color';
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -90,7 +91,9 @@ export function OverviewView({
   const totalSpend = Number(summary.totalSpend || 0);
   // No fallback figure: with no budgets configured, utilisation is 0% of $0, not of an invented $5,000
   const totalBudget = Number(summary.totalBudget || 0);
-  const utilizationPct = totalBudget > 0 ? Math.min(100, Math.round((totalSpend / totalBudget) * 100)) : 0;
+  const rawUtilization = totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0;
+  const utilizationPct = Math.min(100, Math.round(rawUtilization));
+  const usage = getUsageColor(rawUtilization);
   
   // Calculate burn rate based on days elapsed in current month
   const now = new Date();
@@ -98,8 +101,6 @@ export function OverviewView({
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const projectedSpend = (totalSpend / dayOfMonth) * daysInMonth;
 
-  const isOverBudget = utilizationPct >= 100;
-  const isWarning = utilizationPct >= 80 && !isOverBudget;
 
   const pieData = (modelBreakdown || [])
     .filter((m) => Number(m.spend) > 0)
@@ -198,13 +199,11 @@ export function OverviewView({
             <div className="w-full h-1.5 bg-surface-muted rounded-full overflow-hidden">
               <div
                 style={{ width: `${utilizationPct}%` }}
-                className={`h-full transition-all duration-300 ${
-                  isOverBudget ? 'bg-critical' : isWarning ? 'bg-warning' : 'bg-accent'
-                }`}
+                className={`h-full transition-all duration-300 ${usage.bar}`}
               />
             </div>
             <div className="flex items-center justify-between mt-1.5 text-label text-fg-secondary font-mono tabular-nums">
-              <span>{utilizationPct}% utilized</span>
+              <span className={usage.text}>{utilizationPct}% utilized</span>
               <span>${Math.max(0, totalBudget - totalSpend).toFixed(2)} remaining</span>
             </div>
           </div>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, ArrowRight, Lock, Mail, TriangleAlert, CircleCheck, Loader2, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Lock, Mail, Loader2, Eye, EyeOff } from 'lucide-react';
 import { readApiError, saveSession } from '@/lib/auth-fetch';
 import { useQueryParam } from '@/lib/client-storage';
 import { InlineAlert } from '@/components/ui/feedback';
@@ -94,16 +94,9 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-surface py-8 px-6 rounded-card sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {deactivatedNotice && (
-            <div className="mb-5 p-3.5 rounded-field bg-warning-bg border border-warning-border flex items-start gap-2.5">
-              <CircleCheck className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <p className="text-xs text-warning font-semibold">Account Deactivated</p>
-                <p className="text-label text-warning leading-relaxed">
-                  Your account has been deactivated and all active sessions have been invalidated. 
-                  Workspace data and team members remain unaffected.
-                </p>
-              </div>
-            </div>
+            <InlineAlert variant="warning" title="Account Deactivated" className="mb-5">
+              Your account has been deactivated and all active sessions have been invalidated. Workspace data and team members remain unaffected.
+            </InlineAlert>
           )}
 
           {sessionNotice && !deactivatedNotice && (
@@ -111,12 +104,7 @@ export default function LoginPage() {
           )}
 
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-field bg-critical-bg border border-critical-border flex items-start gap-2.5">
-              <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
-              <p className="text-xs text-critical font-medium leading-relaxed">
-                {errorMessage}
-              </p>
-            </div>
+            <InlineAlert variant="error" className="mb-5">{errorMessage}</InlineAlert>
           )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>

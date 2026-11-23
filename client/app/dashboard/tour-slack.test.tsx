@@ -56,6 +56,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('7.10 tour: Slack + alerts step', () => {

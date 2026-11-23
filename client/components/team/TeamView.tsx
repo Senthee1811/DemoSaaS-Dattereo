@@ -123,14 +123,11 @@ export function TeamView() {
 
       {/* Team Members Table */}
       <div className="bg-surface rounded-card border border-sg-border shadow-2xs overflow-hidden">
-        <div className="p-5 border-b border-sg-border flex items-center justify-between">
-          <h3 className="font-serif text-lg font-normal text-fg">
+        <div className="p-5 border-b border-sg-border flex items-center justify-between gap-3">
+          <h3 className="font-serif text-lg font-normal text-fg min-w-0">
             Organization Members ({users.length})
           </h3>
-          <span className="text-xs text-sg-text-secondary font-medium flex items-center gap-1.5 bg-parchment-ivory px-3 py-1 rounded-full border border-sg-border max-w-[16rem] min-w-0" title={orgName}>
-            <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{orgName}</span>
-          </span>
+          <Badge tone="neutral" icon={Building2} title={orgName} className="max-w-64">{orgName}</Badge>
         </div>
 
         {users.length === 0 ? (
@@ -178,7 +175,7 @@ export function TeamView() {
                       </td>
 
                       <td className="py-3.5 px-4 text-sg-text-secondary">
-                        <span className="block max-w-[12rem] truncate" title={orgName}>{orgName}</span>
+                        <span className="block max-w-48 truncate" title={orgName}>{orgName}</span>
                       </td>
 
                       <td className="py-3.5 px-4 text-right text-sg-text-muted text-label">

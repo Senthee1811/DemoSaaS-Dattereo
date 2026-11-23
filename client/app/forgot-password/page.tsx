@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { InlineAlert } from '@/components/ui/feedback';
 import { useQueryParam } from '@/lib/client-storage';
 import { errorMessage as toMessage } from '@/lib/types';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Mail, TriangleAlert, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Mail, CircleCheck, Loader2, Lock, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { Tip } from '@/components/ui/tooltip';
 
 export default function ForgotPasswordPage() {
@@ -127,12 +128,7 @@ export default function ForgotPasswordPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-surface py-8 px-6 rounded-card sm:px-8 border border-parchment-border shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           {errorMessage && (
-            <div className="mb-5 p-3.5 rounded-field bg-critical-bg border border-critical-border flex items-start gap-2.5">
-              <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
-              <p className="text-xs text-critical font-medium leading-relaxed">
-                {errorMessage}
-              </p>
-            </div>
+            <InlineAlert variant="error" className="mb-5">{errorMessage}</InlineAlert>
           )}
 
           {resetSuccess ? (

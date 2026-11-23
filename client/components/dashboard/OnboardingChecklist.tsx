@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   CircleCheck,
   Circle,
@@ -17,6 +17,31 @@ import {
 import { Badge } from '@/components/ui/Badge';
 import { providerNames } from '@/lib/providers';
 import { Tip } from '@/components/ui/tooltip';
+import { notifyStorageChange, useLocalStorageValue, useStoredUser } from '@/lib/client-storage';
+
+/**
+ * Checklist display state, kept in ONE place: a per-user localStorage record read through the
+ * shared external-store hook. Collapse and "done" are not React state, so the toggle, the
+ * visibility rule and a page reload can never disagree about them.
+ *   collapsed: only the body is hidden; the header always stays, with an expand button.
+ *   done:      every task was complete once. The checklist is then gone for good (no "All set"
+ *              card), even if a count later dips, e.g. while data is still loading.
+ */
+interface ChecklistPrefs {
+  collapsed: boolean;
+  done: boolean;
+}
+
+export const checklistStorageKey = (userId: string) => `spendguard_checklist:${userId}`;
+
+function writePrefs(key: string, prefs: ChecklistPrefs) {
+  try {
+    localStorage.setItem(key, JSON.stringify(prefs));
+  } catch {
+    /* storage unavailable: the checklist still works for this visit */
+  }
+  notifyStorageChange();
+}
 
 interface OnboardingChecklistProps {
   projectsCount: number;
@@ -37,7 +62,18 @@ export function OnboardingChecklist({
   onNavigateToKeys,
   onNavigateToPlayground,
 }: OnboardingChecklistProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const user = useStoredUser();
+  const storageKey = checklistStorageKey(user?.id || user?.orgId || 'anonymous');
+  const rawPrefs = useLocalStorageValue(storageKey);
+  const prefs = useMemo<ChecklistPrefs>(() => {
+    try {
+      const parsed = rawPrefs ? (JSON.parse(rawPrefs) as Partial<ChecklistPrefs>) : {};
+      return { collapsed: parsed.collapsed === true, done: parsed.done === true };
+    } catch {
+      return { collapsed: false, done: false };
+    }
+  }, [rawPrefs]);
+  const isCollapsed = prefs.collapsed;
 
   // Derive task completion states from verified backend data
   const tasks = [
@@ -86,10 +122,17 @@ export function OnboardingChecklist({
   const completedCount = tasks.filter((t) => t.isComplete).length;
   const progressPct = Math.round((completedCount / tasks.length) * 100);
 
-  // If all completed and user chose to hide it, we don't show it
-  if (completedCount === tasks.length && isCollapsed) {
-    return null;
-  }
+  // Every real completion signal above is true: the checklist has done its job and goes away.
+  // This is independent of collapsed, so a collapsed-and-complete checklist is hidden too.
+  const allComplete = completedCount === tasks.length;
+  const shouldHide = allComplete || prefs.done;
+
+  // Remember it, so it stays gone on later visits (and does not flash while data loads)
+  useEffect(() => {
+    if (allComplete && !prefs.done) writePrefs(storageKey, { ...prefs, done: true });
+  }, [allComplete, prefs, storageKey]);
+
+  if (shouldHide) return null;
 
   return (
     <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">
@@ -114,7 +157,9 @@ export function OnboardingChecklist({
 
         <Tip label={isCollapsed ? 'Expand checklist' : 'Collapse checklist'}>
           <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          type="button"
+          aria-expanded={!isCollapsed}
+          onClick={() => writePrefs(storageKey, { ...prefs, collapsed: !isCollapsed })}
           className="p-1.5 rounded-full hover:bg-surface-muted text-fg-muted hover:text-fg transition-colors"
           aria-label={isCollapsed ? 'Expand checklist' : 'Collapse checklist'}
         >

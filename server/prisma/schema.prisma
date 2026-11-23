@@ -274,3 +274,13 @@ model ModelPricing {
   @@map("model_pricing")
 }
 
+
+// Stripe retries any webhook that did not get a 2xx, so each event ID is recorded in the
+// same transaction as its effects. A redelivered event hits the primary key and is skipped.
+model ProcessedWebhookEvent {
+  id          String   @id // Stripe event ID (evt_...)
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_webhook_events")
+}

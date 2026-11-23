@@ -49,7 +49,7 @@ export class BillingController {
     if (!req.rawBody) {
       return res.status(HttpStatus.BAD_REQUEST).json({ received: false, error: 'Missing raw body' });
     }
-    const result = await this.billingService.handleWebhook(req.rawBody.toString('utf8'), signature);
+    const result = await this.billingService.handleWebhook(req.rawBody, signature);
     return res.status(result.received ? HttpStatus.OK : HttpStatus.BAD_REQUEST).json(result);
   }
 

@@ -148,7 +148,7 @@ response = client.chat.completions.create(
         <div className="lg:col-span-7 bg-surface p-6 rounded-card border border-sg-border shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3.5 border-b border-sg-border">
             <h3 className="font-serif text-lg font-normal text-fg flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-accent" />
+              <Terminal className="w-5 h-5 text-accent" />
               <span>Inference Request Config</span>
             </h3>
 

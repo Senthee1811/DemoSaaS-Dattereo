@@ -76,7 +76,7 @@ export function HelpCenterModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 id="help-title" className="font-serif text-lg font-normal text-fg tracking-tight">
+                <h2 id="help-title" className="font-serif text-xl font-normal text-fg tracking-tight">
                   SpendGuard FinOps Knowledge Base
                 </h2>
                 <span className="text-caption font-mono text-fg-muted">v2.0 • Dattreo Studio</span>
@@ -143,7 +143,7 @@ export function HelpCenterModal({
             {activeCategory === 'getting-started' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Getting Started with SpendGuard AI</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Getting Started with SpendGuard AI</h3>
                   <p className="text-xs text-fg-secondary">Four foundational concepts for setting up AI FinOps governance.</p>
                 </div>
 
@@ -171,7 +171,7 @@ export function HelpCenterModal({
             {activeCategory === 'gateway' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">AI Gateway Architecture</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">AI Gateway Architecture</h3>
                   <p className="text-xs text-fg-secondary">High-throughput reverse proxy with zero prompt retention.</p>
                 </div>
                 <div className="p-4 rounded-field bg-code text-zinc-300 font-mono text-xs space-y-2 border border-white/10">
@@ -195,7 +195,7 @@ export function HelpCenterModal({
             {activeCategory === 'python-sdk' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Python SDK Integration</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Python SDK Integration</h3>
                   <p className="text-xs text-fg-secondary">Drop-in compatibility with the official OpenAI Python library.</p>
                 </div>
                 <div className="p-4 rounded-field bg-code text-zinc-300 font-mono text-xs overflow-x-auto border border-white/10">
@@ -222,7 +222,7 @@ print(response.choices[0].message.content)`}
             {activeCategory === 'node-sdk' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Node.js & TypeScript SDK</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Node.js & TypeScript SDK</h3>
                   <p className="text-xs text-fg-secondary">Zero-rewrite drop-in for Node.js, Next.js, and Express apps.</p>
                 </div>
                 <div className="p-4 rounded-field bg-code text-zinc-300 font-mono text-xs overflow-x-auto border border-white/10">
@@ -248,7 +248,7 @@ console.log(completion.choices[0].message.content);`}
             {activeCategory === 'provider-config' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Provider Vault Configuration</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Provider Vault Configuration</h3>
                   <p className="text-xs text-fg-secondary">Connect and rotate {providerNames()} credentials.</p>
                 </div>
                 <div className="space-y-3 text-xs text-fg-secondary">
@@ -261,7 +261,7 @@ console.log(completion.choices[0].message.content);`}
             {activeCategory === 'budget-enforcement' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Budget Enforcement & Fail-Closed Guardrails</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Budget Enforcement & Fail-Closed Guardrails</h3>
                   <p className="text-xs text-fg-secondary">How SpendGuard guarantees zero unmetered financial runaway.</p>
                 </div>
                 <div className="space-y-3 text-xs text-fg-secondary leading-relaxed">
@@ -274,7 +274,7 @@ console.log(completion.choices[0].message.content);`}
             {activeCategory === 'key-security' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">AES-256-GCM Envelope Encryption</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">AES-256-GCM Envelope Encryption</h3>
                   <p className="text-xs text-fg-secondary">Cryptographic verification and zero-leakage security.</p>
                 </div>
                 <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-2 text-xs text-fg-secondary">
@@ -287,7 +287,7 @@ console.log(completion.choices[0].message.content);`}
             {activeCategory === 'billing' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Subscriptions & Stripe Billing</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Subscriptions & Stripe Billing</h3>
                   <p className="text-xs text-fg-secondary">Plan limits, quotas, and subscription synchronization.</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -313,7 +313,7 @@ console.log(completion.choices[0].message.content);`}
             {activeCategory === 'troubleshooting' && (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-serif text-xl font-normal text-fg">Troubleshooting & Error Codes</h3>
+                  <h3 className="font-serif text-lg font-normal text-fg">Troubleshooting & Error Codes</h3>
                   <p className="text-xs text-fg-secondary">Quick diagnostic reference for standard SpendGuard error responses.</p>
                 </div>
                 <div className="space-y-2 text-xs">

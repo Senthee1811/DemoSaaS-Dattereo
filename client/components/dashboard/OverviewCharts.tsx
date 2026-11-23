@@ -130,7 +130,7 @@ export function OverviewCharts({
                     contentStyle={{
                       backgroundColor: chart.tooltipBg,
                       borderColor: chart.tooltipBorder,
-                      borderRadius: '16px',
+                      borderRadius: 'var(--radius-menu)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                       fontSize: '12px',
                       color: chart.tooltipFg
@@ -193,7 +193,7 @@ export function OverviewCharts({
                       contentStyle={{
                         backgroundColor: chart.tooltipBg,
                         borderColor: chart.tooltipBorder,
-                        borderRadius: '16px',
+                        borderRadius: 'var(--radius-menu)',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                         fontSize: '12px',
                         color: chart.tooltipFg

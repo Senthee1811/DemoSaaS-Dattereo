@@ -30,7 +30,7 @@ export function ChartSkeleton({ className = '' }: { className?: string }) {
           <div
             key={i}
             style={{ height: `${h}%` }}
-            className="flex-1 bg-surface-muted rounded-t"
+            className="flex-1 bg-surface-muted rounded-t-control"
           />
         ))}
       </div>

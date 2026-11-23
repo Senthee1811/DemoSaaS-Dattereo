@@ -133,7 +133,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
             <Settings2 className="w-3 h-3 text-accent" />
             <span>Workspace & Identity Governance</span>
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-normal text-fg tracking-tight">
+          <h1 className="font-serif text-2xl font-normal text-fg tracking-tight">
             Settings & Account Management
           </h1>
           <p className="text-xs text-fg-secondary mt-0.5">

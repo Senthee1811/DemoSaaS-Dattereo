@@ -40,10 +40,10 @@ export const AlertDialogContent = React.forwardRef<
       {open && (
         <AlertDialogPrimitive.Portal forceMount>
           <AlertDialogPrimitive.Overlay asChild forceMount>
-            <motion.div className="fixed inset-0 z-[60] bg-overlay" {...m.overlay} />
+            <motion.div className="fixed inset-0 z-60 bg-overlay" {...m.overlay} />
           </AlertDialogPrimitive.Overlay>
           {/* The centring box is separate from the animated panel so Framer's transform never fights a CSS translate */}
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 pointer-events-none">
             <AlertDialogPrimitive.Content asChild forceMount ref={ref} {...props}>
               <motion.div
                 data-motion={m.reduce ? 'reduced' : 'animated'}

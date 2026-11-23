@@ -9,7 +9,6 @@ import {
   Settings2,
   UserRoundX,
   CircleCheck,
-  TriangleAlert,
   CircleX,
   Eye,
   EyeOff,
@@ -22,7 +21,7 @@ import { authFetch, clearSession, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
 import { SlackAlertSettings } from './SlackAlertSettings';
-import { useEscapeToClose } from '@/components/ui/feedback';
+import { useEscapeToClose, InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { SecurityWorkspace } from './security/SecurityWorkspace';
 import { Tip } from '@/components/ui/tooltip';
@@ -258,27 +257,19 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
 
             {/* Ownership Warning Banner if applicable */}
             {!canDeactivate && (
-              <div className="p-4 rounded-field bg-warning-bg border border-warning-border flex items-start gap-3">
-                <TriangleAlert className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-warning">
-                    Ownership Transfer Required Before Deactivation
-                  </p>
-                  <p className="text-xs text-warning leading-relaxed">
-                    {ownershipReason || 'As the sole OWNER of this workspace, you must transfer ownership to another team member before deactivating your account to prevent leaving the workspace unmanaged.'}
-                  </p>
-                  {onNavigateToTeam && (
-                    <button
-                      type="button"
-                      onClick={onNavigateToTeam}
-                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-warning hover:text-amber-950 underline"
-                    >
-                      <Users className="w-3.5 h-3.5" />
-                      <span>Go to Team & Access to assign an Owner</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+              <InlineAlert variant="warning" title="Ownership Transfer Required Before Deactivation">
+                {ownershipReason || 'As the sole OWNER of this workspace, you must transfer ownership to another team member before deactivating your account to prevent leaving the workspace unmanaged.'}
+                {onNavigateToTeam && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToTeam}
+                    className="flex items-center gap-1.5 mt-2 text-xs font-semibold text-warning hover:underline"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Go to Team & Access to assign an Owner</span>
+                  </button>
+                )}
+              </InlineAlert>
             )}
 
             <div className="pt-2 flex items-center justify-between border-t border-critical-border/60">
@@ -449,10 +440,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
 
             {/* Error Message */}
             {deactivateError && (
-              <div className="p-3.5 rounded-field bg-critical-bg border border-critical-border text-xs text-critical flex items-start gap-2">
-                <TriangleAlert className="w-4 h-4 text-critical shrink-0 mt-0.5" />
-                <span>{deactivateError}</span>
-              </div>
+              <InlineAlert variant="error">{deactivateError}</InlineAlert>
             )}
 
             {/* STEP 1: EXPLAIN THE CONSEQUENCES */}

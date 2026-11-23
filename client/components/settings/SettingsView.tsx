@@ -21,6 +21,7 @@ import {
 import { authFetch, clearSession, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
+import { SlackAlertSettings } from './SlackAlertSettings';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -407,19 +408,13 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               Notifications & Alerts
             </h2>
             <p className="text-xs text-[#555550]">
-              Budget warnings, hard blocks and cost spikes currently appear in the in-app Alerts feed only.
-              External delivery channels are not available yet.
+              Budget warnings, hard blocks and cost spikes always appear in the in-app Alerts feed.
+              Add a Slack webhook to also post them to a channel.
             </p>
           </div>
 
           <div className="space-y-3 max-w-xl">
-            <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-[#141413]">Slack Webhook Notifications</p>
-                <p className="text-[11px] text-[#888882]">Post budget alerts to a Slack channel</p>
-              </div>
-              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
-            </div>
+            <SlackAlertSettings />
 
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">

@@ -351,6 +351,9 @@ async function run() {
   });
   check('org OWNER cannot rewrite the shared pricing catalog (403)', pricingWrite.status === 403, pricingWrite.status);
 
+  // ── Slack alert delivery ─────────────────────────────────────────────────
+  await slackAlerts(A);
+
   // ── Phase 1 hardening ────────────────────────────────────────────────────
   await phase1(A);
 
@@ -383,6 +386,84 @@ let mockAtStart = { calls: 0, platformKeyCalls: 0, byModel: {} as Record<string,
 async function mockStats(): Promise<{ calls: number; platformKeyCalls: number; byModel: Record<string, number> }> {
   const res = await fetch(`${MOCK}/__stats`);
   return res.json();
+}
+
+/**
+ * Slack alert delivery against a local HTTP server standing in for Slack.
+ * Needs a non-production backend (it accepts http://127.0.0.1 webhook URLs there).
+ * Retries use 5s/10s backoff, so the failure case takes about 20s.
+ */
+async function slackAlerts(A: string) {
+  console.log('\n▶ Slack alerts: queue-based delivery');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const http = require('http') as typeof import('http');
+  const hits: Record<string, { count: number; body?: any }> = { '/hooks/ok': { count: 0 }, '/hooks/gone': { count: 0 } };
+  const slack = http.createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => (raw += c));
+    req.on('end', () => {
+      const entry = hits[req.url || ''];
+      if (entry) {
+        entry.count++;
+        try { entry.body = JSON.parse(raw); } catch { /* ignore */ }
+      }
+      if (req.url === '/hooks/ok') { res.writeHead(200); res.end('ok'); }
+      else { res.writeHead(404); res.end('no_service'); }
+    });
+  });
+  await new Promise<void>((r) => slack.listen(0, '127.0.0.1', () => r()));
+  const port = (slack.address() as import('net').AddressInfo).port;
+  const hook = (path: string) => `http://127.0.0.1:${port}${path}`;
+
+  try {
+    const project = await newProject(A, 'Slack Project', 50);
+
+    const noHook = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: project.id, thresholdType: 'PERCENT_80' } });
+    check('without a webhook the alert is IN_APP', noHook.body.alert?.status === 'IN_APP' && noHook.body.alert?.channel === 'IN_APP', noHook.body.alert);
+
+    const bad = await api('PATCH', '/api/v1/alerts/config', { token: A, body: { projectId: project.id, slackWebhookUrl: 'https://evil.example.com/x' } });
+    check('a non-Slack URL is rejected (400)', bad.status === 400, bad.status);
+
+    const saved = await api('PATCH', '/api/v1/alerts/config', { token: A, body: { projectId: project.id, slackWebhookUrl: hook('/hooks/ok') } });
+    check('webhook saved; the response never contains the URL', saved.status === 200 && saved.body.slackUrlSaved === true && !JSON.stringify(saved.body).includes('127.0.0.1'), saved.body);
+    check('saved but never delivered is not "Configured" yet', saved.body.slackConfigured === false, saved.body);
+
+    // Success path
+    const t1 = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: project.id, thresholdType: 'HARD_BLOCK' } });
+    check('test alert is QUEUED, never SENT synchronously', t1.status === 201 && t1.body.alert?.status === 'QUEUED', t1.body.alert);
+    let final = await pollAlert(A, project.id, t1.body.alert.id, 20000);
+    check('worker marks it SENT after Slack answers 2xx', final?.status === 'SENT' && !!final.deliveredAt, final);
+    check('Slack received Block Kit blocks (section + context)', hits['/hooks/ok'].body?.blocks?.[0]?.type === 'section' && hits['/hooks/ok'].body?.blocks?.[1]?.type === 'context', hits['/hooks/ok'].body);
+    const cfgOk = await api('GET', `/api/v1/alerts/config?projectId=${project.id}`, { token: A });
+    check('"Configured" once a send has succeeded', cfgOk.body.slackConfigured === true, cfgOk.body);
+
+    // Slack answers 404: three attempts, then FAILED
+    await api('PATCH', '/api/v1/alerts/config', { token: A, body: { projectId: project.id, slackWebhookUrl: hook('/hooks/gone') } });
+    const t2 = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: project.id, thresholdType: 'PERCENT_80' } });
+    final = await pollAlert(A, project.id, t2.body.alert.id, 60000);
+    check('a 404 from Slack ends as FAILED with the reason', final?.status === 'FAILED' && String(final.deliveryError).includes('404'), final);
+    check('Slack was tried 3 times before giving up', hits['/hooks/gone'].count === 3, hits['/hooks/gone'].count);
+    const cfgFail = await api('GET', `/api/v1/alerts/config?projectId=${project.id}`, { token: A });
+    check('after a failed send it is not "Configured"', cfgFail.body.slackConfigured === false && cfgFail.body.lastSlackStatus === 'FAILED', cfgFail.body);
+
+    const bobReg = await register('SlackBob', 'Bob Slack Org');
+    const bobSet = await api('PATCH', '/api/v1/alerts/config', { token: bobReg.body.accessToken, body: { projectId: project.id, slackWebhookUrl: hook('/hooks/ok') } });
+    check("another org cannot set a webhook on this project (404)", bobSet.status === 404, bobSet.status);
+  } finally {
+    slack.close();
+  }
+}
+
+async function pollAlert(token: string, projectId: string, id: string, timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  let last: any;
+  while (Date.now() < deadline) {
+    const r = await api('GET', `/api/v1/alerts?projectId=${projectId}`, { token });
+    last = r.body.alerts?.find((a: any) => a.id === id);
+    if (last && last.status !== 'QUEUED') return last;
+    await new Promise((res) => setTimeout(res, 1000));
+  }
+  return last;
 }
 
 async function newProject(token: string, name: string, budgetMonthly: number, extra: Record<string, unknown> = {}) {
@@ -508,7 +589,7 @@ async function phase1(A: string) {
       gatewayApiKey: { findMany: async () => [] },
       project: { findUnique: async () => null },
     };
-    const budget = new BudgetService(ledgerSaysOnly, redis);
+    const budget = new BudgetService(ledgerSaysOnly, redis, { dispatch: async () => ({ status: "IN_APP" }) } as any);
     const rb = redis.projectMonthBucket(pid, 10);
     await redis.getClient()!.set(rb.spendKey, '0.5');
     await redis.reserveHold(`recon-${RUN}`, 0.01, [rb]);
@@ -571,7 +652,7 @@ async function phase1(A: string) {
     // ── P1-9. Test alerts are honest about delivery ─────────────────────────
     const fake = await api('POST', '/api/v1/alerts', { token: A, body: { projectId: proj.id, thresholdType: 'ANOMALY_DETECTED', channel: 'SLACK' } });
     const fa = fake.body.alert;
-    check('test alert is recorded IN_APP/RECORDED (nothing was delivered), no invented spike stats', fake.status === 201 && fa?.channel === 'IN_APP' && fa?.status === 'RECORDED' && !/3\.4x|7-day/.test(fa?.message || ''), fa);
+    check('test alert is IN_APP without a webhook (nothing was delivered), no invented spike stats', fake.status === 201 && fa?.channel === 'IN_APP' && fa?.status === 'IN_APP' && !/3\.4x|7-day/.test(fa?.message || ''), fa);
     check('unenforced weekly budget is not accepted or returned by the API', created.status === 201 && created.body.project?.budgetWeekly === undefined && listedWeekly && listedWeekly.budgetWeekly === undefined, { created: created.body.project, listed: listedWeekly });
   }
 
@@ -597,7 +678,7 @@ async function phase1(A: string) {
 
     const memberEmail = `dana.${RUN}@e2e.spendguard.test`;
     const inv = await api('POST', '/api/v1/team', { token: A, body: { name: 'Dana', email: memberEmail, role: 'MEMBER' } });
-    await api('POST', '/auth/reset-password', { body: { token: inv.body.invite?.token, newPassword: 'DanasOwnPass#1' } });
+    await api('POST', '/auth/reset-password', { body: { token: await findPasswordToken(memberEmail), newPassword: 'DanasOwnPass#1' } });
     const dana = await api('POST', '/auth/login', { body: { email: memberEmail, password: 'DanasOwnPass#1' } });
     const memberView = await api('GET', `/api/v1/audit?projectId=${optIn.id}`, { token: dana.body.accessToken });
     check('MEMBER never receives prompt/response previews', memberView.status === 200 && memberView.body.total === 1 && !JSON.stringify(memberView.body).includes(secret2), memberView.body.logs?.[0]);

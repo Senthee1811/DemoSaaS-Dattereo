@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService, BudgetBucket } from '@/modules/redis/redis.service';
 import { utcMonthStart } from '@/common/billing-period';
+import { AlertDispatchService } from '@/modules/alerts/alert-dispatch.service';
 
 /** Prefix for blocks applied automatically by the budget engine (vs. manual admin freezes). */
 export const AUTO_BLOCK_PREFIX = 'Budget Cap Exceeded:';
@@ -43,6 +44,7 @@ export class BudgetService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
+    private readonly alertDispatch: AlertDispatchService,
   ) {}
 
   /**
@@ -393,24 +395,11 @@ export class BudgetService {
     thresholdValue: number;
     title: string;
     message: string;
-    channel?: 'EMAIL' | 'SLACK' | 'IN_APP';
   }): Promise<void> {
     try {
-      await this.prisma.budgetAlert.create({
-        data: {
-          projectId: params.projectId,
-          thresholdType: params.thresholdType,
-          thresholdValue: params.thresholdValue,
-          title: params.title,
-          message: params.message,
-          channel: params.channel || 'IN_APP',
-          isRead: false,
-          // No external delivery exists yet: the alert is recorded in-app only
-          status: 'RECORDED',
-        },
-      });
-
-      this.logger.log(`[ALERT RECORDED in-app] ${params.title}`);
+      // IN_APP, or QUEUED for Slack delivery when the project has a webhook.
+      const alert = await this.alertDispatch.dispatch(params);
+      this.logger.log(`[ALERT ${alert.status}] ${params.title}`);
     } catch (err: any) {
       this.logger.error(`Failed to record alert: ${err.message}`);
     }

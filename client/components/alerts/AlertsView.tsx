@@ -24,6 +24,7 @@ interface AlertItem {
   message: string;
   isRead: boolean;
   status: string;
+  deliveryError?: string | null;
   triggeredAt: string;
 }
 
@@ -56,6 +57,14 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
   useEffect(() => {
     fetchAlerts();
   }, [fetchAlerts]);
+
+  // While a Slack delivery is still queued, re-check until it resolves to Sent or Failed.
+  const hasQueued = alerts.some((a) => a.channel === 'SLACK' && a.status === 'QUEUED');
+  useEffect(() => {
+    if (!hasQueued) return;
+    const timer = setInterval(fetchAlerts, 3000);
+    return () => clearInterval(timer);
+  }, [hasQueued, fetchAlerts]);
 
   const handleMarkAsRead = async (id?: string, markAll = false) => {
     try {
@@ -105,7 +114,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
             Alerts & Anomaly Notifications
           </h2>
           <p className="text-xs text-[#5F6368] mt-1">
-            Budget threshold warnings, hard blocks and spend-spike detections, shown in-app.
+            Budget threshold warnings, hard blocks and spend-spike detections, shown in-app and, when a Slack webhook is set in Settings, posted to Slack.
           </p>
         </div>
 
@@ -153,7 +162,9 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
         </div>
         <div>
           <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Delivery</span>
-          <p className="font-serif text-2xl font-normal text-[#141413] mt-1">In-app only</p>
+          <p className="font-serif text-2xl font-normal text-[#141413] mt-1">
+            {alerts.some((a) => a.channel === 'SLACK') ? 'In-app + Slack' : 'In-app'}
+          </p>
         </div>
       </div>
 
@@ -162,12 +173,13 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
         <div className="bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-[#E4E4E0]">
             <h3 className="font-serif text-lg font-normal text-[#141413]">Test Alert</h3>
-            <span className="text-xs text-[#5F6368]">In-app only</span>
+            <span className="text-xs text-[#5F6368]">In-app, plus Slack if configured</span>
           </div>
 
           <p className="text-xs text-[#5F6368]">
-            Alerts are currently shown in this feed only. Slack and email delivery are not configured — coming soon.
-            A test alert creates an in-app entry; nothing is sent outside SpendGuard.
+            A test alert goes through the same path as real ones. It always appears in this feed, and it is also sent to
+            Slack when the project has a webhook (Settings → Notifications). The status next to each alert shows what
+            actually happened. Email delivery of budget alerts is not available yet.
           </p>
 
           {/* Test Dispatch Bar */}
@@ -194,7 +206,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
               className="px-4 py-2 rounded-full bg-[#141413] hover:bg-[#2E3033] text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSendingTest ? 'Creating...' : 'Create In-App Test Alert'}</span>
+              <span>{isSendingTest ? 'Sending...' : 'Send Test Alert'}</span>
             </button>
           </div>
         </div>
@@ -256,6 +268,20 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                         <span>{new Date(alert.triggeredAt).toLocaleString()}</span>
                         <span>•</span>
                         <span>Channel: {alert.channel}</span>
+                        {alert.channel === 'SLACK' && (
+                          <span
+                            title={alert.deliveryError || undefined}
+                            className={
+                              alert.status === 'SENT' ? 'text-[#0D9488]' : alert.status === 'FAILED' ? 'text-[#DC2626]' : 'text-[#D97706]'
+                            }
+                          >
+                            {alert.status === 'SENT'
+                              ? '· Sent to Slack'
+                              : alert.status === 'FAILED'
+                                ? `· Slack delivery failed${alert.deliveryError ? `: ${alert.deliveryError}` : ''}`
+                                : '· Sending to Slack…'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

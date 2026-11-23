@@ -25,9 +25,25 @@ export class AlertsController {
     return this.alertsService.markAsRead(user.orgId, body.id, body.markAllRead);
   }
 
+  @Get('config')
+  @ApiOperation({ summary: 'Slack delivery status for a project (never returns the webhook URL)' })
+  async getConfig(@CurrentUser() user: AuthenticatedUser, @Query('projectId') projectId: string) {
+    return this.alertsService.getConfig(user.orgId, projectId);
+  }
+
+  @Patch('config')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Save or clear the project Slack Incoming Webhook URL (stored encrypted)' })
+  async setConfig(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { projectId: string; slackWebhookUrl: string | null },
+  ) {
+    return this.alertsService.setSlackWebhook(user.orgId, body?.projectId, body?.slackWebhookUrl ?? null);
+  }
+
   @Post()
   @Roles('OWNER', 'ADMIN')
-  @ApiOperation({ summary: 'Trigger simulated alert webhook' })
+  @ApiOperation({ summary: 'Send a test alert through the real delivery path' })
   async triggerTestAlert(@CurrentUser() user: AuthenticatedUser, @Body() body: any) {
     return this.alertsService.triggerTestAlert(user.orgId, body);
   }

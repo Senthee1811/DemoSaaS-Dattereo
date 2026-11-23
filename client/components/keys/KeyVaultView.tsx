@@ -450,6 +450,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   type="text"
                   placeholder="e.g. Production Primary OpenAI"
                   value={keyName}
+                  maxLength={120}
                   onChange={(e) => setKeyName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs text-fg focus:outline-none focus:border-accent"
                 />
@@ -603,6 +604,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     type="text"
                     placeholder="e.g. Backend Production Server"
                     value={keyName}
+                    maxLength={120}
                     onChange={(e) => setKeyName(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-field border border-line text-xs text-fg focus:outline-none focus:border-accent"
                   />
@@ -612,7 +614,8 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   <label className="font-semibold text-fg block mb-1.5">Rate Limit (Requests per minute)</label>
                   <input
                     type="number"
-                    min="60"
+                    min="1"
+                    max="100000"
                     step="60"
                     value={rateLimit}
                     onChange={(e) => setRateLimit(e.target.value)}

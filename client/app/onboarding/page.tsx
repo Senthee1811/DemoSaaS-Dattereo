@@ -364,6 +364,7 @@ console.log(response.choices[0].message.content);`;
                   <input
                     type="text"
                     value={orgName}
+                    maxLength={120}
                     onChange={(e) => setOrgName(e.target.value)}
                     className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border text-xs sm:text-sm text-fg focus:ring-1 focus:ring-accent focus:border-accent focus:outline-none"
                   />
@@ -508,6 +509,7 @@ console.log(response.choices[0].message.content);`;
                 <input
                   type="text"
                   value={projectName}
+                  maxLength={120}
                   onChange={(e) => setProjectName(e.target.value)}
                   className="block w-full px-3.5 py-2.5 rounded-field border border-parchment-border text-xs sm:text-sm text-fg focus:ring-1 focus:ring-accent focus:border-accent focus:outline-none"
                 />
@@ -526,8 +528,9 @@ console.log(response.choices[0].message.content);`;
                   </div>
                   <input
                     type="number"
-                    min={50}
-                    step={50}
+                    min={0.0001}
+                    max={99999999}
+                    step="any"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(Number(e.target.value))}
                     className="block w-full pl-10 pr-3.5 py-2.5 rounded-field border border-parchment-border text-xs sm:text-sm font-mono text-fg focus:ring-1 focus:ring-accent focus:border-accent focus:outline-none"

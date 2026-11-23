@@ -2,24 +2,9 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ConflictExc
 import { PrismaService } from '@/prisma/prisma.service';
 import { utcMonthStart, utcIsoWeekStart } from '@/common/billing-period';
 
-export interface CreateProjectDto {
-  name: string;
-  slug?: string;
-  description?: string;
-  budgetMonthly: number;
-  budgetHardBlockEnabled?: boolean;
-  logRequestContent?: boolean;
-}
+import { CreateProjectDto, UpdateProjectDto } from './organizations.dto';
 
-export interface UpdateProjectDto {
-  id: string;
-  name?: string;
-  budgetMonthly?: number;
-  budgetHardBlockEnabled?: boolean;
-  logRequestContent?: boolean;
-  isBlocked?: boolean;
-  blockReason?: string;
-}
+export { CreateProjectDto, UpdateProjectDto };
 
 /**
  * Weekly budgets are not enforced, so they are neither accepted nor returned.

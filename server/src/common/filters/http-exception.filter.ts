@@ -33,10 +33,22 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const requestId = (request as any).requestId || 'unknown';
 
+    // Express body-parser raises plain errors with an exposable 4xx status
+    // (413 entity.too.large, 400 entity.parse.failed). Surface them as such, not as 500.
+    const parserError = exception as { status?: number; expose?: boolean; type?: string } | null;
+    const bodyParserStatus =
+      !(exception instanceof HttpException) &&
+      parserError?.expose === true &&
+      typeof parserError.status === 'number' &&
+      parserError.status >= 400 &&
+      parserError.status < 500
+        ? parserError.status
+        : null;
+
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : bodyParserStatus ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
     const isHttp = exception instanceof HttpException;
     const rawResponse: any = isHttp ? exception.getResponse() : null;
@@ -45,7 +57,11 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     //   { error: { message: string, type?, code?, ... } }
     // Gateway errors already arrive as { error: {...} } — unwrap instead of double-nesting.
     let errorBody: Record<string, any>;
-    if (!isHttp) {
+    if (bodyParserStatus === 413) {
+      errorBody = { message: 'Request body is too large.', type: 'payload_too_large' };
+    } else if (bodyParserStatus !== null) {
+      errorBody = { message: 'Request body is not valid JSON.', type: 'invalid_request_error' };
+    } else if (!isHttp) {
       // Never leak internal exception text (DB errors, stack details) to clients
       errorBody = { message: 'Internal server error', type: 'internal_error' };
     } else if (rawResponse && typeof rawResponse === 'object' && rawResponse.error && typeof rawResponse.error === 'object') {

@@ -215,6 +215,7 @@ export function TeamView() {
                   type="text"
                   placeholder="e.g. Alex Rivera"
                   value={name}
+                  maxLength={120}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-field border border-sg-border text-xs text-fg focus:outline-none focus:border-accent"
                 />

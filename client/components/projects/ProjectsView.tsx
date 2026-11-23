@@ -340,6 +340,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   type="text"
                   placeholder="e.g. Production Copilot"
                   value={name}
+                  maxLength={120}
                   onChange={(e) => {
                     setName(e.target.value);
                     if (!slug) setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'));
@@ -365,8 +366,9 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   <span className="absolute left-3.5 top-2.5 text-fg-muted font-mono">$</span>
                   <input
                     type="number"
-                    min="10"
-                    step="10"
+                    min="0.0001"
+                    max="99999999"
+                    step="any"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(e.target.value)}
                     className="w-full pl-8 pr-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"
@@ -435,8 +437,9 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   <span className="absolute left-3.5 top-2.5 text-fg-muted font-mono">$</span>
                   <input
                     type="number"
-                    min="10"
-                    step="10"
+                    min="0.0001"
+                    max="99999999"
+                    step="any"
                     value={budgetMonthly}
                     onChange={(e) => setBudgetMonthly(e.target.value)}
                     className="w-full pl-8 pr-3.5 py-2.5 rounded-field border border-line font-mono text-xs text-fg focus:outline-none focus:border-accent"

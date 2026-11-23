@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Delete, Body, Query, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { KeysService } from './keys.service';
+import { CreateKeyDto, TestProviderKeyDto } from './keys.dto';
+import { isUUID } from 'class-validator';
 import { CurrentUser, AuthenticatedUser } from '@/modules/auth/decorators/current-user.decorator';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
-
-type ProviderName = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
 
 @ApiTags('Key Vault & API Tokens')
 @ApiBearerAuth()
@@ -21,22 +21,25 @@ export class KeysController {
   @Post('provider/test')
   @Roles('OWNER', 'ADMIN')
   @ApiOperation({ summary: 'Test upstream provider connection before storing key' })
-  async testConnection(@Body() body: { provider: ProviderName; plainKey?: string; apiKey?: string }) {
+  async testConnection(@Body() body: TestProviderKeyDto) {
     return this.keysService.testProviderConnection(body.provider, body.plainKey || body.apiKey || '');
   }
 
   @Post()
   @Roles('OWNER', 'ADMIN')
   @ApiOperation({ summary: 'Store provider key (encrypted) or generate gateway token' })
-  async handleCreateKey(@Body() body: any, @CurrentUser() user: AuthenticatedUser) {
-    if (body?.type === 'GATEWAY') {
+  async handleCreateKey(@Body() body: CreateKeyDto, @CurrentUser() user: AuthenticatedUser) {
+    if (body.type === 'GATEWAY') {
+      if (body.expiresAt && new Date(body.expiresAt).getTime() <= Date.now()) {
+        throw new BadRequestException('expiresAt must be in the future');
+      }
       return this.keysService.generateGatewayKey(body, user.orgId);
     }
     if (body?.type && body.type !== 'PROVIDER') {
       throw new BadRequestException(`Unsupported key type '${body.type}'. Use PROVIDER or GATEWAY.`);
     }
     return this.keysService.storeProviderKey(
-      { ...body, plainKey: body?.plainKey || body?.rawKey },
+      { projectId: body.projectId, provider: body.provider as any, keyName: body.keyName, plainKey: (body.plainKey || body.rawKey) as string },
       user.orgId,
     );
   }
@@ -49,6 +52,10 @@ export class KeysController {
     @Query('id') id: string,
     @Query('type') type: 'PROVIDER' | 'GATEWAY',
   ) {
+    if (!id || !isUUID(id)) throw new BadRequestException('id must be a key UUID');
+    if (type !== undefined && type !== 'PROVIDER' && type !== 'GATEWAY') {
+      throw new BadRequestException('type must be PROVIDER or GATEWAY');
+    }
     return this.keysService.revokeKey(id, type || 'PROVIDER', user.orgId);
   }
 }

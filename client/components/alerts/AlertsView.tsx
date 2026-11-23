@@ -70,7 +70,7 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
     try {
       await authFetch('/api/v1/alerts', {
         method: 'PATCH',
-        body: JSON.stringify({ id, isRead: true, markAllRead: markAll })
+        body: JSON.stringify(markAll ? { markAllRead: true } : { id })
       });
       fetchAlerts();
       onRefreshUnreadCount();

@@ -46,7 +46,7 @@ describe('DayRequestsPanel', () => {
     expect(await screen.findByText('gpt-4o-mini')).toBeInTheDocument();
     expect(screen.getByText('claude-x')).toBeInTheDocument();
     expect(screen.getByText('Blocked')).toBeInTheDocument();
-    expect(screen.getAllByText('13:45:09')).toHaveLength(2);
+    expect(screen.getAllByText('2026-11-20 13:45:09')).toHaveLength(2);
     expect(screen.getByText(/2 requests/)).toBeInTheDocument();
 
     const url = new URL(String((fetchMock.mock.calls[0] as unknown[])[0]), 'http://localhost');

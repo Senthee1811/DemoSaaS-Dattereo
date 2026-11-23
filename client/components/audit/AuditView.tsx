@@ -20,7 +20,10 @@ import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useModelCatalog } from '@/lib/model-catalog';
 import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { providerLabel } from '@/lib/providers';
+import { useScope } from '@/lib/scope';
+import { Tip } from '@/components/ui/tooltip';
 
 interface AuditLog {
   id: string;
@@ -45,16 +48,13 @@ interface AuditLog {
   timestamp: string;
 }
 
-interface AuditViewProps {
-  projects: Array<{ id: string; name: string }>;
-  selectedProjectId?: string;
-}
-
-export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
+export function AuditView() {
+  // Global scope is the project filter: there is no second, separate project filter here
+  const { scopeId: filterProject, projects } = useScope();
+  const scopeName = projects.find((p) => p.id === filterProject)?.name;
   const toast = useToast();
   const showError = useErrorDialog();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterProject, setFilterProject] = useState(selectedProjectId || '');
   const [filterModel, setFilterModel] = useState('');
   // Model filter options come from the backend's model list, not a bundled one
   const catalog = useModelCatalog();
@@ -63,13 +63,6 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const pageSize = 15;
-
-  // Follow the project picked in the header (React's "adjust state on prop change" pattern)
-  const [prevSelectedProjectId, setPrevSelectedProjectId] = useState(selectedProjectId);
-  if (selectedProjectId !== prevSelectedProjectId) {
-    setPrevSelectedProjectId(selectedProjectId);
-    if (selectedProjectId) setFilterProject(selectedProjectId);
-  }
 
   // Each load is keyed by its filters + a manual reload counter. "Loading" simply
   // means the result on screen belongs to a different key than the one requested.
@@ -191,19 +184,10 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             />
           </div>
 
-          {/* Project Filter */}
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="px-3.5 py-2 rounded-full border border-sg-border text-xs font-medium text-fg bg-parchment-ivory focus:outline-none focus:border-accent cursor-pointer"
-          >
-            <option value="">All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          {/* Project comes from the global Scope */}
+          <span className="px-3.5 py-2 rounded-full border border-line text-xs font-medium text-fg bg-surface-subtle max-w-[14rem] truncate" title="Change it with Scope in the top bar">
+            {scopeName ?? 'All projects'}
+          </span>
 
           {/* Model Filter */}
           <select
@@ -243,14 +227,15 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             <span>Blocked Only</span>
           </label>
 
-          <button
+          <Tip label="Refresh logs">
+            <button aria-label="Refresh logs"
             type="button"
             onClick={fetchLogs}
             className="p-2 rounded-full hover:bg-surface-muted text-sg-text-secondary transition-colors"
-            title="Refresh logs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-accent' : ''}`} />
           </button>
+          </Tip>
         </div>
       </div>
 
@@ -288,14 +273,15 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
                     <td className="py-3.5 px-4 font-mono text-label text-sg-text-secondary">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate max-w-27.5">{log.id}</span>
-                        <button
+                        <Tip label="Copy Request ID">
+                          <button aria-label="Copy Request ID"
                           type="button"
                           onClick={() => handleCopy(log.id)}
                           className="text-sg-text-muted hover:text-fg p-0.5 rounded-control transition-colors"
-                          title="Copy Request ID"
                         >
                           {copiedId === log.id ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
                         </button>
+                        </Tip>
                       </div>
                     </td>
 
@@ -347,7 +333,8 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             </span>
 
             <div className="flex items-center gap-2">
-              <button
+              <Tip label="Previous page">
+                <button aria-label="Previous page"
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
@@ -355,10 +342,12 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
+              </Tip>
               <span className="px-3 font-mono tabular-nums text-fg font-medium">
                 {currentPage} / {totalPages}
               </span>
-              <button
+              <Tip label="Next page">
+                <button aria-label="Next page"
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
@@ -366,6 +355,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
           </div>
         </div>

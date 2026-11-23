@@ -6,6 +6,8 @@ export interface AuthenticatedUser {
   name: string;
   role: string;
   orgId: string;
+  /** The session this request belongs to (absent on tokens issued before session tracking). */
+  sessionId?: string;
 }
 
 export const CurrentUser = createParamDecorator(

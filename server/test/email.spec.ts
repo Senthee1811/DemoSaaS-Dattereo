@@ -65,7 +65,7 @@ describe('no token ever leaves the API in a response body', () => {
     const email = { sendPasswordReset: jest.fn(async () => true) };
     const redis = { isConnected: true, setCache: jest.fn(async () => undefined) };
     const prisma = { user: { findUnique: jest.fn(async () => ({ id: 'u1', email: 'a@b.co' })) } };
-    const svc = new AuthService(prisma as any, {} as any, { get: () => undefined } as any, redis as any, email as any);
+    const svc = new AuthService(prisma as any, {} as any, { get: () => undefined } as any, redis as any, email as any, {} as any);
 
     const res: any = await svc.forgotPassword({ email: 'A@B.co' });
 
@@ -79,7 +79,7 @@ describe('no token ever leaves the API in a response body', () => {
   it('forgotPassword: unknown email → same generic response, no email', async () => {
     const email = { sendPasswordReset: jest.fn() };
     const prisma = { user: { findUnique: jest.fn(async () => null) } };
-    const svc = new AuthService(prisma as any, {} as any, { get: () => undefined } as any, {} as any, email as any);
+    const svc = new AuthService(prisma as any, {} as any, { get: () => undefined } as any, {} as any, email as any, {} as any);
     const res: any = await svc.forgotPassword({ email: 'nobody@b.co' });
     expect(res.success).toBe(true);
     expect(email.sendPasswordReset).not.toHaveBeenCalled();

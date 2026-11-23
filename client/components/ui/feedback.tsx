@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from './alert-dialog';
 import { CircleCheck, CircleX, TriangleAlert, Info, X, Loader2, ShieldAlert } from 'lucide-react';
+import { Tip } from '@/components/ui/tooltip';
 
 export type FeedbackVariant = 'success' | 'error' | 'warning' | 'info' | 'confirmation';
 
@@ -141,7 +142,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       {/* Polite live region: announced without stealing focus */}
-      <div aria-live="polite" aria-relevant="additions" className="fixed bottom-4 right-4 left-4 sm:left-auto z-[70] flex flex-col gap-2 sm:w-96 pointer-events-none">
+      <div aria-live="polite" aria-relevant="additions" className="fixed bottom-4 right-4 left-4 sm:left-auto z-70 flex flex-col gap-2 sm:w-96 pointer-events-none">
         {toasts.map((t) => {
           const { icon: Icon, tone } = VARIANT_STYLE[t.variant];
           return (
@@ -153,9 +154,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <Icon className={`w-4 h-4 mt-px ${tone}`} aria-hidden />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-fg">{t.title}</p>
-                {t.description && <p className="text-fg-secondary mt-0.5 break-words">{t.description}</p>}
+                {t.description && <p className="text-fg-secondary mt-0.5 wrap-break-word">{t.description}</p>}
               </div>
-              <button
+              <Tip label="Dismiss notification">
+                <button
                 type="button"
                 onClick={() => dismiss(t.id)}
                 aria-label="Dismiss notification"
@@ -163,6 +165,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               >
                 <X className="w-3.5 h-3.5" />
               </button>
+              </Tip>
             </div>
           );
         })}
@@ -346,7 +349,7 @@ export function ErrorDialogProvider({ children }: { children: React.ReactNode })
               <AlertDialogTitle>{details?.title}</AlertDialogTitle>
               <AlertDialogDescription>
                 <div>
-                  <p className="text-fg break-words">{details?.message}</p>
+                  <p className="text-fg wrap-break-word">{details?.message}</p>
                   {details?.hint && <p>{details.hint}</p>}
                 </div>
               </AlertDialogDescription>

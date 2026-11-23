@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -43,13 +45,15 @@ export function WelcomeModal({
         aria-labelledby="welcome-title"
       >
         {/* Close / Skip button */}
-        <button
+        <Tip label="Close welcome modal">
+          <button
           onClick={onClose}
           className="absolute top-5 right-5 p-1.5 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
           aria-label="Close welcome modal"
         >
           <X className="w-4 h-4" />
         </button>
+        </Tip>
 
         {/* Brand mark & Heading */}
         <div className="space-y-3">
@@ -92,7 +96,7 @@ export function WelcomeModal({
               <Cpu className="w-3.5 h-3.5" />
             </div>
             <p className="text-xs font-semibold text-fg">Multi-Model</p>
-            <p className="text-label text-fg-muted leading-snug">OpenAI, Claude, Gemini, and Groq under one gateway.</p>
+            <p className="text-label text-fg-muted leading-snug">{providerNames()} under one gateway.</p>
           </div>
         </div>
 

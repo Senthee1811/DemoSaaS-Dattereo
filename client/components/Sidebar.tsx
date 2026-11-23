@@ -20,6 +20,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Tip } from '@/components/ui/tooltip';
 
 export type NavTab = 
   | 'overview' 
@@ -133,13 +134,15 @@ export function Sidebar({
 
           {/* Close button on mobile */}
           {onCloseMobile && (
-            <button
+            <Tip label="Close menu">
+              <button aria-label="Close menu"
               type="button"
               onClick={onCloseMobile}
               className="p-1.5 rounded-full hover:bg-surface-muted text-fg-secondary lg:hidden"
             >
               <X className="w-4 h-4" />
             </button>
+            </Tip>
           )}
         </div>
 

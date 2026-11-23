@@ -26,3 +26,7 @@ export function numberProblem(value: string, range: NumberRange): string | null 
 }
 
 export const isNumberInRange = (value: string, range: NumberRange) => numberProblem(value, range) === null;
+
+/** Password rules. Mirrors server/src/modules/auth/password-policy.ts; the server's check is the one that counts. */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;

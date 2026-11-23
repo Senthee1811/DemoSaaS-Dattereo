@@ -15,6 +15,8 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 interface OnboardingChecklistProps {
   projectsCount: number;
@@ -41,7 +43,7 @@ export function OnboardingChecklist({
   const tasks = [
     {
       id: 'provider',
-      label: 'Connect an AI provider key (OpenAI, Anthropic, Gemini, Groq)',
+      label: `Connect an AI provider key (${providerNames()})`,
       isComplete: hasProviderKeys,
       action: onNavigateToKeys,
       actionLabel: 'Connect Provider',
@@ -110,13 +112,15 @@ export function OnboardingChecklist({
           </div>
         </div>
 
-        <button
+        <Tip label={isCollapsed ? 'Expand checklist' : 'Collapse checklist'}>
+          <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="p-1.5 rounded-full hover:bg-surface-muted text-fg-muted hover:text-fg transition-colors"
           aria-label={isCollapsed ? 'Expand checklist' : 'Collapse checklist'}
         >
           {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
         </button>
+        </Tip>
       </div>
 
       {/* Progress Bar */}

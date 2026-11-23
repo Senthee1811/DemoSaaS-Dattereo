@@ -20,6 +20,8 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -131,7 +133,7 @@ export default function RegisterPage() {
           Create your FinOps organization
         </h2>
         <p className="mt-1.5 text-xs text-fg-secondary">
-          Enforce sub-5ms Redis budget reservations across OpenAI, Anthropic, Gemini, and Groq.
+          Enforce sub-5ms Redis budget reservations across {providerNames()}.
         </p>
       </div>
 
@@ -236,7 +238,8 @@ export default function RegisterPage() {
                   placeholder="Min. 8 characters"
                   className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-line-strong bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
-                <button
+                <Tip label={showPassword ? 'Hide password' : 'Show password'}>
+                  <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
@@ -245,6 +248,7 @@ export default function RegisterPage() {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+                </Tip>
               </div>
 
               {/* Password strength visual meter */}
@@ -296,7 +300,8 @@ export default function RegisterPage() {
                     passwordsMatch === false ? 'border-red-400 focus:border-red-500 focus:ring-red-400' : 'border-line-strong focus:border-accent focus:ring-accent'
                   } bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 transition-colors`}
                 />
-                <button
+                <Tip label={showConfirmPassword ? 'Hide password' : 'Show password'}>
+                  <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -305,6 +310,7 @@ export default function RegisterPage() {
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+                </Tip>
               </div>
             </div>
 

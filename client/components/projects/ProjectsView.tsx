@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
-import { errorMessage } from '@/lib/types';
-import { useEscapeToClose, ConfirmDialog, Spinner, useErrorDialog, useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, ConfirmDialog, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
+import { useScope } from '@/lib/scope';
+import { Tip } from '@/components/ui/tooltip';
 
 export interface ProjectItem {
   id: string;
@@ -40,9 +41,11 @@ interface ProjectsViewProps {
   onRefresh: () => void;
 }
 
-export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
+export function ProjectsView({ projects: allProjects, onRefresh }: ProjectsViewProps) {
+  // Global scope: show the scoped project only (All projects = every project)
+  const { scopeId } = useScope();
+  const projects = scopeId ? allProjects.filter((p) => p.id === scopeId) : allProjects;
   const toast = useToast();
-  const showError = useErrorDialog();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   useEscapeToClose(showCreateModal, () => setShowCreateModal(false));
@@ -61,9 +64,9 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const totalSpend = projects.reduce((acc, p) => acc + Number(p.currentMonthlySpend || 0), 0);
   const blockedCount = projects.filter((p) => p.isBlocked).length;
 
-  // Emergency freeze (Type C, confirmed first) / lift freeze (direct, toast)
-  const [pendingFreeze, setPendingFreeze] = useState<ProjectItem | null>(null);
-  const [unfreezingId, setUnfreezingId] = useState<string | null>(null);
+  // Freeze and unfreeze both go through the shared confirmation dialog, which states the consequence
+  // first and keeps the real server error visible if the request fails.
+  const [pendingToggle, setPendingToggle] = useState<{ project: ProjectItem; freeze: boolean } | null>(null);
   const setBlocked = async (project: ProjectItem, isBlocked: boolean) => {
     const res = await authFetch('/api/v1/projects', {
       method: 'PATCH',
@@ -77,21 +80,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
     if (!res.ok) throw new Error(await readApiError(res, 'The project could not be updated.'));
     onRefresh();
   };
-  const handleToggleBlock = async (project: ProjectItem) => {
-    if (!project.isBlocked) {
-      setPendingFreeze(project);
-      return;
-    }
-    setUnfreezingId(project.id);
-    try {
-      await setBlocked(project, false);
-      toast.success(`Traffic resumed for ${project.name}`);
-    } catch (err) {
-      showError({ title: `Could not unfreeze ${project.name}`, message: errorMessage(err), hint: 'The project is still frozen. Try again.' });
-    } finally {
-      setUnfreezingId(null);
-    }
-  };
+  const handleToggleBlock = (project: ProjectItem) => setPendingToggle({ project, freeze: !project.isBlocked });
 
   // Create Project
   const handleCreateProject = async () => {
@@ -228,8 +217,8 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     <tr key={proj.id} className="hover:bg-surface-subtle transition-colors">
                       <td className="py-3.5 px-4">
                         {/* Names wrap (they matter); the UUID truncates but copies whole (select-all) */}
-                        <div className="font-semibold text-xs text-fg break-words max-w-xs">{proj.name}</div>
-                        <div className="text-label font-mono text-fg-muted max-w-[14rem] truncate select-all" title={proj.id}>
+                        <div className="font-semibold text-xs text-fg wrap-break-word max-w-xs">{proj.name}</div>
+                        <div className="text-label font-mono text-fg-muted max-w-56 truncate select-all" title={proj.id}>
                           id: {proj.id}
                         </div>
                         {proj.description && (
@@ -251,7 +240,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 min-w-[200px]">
+                      <td className="py-3.5 px-4 min-w-50">
                         <div className="flex items-center justify-between text-label font-mono tabular-nums mb-1.5">
                           <span className="font-semibold text-fg">${currentSpend.toFixed(2)}</span>
                           <span className="text-fg-muted">/ ${budget.toLocaleString()}</span>
@@ -282,7 +271,8 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          <Tip label="Edit budget allocation">
+                            <button aria-label="Edit budget allocation"
                             type="button"
                             onClick={() => {
                               setEditingProject(proj);
@@ -290,15 +280,14 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                               setBudgetHardBlockEnabled(proj.budgetHardBlockEnabled);
                             }}
                             className="p-1.5 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full transition-colors"
-                            title="Edit budget allocation"
                           >
                             <Settings2 className="w-3.5 h-3.5" />
                           </button>
+                          </Tip>
 
                           <button
                             type="button"
                             onClick={() => handleToggleBlock(proj)}
-                            disabled={unfreezingId === proj.id}
                             aria-label={proj.isBlocked ? `Unfreeze ${proj.name} (resume gateway requests)` : `Freeze ${proj.name} (blocks all gateway requests)`}
                             title={proj.isBlocked ? 'Unfreeze project (resume gateway requests)' : 'Freeze project (blocks all gateway requests)'}
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-label font-semibold border transition-colors ${
@@ -307,9 +296,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                                 : 'text-fg-secondary border-line hover:text-critical hover:bg-critical-bg'
                             }`}
                           >
-                            {unfreezingId === proj.id ? (
-                              <Spinner />
-                            ) : proj.isBlocked ? (
+                            {proj.isBlocked ? (
                               <Unlock className="w-3.5 h-3.5" />
                             ) : (
                               <Lock className="w-3.5 h-3.5" />
@@ -333,13 +320,15 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Create FinOps Project</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setShowCreateModal(false)}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -426,13 +415,15 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Edit Budget — {editingProject.name}</h3>
-              <button
+              <Tip label="Close">
+                <button aria-label="Close"
                 type="button"
                 onClick={() => setEditingProject(null)}
                 className="p-1.5 text-fg-muted hover:text-fg rounded-full"
               >
                 <X className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             <div className="space-y-4 text-xs">
@@ -487,23 +478,36 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
         </div>
       )}
       <ConfirmDialog
-        open={pendingFreeze !== null}
-        tone="sensitive"
-        title={`Freeze all traffic for "${pendingFreeze?.name}"?`}
-        description="Every gateway request for this project is rejected until you lift the freeze."
-        consequences={[
-          "Every app or script using this project's gateway keys gets HTTP 429 on each request, starting now.",
-          'Test Bench requests for this project are refused too.',
-          'Budgets, keys and history are not changed.',
-        ]}
-        reversible="Reversible: press Unfreeze in this table at any time."
-        confirmLabel="Freeze traffic"
+        open={pendingToggle !== null}
+        tone={pendingToggle?.freeze ? 'danger' : 'sensitive'}
+        title={`${pendingToggle?.freeze ? 'Freeze' : 'Unfreeze'} Project — ${pendingToggle?.project.name ?? ''}`}
+        description={
+          pendingToggle?.freeze
+            ? 'Blocks all gateway requests for this project until unfrozen.'
+            : 'Resumes gateway requests immediately.'
+        }
+        consequences={
+          pendingToggle?.freeze
+            ? [
+                "Every app or script using this project's gateway keys gets HTTP 429 on each request, starting now.",
+                'Test Bench requests for this project are refused too.',
+                'Budgets, keys and history are not changed.',
+              ]
+            : [
+                "Apps using this project's gateway keys can send requests again right away.",
+                'Requests count against the monthly budget as usual.',
+              ]
+        }
+        reversible={pendingToggle?.freeze ? 'Reversible: press Unfreeze in this table at any time.' : 'Reversible: you can freeze it again at any time.'}
+        confirmLabel={pendingToggle?.freeze ? 'Freeze project' : 'Unfreeze project'}
         onConfirm={async () => {
-          if (!pendingFreeze) return;
-          await setBlocked(pendingFreeze, true);
-          toast.success(`${pendingFreeze.name} is frozen`, 'All gateway requests for it are being rejected.');
+          if (!pendingToggle) return;
+          const { project, freeze } = pendingToggle;
+          await setBlocked(project, freeze);
+          if (freeze) toast.success(`${project.name} is frozen`, 'All gateway requests for it are being rejected.');
+          else toast.success(`Traffic resumed for ${project.name}`);
         }}
-        onClose={() => setPendingFreeze(null)}
+        onClose={() => setPendingToggle(null)}
       />
     </div>
   );

@@ -352,6 +352,7 @@ async function run() {
   check('org OWNER cannot rewrite the shared pricing catalog (403)', pricingWrite.status === 403, pricingWrite.status);
 
   // ── Slack alert delivery ─────────────────────────────────────────────────
+  await securityWorkspace();
   await slackAlerts(A);
 
   // ── Phase 1 hardening ────────────────────────────────────────────────────
@@ -387,6 +388,102 @@ let mockAtStart = { calls: 0, platformKeyCalls: 0, byModel: {} as Record<string,
 async function mockStats(): Promise<{ calls: number; platformKeyCalls: number; byModel: Record<string, number> }> {
   const res = await fetch(`${MOCK}/__stats`);
   return res.json();
+}
+
+/**
+ * Phase 10: sessions, change password and security activity against the real API, database and Redis.
+ * Revocation must really stop a session; ownership must be enforced; the password must really change.
+ */
+async function securityWorkspace() {
+  console.log('');
+  console.log('▶ Security: sessions, change password, activity');
+  const PW = 'CorrectHorse!42';
+  const NEW_PW = 'BrandNewPass#1';
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1';
+  const DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+
+  const zed = await api('POST', '/auth/register', {
+    headers: { 'User-Agent': DESKTOP },
+    body: { email: `zed.${RUN}@e2e.spendguard.test`, password: PW, name: 'Zed', orgName: `Zed Org ${RUN}` },
+  });
+  const zedEmail = zed.body.user.email as string;
+  const t1 = zed.body.accessToken as string; // this device
+  const r1 = zed.body.refreshToken as string;
+  const phone = await api('POST', '/auth/login', { headers: { 'User-Agent': IPHONE }, body: { email: zedEmail, password: PW } });
+  const t2 = phone.body.accessToken as string; // the phone
+  const r2 = phone.body.refreshToken as string;
+
+  const list = await api('GET', '/auth/sessions', { token: t1 });
+  const rows = list.body.sessions as Array<{ id: string; device: string; current: boolean }>;
+  check('two sessions listed, with their devices', list.status === 200 && rows.length === 2 && rows.some((s) => s.device === 'Safari on iOS') && rows.some((s) => s.device === 'Chrome on Windows'), list.body);
+  check('exactly one is marked as the current session, and it is the desktop one', rows.filter((s) => s.current).length === 1 && rows.find((s) => s.current)?.device === 'Chrome on Windows', rows);
+
+  const overview = await api('GET', '/auth/security', { token: t1 });
+  check('overview is real: 2 active sessions, MFA reported as unsupported, no score', overview.status === 200 && overview.body.sessions.active === 2 && overview.body.mfa.supported === false && !JSON.stringify(overview.body).match(/score|passwordHash/i), overview.body);
+
+  // ── change password ──
+  const wrong = await api('POST', '/auth/change-password', { token: t1, body: { currentPassword: 'not-it', newPassword: NEW_PW } });
+  check('wrong current password → 400 invalid_current_password (never 401)', wrong.status === 400 && wrong.body.error?.code === 'invalid_current_password', wrong.body);
+  const weak = await api('POST', '/auth/change-password', { token: t1, body: { currentPassword: PW, newPassword: 'short' } });
+  check('weak new password → 400 weak_password', weak.status === 400 && weak.body.error?.code === 'weak_password', weak.body);
+  const same = await api('POST', '/auth/change-password', { token: t1, body: { currentPassword: PW, newPassword: PW } });
+  check('unchanged password → 400', same.status === 400, same.body);
+
+  const changed = await api('POST', '/auth/change-password', { token: t1, body: { currentPassword: PW, newPassword: NEW_PW } });
+  check('change password succeeds and reports the other session it signed out', changed.status === 200 && changed.body.otherSessionsSignedOut === 1 && !!changed.body.passwordChangedAt, changed.body);
+  check('the response never contains a password or hash', !JSON.stringify(changed.body).match(/CorrectHorse|BrandNewPass|pbkdf2/i));
+
+  const oldLogin = await api('POST', '/auth/login', { body: { email: zedEmail, password: PW } });
+  check('the old password no longer signs in', oldLogin.status === 401, oldLogin.status);
+  const newLogin = await api('POST', '/auth/login', { headers: { 'User-Agent': DESKTOP }, body: { email: zedEmail, password: NEW_PW } });
+  check('the new password does', newLogin.status === 200, newLogin.status);
+
+  // ── revocation really stops the other session ──
+  const phoneRefresh = await api('POST', '/auth/refresh', { body: { refreshToken: r2 } });
+  check('the signed-out phone can no longer refresh (401)', phoneRefresh.status === 401, phoneRefresh.status);
+  const phoneAccess = await api('GET', '/auth/sessions', { token: t2 });
+  check('and its access token is refused immediately (401), not after 15 minutes', phoneAccess.status === 401, phoneAccess.status);
+  const deskRefresh = await api('POST', '/auth/refresh', { body: { refreshToken: r1 } });
+  check('this device stays signed in (refresh works)', deskRefresh.status === 200 && !!deskRefresh.body.accessToken, deskRefresh.status);
+  const t1b = deskRefresh.body.accessToken as string;
+
+  // ── ownership ──
+  const yan = await register('Yan', `Yan Org ${RUN}`);
+  const yanSessions = await api('GET', '/auth/sessions', { token: yan.body.accessToken });
+  const yanSid = yanSessions.body.sessions[0].id as string;
+  const cross = await api('DELETE', `/auth/sessions/${yanSid}`, { token: t1b });
+  check("revoking another user's session → 404 (not even acknowledged)", cross.status === 404, cross.status);
+  const yanAfter = await api('GET', '/auth/sessions', { token: yan.body.accessToken });
+  check("the other user's session is untouched", yanAfter.status === 200 && yanAfter.body.sessions.length === 1, yanAfter.body);
+  const badId = await api('DELETE', '/auth/sessions/not-a-uuid', { token: t1b });
+  check('a malformed session id is a 400, not a crash', badId.status === 400, badId.status);
+
+  // ── sign out others, then the current-session confirmation ──
+  const phone2 = await api('POST', '/auth/login', { headers: { 'User-Agent': IPHONE }, body: { email: zedEmail, password: NEW_PW } });
+  const others = await api('POST', '/auth/sessions/revoke-others', { token: t1b });
+  check('sign out others ends the other sessions and keeps this one', others.status === 200 && others.body.revoked >= 1, others.body);
+  const phone2Refresh = await api('POST', '/auth/refresh', { body: { refreshToken: phone2.body.refreshToken } });
+  check('the session it ended cannot refresh', phone2Refresh.status === 401, phone2Refresh.status);
+
+  const mine = await api('GET', '/auth/sessions', { token: t1b });
+  const currentSid = (mine.body.sessions as Array<{ id: string; current: boolean }>).find((s) => s.current)!.id;
+  const noConfirm = await api('DELETE', `/auth/sessions/${currentSid}`, { token: t1b });
+  check('revoking the CURRENT session without confirmation → 409 current_session', noConfirm.status === 409 && noConfirm.body.error?.code === 'current_session', noConfirm.body);
+
+  // ── activity ──
+  const activity = await api('GET', '/auth/security-activity?limit=5&offset=0', { token: t1b });
+  const types = (activity.body.events as Array<{ type: string }>).map((e) => e.type);
+  check('activity shows password change, revocations and sign-ins, newest first', activity.status === 200 && types.includes('PASSWORD_CHANGED') && types.includes('OTHER_SESSIONS_REVOKED') && types.includes('LOGIN_SUCCESS'), types);
+  check('activity includes the failed attempt with the old password', (await api('GET', '/auth/security-activity?limit=50', { token: t1b })).body.events.some((e: { type: string }) => e.type === 'LOGIN_FAILED'));
+  check('activity is paginated and UTC', activity.body.limit === 5 && typeof activity.body.total === 'number' && /Z$/.test(activity.body.events[0].at), activity.body);
+  const yanActivity = await api('GET', '/auth/security-activity', { token: yan.body.accessToken });
+  check("another user's activity never includes this user's events", !JSON.stringify(yanActivity.body).includes(zedEmail), yanActivity.body);
+
+  // ── finally: confirm the current session, and it really ends ──
+  const confirmed = await api('DELETE', `/auth/sessions/${currentSid}?confirmCurrent=true`, { token: t1b });
+  check('with confirmation the current session ends', confirmed.status === 200 && confirmed.body.revokedCurrent === true, confirmed.body);
+  const gone = await api('POST', '/auth/refresh', { body: { refreshToken: deskRefresh.body.refreshToken } });
+  check('and its refresh token is dead (401)', gone.status === 401, gone.status);
 }
 
 /**

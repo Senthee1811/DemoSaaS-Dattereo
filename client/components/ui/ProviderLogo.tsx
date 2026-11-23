@@ -1,53 +1,11 @@
 import React from 'react';
-import { siOpenai, siAnthropic, siGooglegemini } from 'simple-icons';
-
-export type ProviderId = 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
-
-interface ProviderMeta {
-  label: string;
-  /** What the models are, for the onboarding picker. */
-  desc: string;
-  /** Example of the key format, shown as the input placeholder. */
-  keyPlaceholder: string;
-  /** simple-icons path. Absent when simple-icons has no mark for the brand (see GROQ). */
-  path?: string;
-}
+import { getProvider, providerLabel } from '@/lib/providers';
 
 /**
- * The one list of providers the UI knows about. A new provider is one entry here (plus its
- * backend enum value); Key Vault, onboarding and the logos all read from it.
- */
-const PROVIDERS: Record<ProviderId, ProviderMeta> = {
-  OPENAI: { label: 'OpenAI', desc: 'GPT models', keyPlaceholder: 'sk-proj-...', path: siOpenai.path },
-  ANTHROPIC: { label: 'Anthropic', desc: 'Claude models', keyPlaceholder: 'sk-ant-api03-...', path: siAnthropic.path },
-  GEMINI: { label: 'Gemini', desc: 'Gemini models', keyPlaceholder: 'AIzaSy...', path: siGooglegemini.path },
-  // simple-icons (any version) has no Groq mark, so Groq renders the "G" monogram below until
-  // the official SVG path from Groq's brand kit is added here as `path`.
-  GROQ: { label: 'Groq', desc: 'Open models, fast', keyPlaceholder: 'gsk_...' },
-};
-
-export const PROVIDER_LIST: Array<{ id: ProviderId } & ProviderMeta> = (Object.keys(PROVIDERS) as ProviderId[]).map((id) => ({
-  id,
-  ...PROVIDERS[id],
-}));
-
-export function providerKeyPlaceholder(provider: string): string {
-  return PROVIDERS[(provider || '').toUpperCase() as ProviderId]?.keyPlaceholder ?? '';
-}
-
-/** Accepts the API enum ('GEMINI') or lower case ('gemini'). Display only: the enum never changes. */
-function lookup(provider: string) {
-  return PROVIDERS[(provider || '').toUpperCase() as ProviderId];
-}
-
-export function providerLabel(provider: string): string {
-  return lookup(provider)?.label ?? provider;
-}
-
-/**
- * Provider mark as an inline SVG. Monochrome (currentColor) to match the app's
- * neutral editorial palette; the surrounding text colour decides the tint.
- * Decorative by default: the provider name is expected to sit next to it.
+ * Provider mark as an inline SVG, drawn from the registry in lib/providers.ts (this file holds
+ * no provider data). Monochrome (currentColor) to match the app's neutral editorial palette;
+ * the surrounding text colour decides the tint. Decorative by default: the provider name is
+ * expected to sit next to it.
  */
 export function ProviderLogo({
   provider,
@@ -61,7 +19,7 @@ export function ProviderLogo({
   /** Set when the logo stands alone (no adjacent text) so it has an accessible name. */
   title?: string;
 }) {
-  const meta = lookup(provider);
+  const meta = getProvider(provider);
   if (!meta) return null;
   return (
     <svg
@@ -75,8 +33,8 @@ export function ProviderLogo({
       aria-hidden={title ? undefined : true}
       focusable="false"
     >
-      {meta.path ? (
-        <path d={meta.path} />
+      {meta.icon ? (
+        <path d={meta.icon.path} />
       ) : (
         // No official mark available: a plain monogram, never an imitation of the brand's logo
         <>

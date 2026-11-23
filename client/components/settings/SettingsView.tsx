@@ -24,6 +24,8 @@ import { errorMessage } from '@/lib/types';
 import { SlackAlertSettings } from './SlackAlertSettings';
 import { useEscapeToClose } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { SecurityWorkspace } from './security/SecurityWorkspace';
+import { Tip } from '@/components/ui/tooltip';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -131,7 +133,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
             <Settings2 className="w-3 h-3 text-accent" />
             <span>Workspace & Identity Governance</span>
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-normal text-fg tracking-tight">
+          <h1 className="font-serif text-2xl font-normal text-fg tracking-tight">
             Settings & Account Management
           </h1>
           <p className="text-xs text-fg-secondary mt-0.5">
@@ -203,7 +205,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                 </p>
                 <span className="inline-flex items-center gap-1 text-caption text-success font-medium mt-1">
                   <CircleCheck className="w-3 h-3" />
-                  <span>Verified Identity</span>
+                  <span>Signed in</span>
                 </span>
               </div>
 
@@ -215,7 +217,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-xs font-semibold text-fg">Active & Authenticated</span>
                 </div>
-                <p className="text-caption text-fg-muted">Session token valid with Redis</p>
+                <p className="text-caption text-fg-muted">This session is active</p>
               </div>
 
               <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
@@ -229,16 +231,6 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                   <Badge tone="accent" mono>{user.role || 'MEMBER'}</Badge>
                   <span>{accountStatus?.organization?.memberCount || 1} members</span>
                 </div>
-              </div>
-
-              <div className="p-4 rounded-field bg-surface-subtle border border-line-strong space-y-1">
-                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-fg-muted block">
-                  Active Web Session
-                </span>
-                <p className="text-xs font-semibold text-fg font-mono">
-                  BFF Session (Next.js)
-                </p>
-                <p className="text-caption text-fg-muted">AES-256 encrypted proxy</p>
               </div>
             </div>
           </div>
@@ -362,43 +354,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
         </div>
       )}
 
-      {/* TAB 3: SECURITY & AUTH */}
-      {activeTab === 'security' && (
-        <div className="p-6 rounded-card bg-surface border border-line shadow-2xs space-y-5">
-          <div>
-            <h2 className="font-serif text-lg font-normal text-fg tracking-tight">
-              Security & Authentication
-            </h2>
-            <p className="text-xs text-fg-secondary">
-              Cryptographic authentication settings and password governance.
-            </p>
-          </div>
-
-          <div className="space-y-4 max-w-2xl">
-            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-fg">Password Cryptography</p>
-                <p className="text-label text-fg-muted">Protected with PBKDF2 (100,000 iterations, 512-bit salt)</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push('/forgot-password')}
-                className="px-3.5 py-1.5 rounded-full bg-surface hover:bg-surface-subtle border border-line text-xs font-semibold text-fg transition-colors shadow-2xs"
-              >
-                Change Password
-              </button>
-            </div>
-
-            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-fg">AES-256-GCM Envelope Encryption</p>
-                <p className="text-label text-fg-muted">All provider API keys are sealed with master vault rotation support</p>
-              </div>
-              <Badge tone="success" mono>ENFORCED</Badge>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* TAB 3: SECURITY & AUTH. Account sign-in security only: provider-credential protection lives in Key Vault */}
+      {activeTab === 'security' && <SecurityWorkspace />}
 
       {/* TAB 4: NOTIFICATIONS */}
       {activeTab === 'notifications' && (
@@ -478,7 +435,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                 </div>
               </div>
 
-              <button
+              <Tip label="Close modal">
+                <button
                 type="button"
                 onClick={() => setIsDeactivateModalOpen(false)}
                 className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
@@ -486,6 +444,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
               >
                 <CircleX className="w-4 h-4" />
               </button>
+              </Tip>
             </div>
 
             {/* Error Message */}
@@ -572,7 +531,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                         placeholder="Enter your current password"
                         className="w-full px-3.5 py-2.5 rounded-field bg-surface-subtle border border-line text-xs text-fg placeholder-fg-muted focus:bg-surface focus:border-accent focus:outline-none pr-10"
                       />
-                      <button
+                      <Tip label={showPassword ? 'Hide password' : 'Show password'}>
+                        <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg"
@@ -580,6 +540,7 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
+                      </Tip>
                     </div>
                   </div>
 

@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { CatalogModel, formatPricingDate, useModelCatalog } from '@/lib/model-catalog';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { ProviderSelect } from '@/components/ui/ProviderSelect';
+import { providerLabel } from '@/lib/providers';
 
 interface ModelPickerProps {
   selectedModel: string;
@@ -20,6 +22,8 @@ const fmt = (n: number) => (n >= 1 ? n.toFixed(2) : n.toFixed(n < 0.1 ? 3 : 2));
 export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerProps) {
   const catalog = useModelCatalog();
   const loadedModels = catalog.status === 'ready' ? catalog.models : null;
+  // '' = all providers. Only narrows the live list; it never adds models of its own.
+  const [providerFilter, setProviderFilter] = React.useState('');
 
   React.useEffect(() => {
     if (loadedModels) onLoaded?.(loadedModels);
@@ -51,11 +55,27 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
   }
 
   const asOf = formatPricingDate(catalog.meta?.pricingUpdatedAt);
+  const visibleModels = providerFilter ? catalog.models.filter((m) => m.provider === providerFilter) : catalog.models;
 
   return (
     <div>
+      <div className="flex items-center gap-2 mb-3 max-w-xs">
+        <span className="text-label text-fg-secondary shrink-0">Provider</span>
+        <ProviderSelect
+          value={providerFilter}
+          onValueChange={setProviderFilter}
+          allowAll
+          showDescriptions={false}
+          aria-label="Filter models by provider"
+        />
+      </div>
+      {visibleModels.length === 0 && (
+        <p role="status" className="text-xs text-fg-secondary py-4">
+          No priced {providerLabel(providerFilter)} models yet. Models need a confirmed price before the gateway will serve them.
+        </p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {catalog.models.map((m) => (
+        {visibleModels.map((m) => (
           <button
             key={m.model}
             type="button"

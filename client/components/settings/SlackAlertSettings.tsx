@@ -5,17 +5,13 @@ import { Loader2, Send, Trash2 } from 'lucide-react';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
+import { useScopeProject } from '@/lib/scope';
 
 interface SlackConfig {
   slackUrlSaved: boolean;
   slackConfigured: boolean;
   lastSlackStatus: 'QUEUED' | 'SENT' | 'FAILED' | null;
   lastSlackError: string | null;
-}
-
-interface ProjectOption {
-  id: string;
-  name: string;
 }
 
 // Same shape the server enforces (it re-validates; this only gives instant feedback).
@@ -41,9 +37,25 @@ function StatusBadge({ config }: { config: SlackConfig | null }) {
   return <span className={`text-label font-semibold ${tone}`}>{label}</span>;
 }
 
+/**
+ * Slack alerts for the project in the global Scope. This wrapper is the only thing that reads
+ * Scope; the form below is keyed by the project, so changing Scope remounts it with clean state
+ * (no stale webhook status, no half-typed URL carried over to another project).
+ */
 export function SlackAlertSettings() {
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [projectId, setProjectId] = useState('');
+  const { project, isFallback } = useScopeProject();
+  if (!project) {
+    return (
+      <div className="p-4 rounded-field bg-surface-subtle border border-line-strong">
+        <p className="text-xs font-semibold text-fg">Slack Webhook Notifications</p>
+        <p className="text-label text-fg-muted mt-1">Create a project first. Slack alerts are configured per project.</p>
+      </div>
+    );
+  }
+  return <SlackAlertForm key={project.id} projectId={project.id} projectName={project.name} isFallback={isFallback} />;
+}
+
+function SlackAlertForm({ projectId, projectName, isFallback }: { projectId: string; projectName: string; isFallback: boolean }) {
   const [config, setConfig] = useState<SlackConfig | null>(null);
   const [url, setUrl] = useState('');
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -59,17 +71,6 @@ export function SlackAlertSettings() {
     return () => {
       mounted.current = false;
     };
-  }, []);
-
-  useEffect(() => {
-    authFetch('/api/v1/projects')
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
-      .then((data: { projects?: ProjectOption[] }) => {
-        const list = data.projects || [];
-        setProjects(list);
-        setProjectId((cur) => cur || list[0]?.id || '');
-      })
-      .catch((err) => setLoadError(errorMessage(err, 'Could not load projects.')));
   }, []);
 
   const loadConfig = useCallback(async (id: string): Promise<SlackConfig | null> => {
@@ -177,30 +178,14 @@ export function SlackAlertSettings() {
 
       {loadError && <InlineAlert variant="error" title="Could not load Slack settings">{loadError}</InlineAlert>}
 
-      {projects.length === 0 && !loadError ? (
-        <p className="text-label text-fg-muted">Create a project first. Slack alerts are configured per project.</p>
-      ) : (
+      {(
         <>
-          <div className="flex items-center gap-2 text-xs">
-            <label htmlFor="slack-project" className="text-fg-secondary">Project</label>
-            <select
-              id="slack-project"
-              value={projectId}
-              onChange={(e) => {
-                // Reset per-project state here (not in an effect) when the selection changes.
-                setProjectId(e.target.value);
-                setConfig(null);
-                setNotice(null);
-                setUrl('');
-                setUrlError(null);
-              }}
-              className="px-3 py-1 rounded-full border border-line bg-surface text-xs cursor-pointer"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+          <p className="text-xs text-fg-secondary">
+            Project: <span className="font-semibold text-fg">{projectName}</span>
+            <span className="text-fg-muted">
+              {isFallback ? ' (first project: pick one in Scope to change it)' : ' (from your Scope)'}
+            </span>
+          </p>
 
           <div className="space-y-1">
             <input

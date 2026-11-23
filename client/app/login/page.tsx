@@ -8,6 +8,7 @@ import { readApiError, saveSession } from '@/lib/auth-fetch';
 import { useQueryParam } from '@/lib/client-storage';
 import { InlineAlert } from '@/components/ui/feedback';
 import { errorMessage as toMessage } from '@/lib/types';
+import { Tip } from '@/components/ui/tooltip';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -161,7 +162,8 @@ export default function LoginPage() {
                   placeholder="••••••••••••"
                   className="block w-full pl-10 pr-10 py-2.5 rounded-field border border-parchment-border bg-surface text-xs sm:text-sm text-fg placeholder-fg-muted focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
                 />
-                <button
+                <Tip label={showPassword ? 'Hide password' : 'Show password'}>
+                  <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(!showPassword)}
@@ -170,6 +172,7 @@ export default function LoginPage() {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+                </Tip>
               </div>
             </div>
 

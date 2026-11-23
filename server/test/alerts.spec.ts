@@ -229,6 +229,38 @@ describe('AlertsService Slack config', () => {
   });
 });
 
+describe('10.8 the test alert (feed row and Slack payload) names the project it was requested for', () => {
+  it('requested for "Ai Chatbot" → the alert and the queued Slack blocks reference Ai Chatbot, not another project', async () => {
+    const { prisma, created } = fakePrisma();
+    const requested = { id: 'proj-ai-chatbot', name: 'Ai Chatbot', budgetMonthly: 100 };
+    prisma.project.findFirst = jest.fn(async ({ where }: any) => (where.id === requested.id ? requested : null));
+    prisma.project.findUnique = jest.fn(async ({ where }: any) =>
+      where.id === requested.id ? { name: requested.name, alertConfig: { slackWebhookUrl: 'enc:webhook', notifyOnAnomaly: true } } : null,
+    );
+    const queue = { add: jest.fn(async () => undefined) };
+    const svc = new AlertsService(prisma, encryption as any, new AlertDispatchService(prisma, queue as any));
+
+    await svc.triggerTestAlert('o1', { projectId: requested.id, thresholdType: 'PERCENT_80' });
+
+    expect(created[0].projectId).toBe('proj-ai-chatbot');
+    expect(created[0].title).toContain('Ai Chatbot');
+    expect(created[0].message).toContain('Ai Chatbot');
+    const [, job] = queue.add.mock.calls[0] as unknown as [string, any];
+    expect(job.projectId).toBe('proj-ai-chatbot');
+    expect(JSON.stringify(job.blocks)).toContain('Ai Chatbot');
+    expect(JSON.stringify(job.blocks)).not.toContain('ProductionA');
+  });
+
+  it('a project from another organization is rejected, never alerted', async () => {
+    const { prisma } = fakePrisma();
+    prisma.project.findFirst = jest.fn(async () => null);
+    const queue = { add: jest.fn() };
+    const svc = new AlertsService(prisma, encryption as any, new AlertDispatchService(prisma, queue as any));
+    await expect(svc.triggerTestAlert('o1', { projectId: 'someone-elses', thresholdType: 'PERCENT_80' })).rejects.toThrow('Project not found');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+});
+
 describe('slack-blocks', () => {
   it('builds section + context blocks from real values and escapes mrkdwn', () => {
     const blocks: any[] = buildAlertBlocks({

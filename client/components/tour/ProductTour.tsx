@@ -22,6 +22,8 @@ import { NavTab } from '@/components/Sidebar';
 import type { SettingsTab } from '@/components/settings/SettingsView';
 import { Spinner } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
+import { providerNames } from '@/lib/providers';
+import { Tip } from '@/components/ui/tooltip';
 
 interface TourStep {
   step: number;
@@ -57,7 +59,7 @@ const TOUR_STEPS: TourStep[] = [
     step: 3,
     tab: 'keys',
     title: '3. Key Vault & Credentials',
-    description: 'Securely manage upstream provider keys (OpenAI, Anthropic, Gemini, Groq) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.',
+    description: `Securely manage upstream provider keys (${providerNames()}) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.`,
     badge: 'Governance',
     icon: KeyRound,
   },
@@ -225,13 +227,15 @@ export function ProductTour({
           </span>
         </div>
 
-        <button
+        <Tip label="Skip tour">
+          <button
           onClick={handleFinish}
           className="p-1 rounded-full text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors"
           aria-label="Skip tour"
         >
           <X className="w-4 h-4" />
         </button>
+        </Tip>
       </div>
 
       {/* Progress Line */}

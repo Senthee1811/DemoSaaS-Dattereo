@@ -12,6 +12,7 @@ import { authFetch } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ModelPicker } from './ModelPicker';
 import { Badge } from '@/components/ui/Badge';
+import { useScopeProject } from '@/lib/scope';
 
 interface ExecutionResult {
   status: number;
@@ -24,14 +25,12 @@ interface ExecutionResult {
 }
 
 interface PlaygroundViewProps {
-  projects: Array<{ id: string; name: string }>;
   onRefreshMetrics: () => void;
 }
 
-export function PlaygroundView({ projects, onRefreshMetrics }: PlaygroundViewProps) {
-  // The user's pick, else the first project (projects arrive after mount, so derive each render)
-  const [pickedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const selectedProjectId = pickedProjectId || projects[0]?.id || '';
+export function PlaygroundView({ onRefreshMetrics }: PlaygroundViewProps) {
+  // Global scope: requests go to the project in Scope (the first project while Scope is All projects)
+  const { project: scopedProject, projectId: selectedProjectId, isFallback } = useScopeProject();
   // Empty until the catalog loads; ModelPicker reports the list and we default to its first entry
   const [selectedModel, setSelectedModel] = useState('');
   const [prompt, setPrompt] = useState('Generate a concise spend analysis summary for our Q3 multi-model AI infrastructure.');
@@ -149,24 +148,16 @@ response = client.chat.completions.create(
         <div className="lg:col-span-7 bg-surface p-6 rounded-card border border-sg-border shadow-2xs space-y-5">
           <div className="flex items-center justify-between pb-3.5 border-b border-sg-border">
             <h3 className="font-serif text-lg font-normal text-fg flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-accent" />
+              <Terminal className="w-5 h-5 text-accent" />
               <span>Inference Request Config</span>
             </h3>
 
-            {/* Scope Project */}
-            <div className="flex items-center gap-2 text-xs text-sg-text-secondary">
+            {/* The project comes from the global Scope: no separate picker that could drift from it */}
+            <div className="flex items-center gap-2 text-xs text-sg-text-secondary" title={isFallback ? 'Scope is All projects, so the first project is used. Pick one in Scope to change it.' : 'Change it with Scope in the top bar'}>
               <span>Project:</span>
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="bg-parchment-ivory border border-sg-border rounded-full px-3 py-1 text-xs text-fg font-medium cursor-pointer"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <span className="px-3 py-1 rounded-full border border-line bg-surface-subtle text-fg font-medium max-w-48 truncate">
+                {scopedProject?.name ?? 'No project yet'}
+              </span>
             </div>
           </div>
 
@@ -325,7 +316,7 @@ response = client.chat.completions.create(
               </button>
             </div>
 
-            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-field font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
+            <pre className="p-3.5 bg-inversion-dark text-sg-chart-grid rounded-field font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
               <code>{getCodeSnippet()}</code>
             </pre>
           </div>

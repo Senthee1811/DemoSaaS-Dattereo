@@ -19,7 +19,9 @@ import { OnboardingChecklist } from './OnboardingChecklist';
 import type { PieSlice } from './OverviewCharts';
 import type { DashboardAnalytics } from '@/lib/types';
 import { Badge } from '@/components/ui/Badge';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { ProviderLogo } from '@/components/ui/ProviderLogo';
+import { providerLabel } from '@/lib/providers';
+import { Reveal } from '@/components/ui/motion';
 
 type DateFilter = '24h' | '7d' | '30d' | 'mtd';
 const DATE_FILTERS: Array<{ id: DateFilter; label: string }> = [
@@ -174,6 +176,7 @@ export function OverviewView({
       </div>
 
       {/* Primary FinOps KPI Cards */}
+      <Reveal>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Month-to-Date Spend */}
         <div className="p-5 bg-surface rounded-card border border-line shadow-2xs flex flex-col justify-between">
@@ -264,13 +267,17 @@ export function OverviewView({
         </div>
       </div>
 
+      </Reveal>
+
       {/* Lazy-Loaded Overview Charts */}
-      <OverviewCharts
-        dailySpend={dailySpend}
-        pieData={pieData}
-        totalSpend={totalSpend}
-        onNavigateToPlayground={onNavigateToPlayground}
-      />
+      <Reveal delay={0.05}>
+        <OverviewCharts
+          dailySpend={dailySpend}
+          pieData={pieData}
+          totalSpend={totalSpend}
+          onNavigateToPlayground={onNavigateToPlayground}
+        />
+      </Reveal>
 
       {/* Recent Ledger Activity Table */}
       <div className="bg-surface p-6 rounded-card border border-line shadow-2xs">

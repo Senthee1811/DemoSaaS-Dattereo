@@ -9,13 +9,12 @@ import {
   CircleHelp,
 } from 'lucide-react';
 import { useStoredUser } from '@/lib/client-storage';
+import { useScope } from '@/lib/scope';
+import { Tip } from '@/components/ui/tooltip';
 import { AccountMenu } from './AccountMenu';
 import type { SettingsTab } from '@/components/settings/SettingsView';
 
 interface HeaderProps {
-  projects: Array<{ id: string; name: string }>;
-  selectedProjectId: string;
-  onSelectProject: (id: string) => void;
   onOpenPlayground: () => void;
   onOpenAlerts: () => void;
   onRefreshData: () => void;
@@ -39,9 +38,6 @@ function initialsOf(name: string): string {
 }
 
 export function Header({
-  projects,
-  selectedProjectId,
-  onSelectProject,
   onOpenPlayground,
   onOpenAlerts,
   onRefreshData,
@@ -52,6 +48,8 @@ export function Header({
   onOpenSettings,
 }: HeaderProps) {
   const user = useStoredUser();
+  // The Scope dropdown is the only writer of the global scope
+  const { scopeId, setScopeId, projects } = useScope();
   const userName = user?.name?.trim() || 'Signed in';
   const userRole = (user?.role && ROLE_LABELS[user.role]) || 'Member';
   const userInitials = user?.name ? initialsOf(user.name) : '?';
@@ -61,24 +59,26 @@ export function Header({
       {/* Project Selector & Mobile Menu Trigger */}
       <div className="flex items-center space-x-2.5 sm:space-x-3">
         {onToggleMobileMenu && (
-          <button
-            type="button"
-            onClick={onToggleMobileMenu}
-            className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors lg:hidden"
-            title="Toggle Navigation Menu"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
+          <Tip label="Menu">
+            <button
+              type="button"
+              onClick={onToggleMobileMenu}
+              className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors lg:hidden"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </Tip>
         )}
 
         <div className="flex items-center space-x-2.5 bg-surface-subtle border border-line rounded-full px-3 sm:px-4 py-1.5 text-xs text-fg shadow-2xs">
           <Building2 className="w-3.5 h-3.5 text-fg-secondary" />
           <span className="text-fg-secondary font-medium">Scope:</span>
           <select
-            value={selectedProjectId}
-            onChange={(e) => onSelectProject(e.target.value)}
+            value={scopeId}
+            onChange={(e) => setScopeId(e.target.value)}
             aria-label="Scope Project Selection"
-            className="bg-transparent text-fg font-semibold focus:outline-none cursor-pointer pr-1 text-xs max-w-[9rem] sm:max-w-[14rem] truncate"
+            className="bg-transparent text-fg font-semibold focus:outline-none cursor-pointer pr-1 text-xs max-w-36 sm:max-w-56 truncate"
           >
             <option value="" className="bg-surface text-fg">
               All Projects (Organization)
@@ -91,15 +91,17 @@ export function Header({
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={onRefreshData}
-          disabled={isRefreshing}
-          className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
-          title="Refresh metrics"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-accent' : ''}`} />
-        </button>
+        <Tip label="Refresh data">
+          <button
+            type="button"
+            onClick={onRefreshData}
+            disabled={isRefreshing}
+            className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
+            aria-label="Refresh data"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-accent' : ''}`} />
+          </button>
+        </Tip>
       </div>
 
       {/* Right Controls */}
@@ -116,30 +118,34 @@ export function Header({
 
         {/* Help Center Trigger */}
         {onOpenHelp && (
-          <button
-            type="button"
-            onClick={onOpenHelp}
-            className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
-            title="Open Help Center & Documentation"
-          >
-            <CircleHelp className="w-4 h-4" />
-          </button>
+          <Tip label="Help center">
+            <button
+              type="button"
+              onClick={onOpenHelp}
+              className="p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
+              aria-label="Help center"
+            >
+              <CircleHelp className="w-4 h-4" />
+            </button>
+          </Tip>
         )}
 
         {/* Notifications Icon */}
-        <button
-          type="button"
-          onClick={onOpenAlerts}
-          className="relative p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
-          title="Alerts and Guardrails"
-        >
-          <Bell className="w-4 h-4" />
-          {unreadAlertsCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-micro font-bold flex items-center justify-center">
-              {unreadAlertsCount}
-            </span>
-          )}
-        </button>
+        <Tip label="Notifications">
+          <button
+            type="button"
+            onClick={onOpenAlerts}
+            className="relative p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
+            aria-label={unreadAlertsCount > 0 ? `Notifications, ${unreadAlertsCount} unread` : 'Notifications'}
+          >
+            <Bell className="w-4 h-4" />
+            {unreadAlertsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-micro font-bold flex items-center justify-center">
+                {unreadAlertsCount}
+              </span>
+            )}
+          </button>
+        </Tip>
 
         {/* Account menu: profile, settings, security, theme, sign out */}
         <AccountMenu

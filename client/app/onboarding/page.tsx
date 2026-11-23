@@ -22,6 +22,7 @@ import {
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { cheapestModelFor, useModelCatalog } from '@/lib/model-catalog';
 import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-storage';
+import { ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -819,7 +820,7 @@ console.log(response.choices[0].message.content);`;
                   type="button"
                   onClick={() => {
                     if (typeof window !== 'undefined') {
-                      localStorage.setItem('spendguard_onboarding_state', 'ONBOARDING_COMPLETED');
+                      localStorage.setItem(ONBOARDING_STATE_KEY, ONBOARDING_COMPLETED);
                     }
                     router.push('/dashboard');
                   }}

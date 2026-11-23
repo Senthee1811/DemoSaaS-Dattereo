@@ -17,6 +17,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { notifyStorageChange } from '@/lib/client-storage';
+import { TOUR_COMPLETED_KEY } from '@/lib/onboarding';
 import { NavTab } from '@/components/Sidebar';
 
 interface TourStep {
@@ -107,32 +108,42 @@ interface ProductTourProps {
   isActive: boolean;
   onClose: () => void;
   onNavigateTab: (tab: NavTab) => void;
-  onStartWorkspaceSetup?: () => void;
+  /**
+   * Called only when the user finishes the last step (not on Skip/Escape). The dashboard
+   * decides from the shared onboarding check whether that leads anywhere.
+   */
+  onFinished?: () => void;
 }
 
 export function ProductTour({
   isActive,
   onClose,
   onNavigateTab,
-  onStartWorkspaceSetup,
+  onFinished,
 }: ProductTourProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   const currentStep = TOUR_STEPS[currentStepIndex];
 
   // Declared before the effects that use it (it is also the Escape-key handler)
-  const handleFinish = useCallback(() => {
-    try {
-      localStorage.setItem('spendguard_tour_completed', 'true');
-      localStorage.setItem('spendguard_onboarding_state', 'TOUR_COMPLETED');
-    } catch {
-      /* storage unavailable */
-    }
-    notifyStorageChange();
-    setCurrentStepIndex(0); // a restarted tour begins at step 1
-    onClose();
-    onStartWorkspaceSetup?.();
-  }, [onClose, onStartWorkspaceSetup]);
+  // Skip, Escape and finishing all end the tour. Only finishing the last step calls
+  // onFinished. The tour records its own completion and never touches the onboarding
+  // state: overwriting it used to downgrade set-up users and send them back to /onboarding.
+  const endTour = useCallback(
+    (finished: boolean) => {
+      try {
+        localStorage.setItem(TOUR_COMPLETED_KEY, 'true');
+      } catch {
+        /* storage unavailable */
+      }
+      notifyStorageChange();
+      setCurrentStepIndex(0); // a restarted tour begins at step 1
+      onClose();
+      if (finished) onFinished?.();
+    },
+    [onClose, onFinished],
+  );
+  const handleFinish = useCallback(() => endTour(false), [endTour]);
 
   // Navigate to corresponding tab when step changes
   useEffect(() => {
@@ -165,7 +176,7 @@ export function ProductTour({
     if (currentStepIndex < TOUR_STEPS.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
-      handleFinish();
+      endTour(true);
     }
   };
 
@@ -250,7 +261,7 @@ export function ProductTour({
             onClick={handleNext}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-accent hover:bg-accent-hover text-white text-xs font-semibold transition-colors shadow-2xs"
           >
-            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish & Configure' : 'Next'}</span>
+            <span>{currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish tour' : 'Next'}</span>
             {currentStepIndex === TOUR_STEPS.length - 1 ? (
               <Check className="w-3.5 h-3.5" />
             ) : (

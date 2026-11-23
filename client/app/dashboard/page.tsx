@@ -14,6 +14,7 @@ import { SdkView } from '@/components/sdk/SdkView';
 import { TeamView } from '@/components/team/TeamView';
 import { BillingView } from '@/components/billing/BillingView';
 import { SettingsView, type SettingsTab } from '@/components/settings/SettingsView';
+import { destinationAfterTour, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { ProductTour } from '@/components/tour/ProductTour';
 import { HelpCenterModal } from '@/components/help/HelpCenterModal';
@@ -32,6 +33,7 @@ async function getJson<T>(url: string): Promise<T> {
 export default function AppDashboard() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsTab>('account');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -59,7 +61,7 @@ export default function AppDashboard() {
   // Show the welcome modal right after sign-up, or until the first tour is done
   const justRegistered = useSessionStorageValue('spendguard_just_registered') === 'true';
   const tourCompleted = useLocalStorageValue('spendguard_tour_completed');
-  const onboardingState = useLocalStorageValue('spendguard_onboarding_state');
+  const onboardingState = useLocalStorageValue(ONBOARDING_STATE_KEY);
   const isWelcomeOpen =
     !welcomeDismissed && (justRegistered || (onboardingState === 'ACCOUNT_READY' && !tourCompleted));
 
@@ -82,7 +84,10 @@ export default function AppDashboard() {
   const fetchProjects = useCallback(
     () =>
       getJson<{ projects?: ProjectItem[] }>('/api/v1/projects')
-        .then((data) => setProjects(data.projects || []))
+        .then((data) => {
+          setProjects(data.projects || []);
+          setProjectsLoaded(true);
+        })
         .catch((err) => console.error('Failed to fetch projects:', err)),
     [],
   );
@@ -267,7 +272,12 @@ export default function AppDashboard() {
         isActive={isTourActive}
         onClose={() => setIsTourActive(false)}
         onNavigateTab={(tab) => setCurrentTab(tab)}
-        onStartWorkspaceSetup={() => router.push('/onboarding')}
+        onFinished={() => {
+          // Same completion check as the setup wizard: a set-up org stays on the console
+          if (destinationAfterTour({ onboardingState, projectCount: projects.length, projectsLoaded }) === 'onboarding') {
+            router.push('/onboarding');
+          }
+        }}
       />
 
       {/* In-Product Knowledge Base & Help Center */}

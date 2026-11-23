@@ -15,7 +15,7 @@ import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
 import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
-import { ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 
 interface ProviderKey {
   id: string;
@@ -74,6 +74,11 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
   const [rateLimit, setRateLimit] = useState('1200');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTestingProvider, setIsTestingProvider] = useState(false);
+  useEscapeToClose(showAddProviderKeyModal, () => setShowAddProviderKeyModal(false));
+  useEscapeToClose(showGenerateGatewayKeyModal, () => {
+    setShowGenerateGatewayKeyModal(false);
+    setNewGatewaySecret(null);
+  });
   const [testResult, setTestResult] = useState<{ valid: boolean; message: string } | null>(null);
 
   const handleTestProvider = async () => {
@@ -386,7 +391,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
       {/* Modal: Add Provider Key */}
       {showAddProviderKeyModal && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Connect Provider API Key</h3>
@@ -519,7 +524,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
       {/* Modal: Generate Gateway Key */}
       {showGenerateGatewayKeyModal && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Issue Gateway API Token</h3>

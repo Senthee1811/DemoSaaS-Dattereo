@@ -15,7 +15,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
-import { useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, useToast } from '@/components/ui/feedback';
 
 interface SubscriptionData {
   orgId: string;
@@ -31,6 +31,7 @@ export function BillingView() {
   const [annual, setAnnual] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [showEnterpriseModal, setShowEnterpriseModal] = useState(false);
+  useEscapeToClose(showEnterpriseModal, () => setShowEnterpriseModal(false));
   const [enterpriseSubmitted, setEnterpriseSubmitted] = useState(false);
   const orgName = useStoredUser()?.orgName || 'Your organization';
 
@@ -346,7 +347,7 @@ export function BillingView() {
 
       {/* Enterprise Qualification Modal */}
       {showEnterpriseModal && (
-        <div className="fixed inset-0 z-50 bg-overlay backdrop-blur-xs flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-overlay backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface rounded-card max-w-lg w-full p-6 border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">

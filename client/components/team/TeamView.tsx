@@ -10,6 +10,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
+import { useEscapeToClose } from '@/components/ui/feedback';
 
 interface UserItem {
   id: string;
@@ -23,6 +24,7 @@ interface UserItem {
 export function TeamView() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  useEscapeToClose(showInviteModal, () => setShowInviteModal(false));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'MEMBER'>('MEMBER');
@@ -195,7 +197,7 @@ export function TeamView() {
 
       {/* Modal: Invite Member */}
       {showInviteModal && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-sg-border shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-sg-border">
               <h3 className="font-serif text-lg font-normal text-fg">Invite Organization Member</h3>

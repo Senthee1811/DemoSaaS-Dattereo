@@ -11,6 +11,7 @@ import {
   Zap,
   Cpu,
 } from 'lucide-react';
+import { useEscapeToClose } from '@/components/ui/feedback';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function WelcomeModal({
   userName = 'there',
   orgName = 'your organization',
 }: WelcomeModalProps) {
+  useEscapeToClose(isOpen, onClose);
   if (!isOpen) return null;
 
   return (

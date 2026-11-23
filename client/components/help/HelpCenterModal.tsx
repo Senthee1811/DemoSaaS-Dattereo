@@ -15,6 +15,7 @@ import {
   Lock,
   ChevronRight,
 } from 'lucide-react';
+import { useEscapeToClose } from '@/components/ui/feedback';
 
 interface HelpCenterModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export function HelpCenterModal({
   onRestartTour,
   onNavigateToSdk,
 }: HelpCenterModalProps) {
+  useEscapeToClose(isOpen, onClose);
   const [activeCategory, setActiveCategory] = useState<HelpCategory>('getting-started');
 
   if (!isOpen) return null;

@@ -22,6 +22,24 @@ const VARIANT_STYLE: Record<FeedbackVariant, { icon: React.ElementType; tone: st
   confirmation: { icon: ShieldAlert, tone: 'text-accent', box: 'border-accent-border bg-accent-subtle' },
 };
 
+/* ── Escape to close (for any modal or panel) ─────────────────────────────── */
+
+/** Closes an open modal on Escape. Pass active=false while it is closed or busy. */
+export function useEscapeToClose(active: boolean, onClose: () => void) {
+  const latest = useRef(onClose);
+  useEffect(() => {
+    latest.current = onClose;
+  });
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') latest.current();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [active]);
+}
+
 /* ── Spinner ──────────────────────────────────────────────────────────────── */
 
 export function Spinner({ className = 'w-3.5 h-3.5', label }: { className?: string; label?: string }) {

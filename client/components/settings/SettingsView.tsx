@@ -22,6 +22,7 @@ import { authFetch, clearSession, readApiError } from '@/lib/auth-fetch';
 import { useStoredUser } from '@/lib/client-storage';
 import { errorMessage } from '@/lib/types';
 import { SlackAlertSettings } from './SlackAlertSettings';
+import { useEscapeToClose } from '@/components/ui/feedback';
 
 interface AccountStatus {
   accountStatus?: 'ACTIVE' | 'DEACTIVATED';
@@ -55,6 +56,8 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
   const [confirmPhrase, setConfirmPhrase] = useState('');
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  // Escape closes the deactivation dialog, except while the request is running
+  useEscapeToClose(isDeactivateModalOpen && !isDeactivating, () => setIsDeactivateModalOpen(false));
 
   useEffect(() => {
     authFetch('/api/auth/account-status')

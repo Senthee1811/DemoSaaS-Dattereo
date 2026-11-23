@@ -15,7 +15,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
-import { ConfirmDialog, useToast } from '@/components/ui/feedback';
+import { useEscapeToClose, ConfirmDialog, useToast } from '@/components/ui/feedback';
 
 export interface ProjectItem {
   id: string;
@@ -41,6 +41,8 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
   const toast = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
+  useEscapeToClose(showCreateModal, () => setShowCreateModal(false));
+  useEscapeToClose(editingProject !== null, () => setEditingProject(null));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New Project Form State
@@ -320,7 +322,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
       {/* Modal: Create Project */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Create FinOps Project</h3>
@@ -417,7 +419,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
 
       {/* Modal: Edit Budget */}
       {editingProject && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-overlay backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface rounded-card p-6 max-w-md w-full border border-line shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-line">
               <h3 className="font-serif text-lg font-normal text-fg">Edit Budget — {editingProject.name}</h3>

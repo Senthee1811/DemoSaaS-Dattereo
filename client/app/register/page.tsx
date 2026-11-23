@@ -131,7 +131,7 @@ export default function RegisterPage() {
           Create your FinOps organization
         </h2>
         <p className="mt-1.5 text-xs text-fg-secondary">
-          Enforce sub-5ms Redis budget reservations across OpenAI, Anthropic, and Gemini.
+          Enforce sub-5ms Redis budget reservations across OpenAI, Anthropic, Gemini, and Groq.
         </p>
       </div>
 

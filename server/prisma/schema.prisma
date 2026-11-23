@@ -19,6 +19,7 @@ enum ProviderType {
   OPENAI
   ANTHROPIC
   GEMINI
+  GROQ
 }
 
 enum ThresholdType {

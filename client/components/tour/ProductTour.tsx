@@ -57,7 +57,7 @@ const TOUR_STEPS: TourStep[] = [
     step: 3,
     tab: 'keys',
     title: '3. Key Vault & Credentials',
-    description: 'Securely manage upstream provider keys (OpenAI, Anthropic, Gemini) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.',
+    description: 'Securely manage upstream provider keys (OpenAI, Anthropic, Gemini, Groq) with AES-256-GCM envelope encryption. Plaintext keys are never stored on disk or logged.',
     badge: 'Governance',
     icon: KeyRound,
   },

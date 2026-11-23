@@ -4,6 +4,7 @@ import { GatewayService } from './gateway.service';
 import { OpenAIAdapter } from './adapters/openai.adapter';
 import { AnthropicAdapter } from './adapters/anthropic.adapter';
 import { GeminiAdapter } from './adapters/gemini.adapter';
+import { GroqAdapter } from './adapters/groq.adapter';
 import { RateLimitMiddleware } from '@/common/middleware/rate-limit.middleware';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { BullModule } from '@nestjs/bullmq';
@@ -32,6 +33,7 @@ import { REQUEST_LEDGER_QUEUE } from './request-ledger.queue';
     OpenAIAdapter,
     AnthropicAdapter,
     GeminiAdapter,
+    GroqAdapter,
     RateLimitMiddleware,
     RequestLedgerProcessor,
   ],

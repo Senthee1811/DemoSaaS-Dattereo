@@ -17,6 +17,7 @@ import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { OpenAIAdapter } from './adapters/openai.adapter';
 import { AnthropicAdapter } from './adapters/anthropic.adapter';
 import { GeminiAdapter } from './adapters/gemini.adapter';
+import { GroqAdapter } from './adapters/groq.adapter';
 import { GatewayChatRequest } from './adapters/provider.adapter.interface';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class GatewayService {
     private readonly openAIAdapter: OpenAIAdapter,
     private readonly anthropicAdapter: AnthropicAdapter,
     private readonly geminiAdapter: GeminiAdapter,
+    private readonly groqAdapter: GroqAdapter,
     @InjectQueue(REQUEST_LEDGER_QUEUE) private readonly ledgerQueue: Queue,
   ) {}
 
@@ -139,6 +141,8 @@ export class GatewayService {
         adapterResult = await this.anthropicAdapter.execute(req, decryptedKey);
       } else if (provider === 'GEMINI') {
         adapterResult = await this.geminiAdapter.execute(req, decryptedKey);
+      } else if (provider === 'GROQ') {
+        adapterResult = await this.groqAdapter.execute(req, decryptedKey);
       } else {
         adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
       }

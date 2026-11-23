@@ -25,18 +25,13 @@ import { useHydrated, useLocalStorageValue, useStoredUser } from '@/lib/client-s
 import { ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
-import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { PROVIDER_LIST, ProviderBadge, ProviderLogo, providerKeyPlaceholder, providerLabel, type ProviderId } from '@/components/ui/ProviderLogo';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { BUDGET_USD, isNumberInRange } from '@/lib/limits';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-type ProviderId = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
-const PROVIDER_OPTIONS: Array<{ id: ProviderId; label: string; desc: string }> = [
-  { id: 'OPENAI', label: 'OpenAI', desc: 'GPT models' },
-  { id: 'ANTHROPIC', label: 'Anthropic', desc: 'Claude models' },
-  { id: 'GEMINI', label: 'Gemini', desc: 'Gemini models' },
-];
+const PROVIDER_OPTIONS = PROVIDER_LIST;
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -411,7 +406,7 @@ console.log(response.choices[0].message.content);`;
                 <label className="block text-label font-mono font-medium text-fg uppercase tracking-wider mb-1.5">
                   Select Provider
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {PROVIDER_OPTIONS.map((p) => (
                     <button
                       key={p.id}
@@ -459,13 +454,7 @@ console.log(response.choices[0].message.content);`;
                     aria-label={`${providerName} API key`}
                     aria-invalid={providerKeyError ? true : undefined}
                     aria-describedby={providerKeyError ? 'provider-key-error' : undefined}
-                    placeholder={
-                      provider === 'OPENAI'
-                        ? 'sk-proj-...'
-                        : provider === 'ANTHROPIC'
-                        ? 'sk-ant-api03-...'
-                        : 'AIzaSy...'
-                    }
+                    placeholder={providerKeyPlaceholder(provider)}
                     className="block w-full pl-10 pr-24 py-2.5 rounded-field border border-parchment-border text-xs sm:text-sm font-mono text-fg placeholder-fg-muted focus:ring-1 focus:ring-accent focus:border-accent focus:outline-none"
                   />
                   <button

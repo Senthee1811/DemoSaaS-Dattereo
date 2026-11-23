@@ -4,11 +4,11 @@ import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { assertProjectInOrg } from '@/common/tenant';
 
-const PROVIDERS = ['OPENAI', 'ANTHROPIC', 'GEMINI'] as const;
+const PROVIDERS = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'GROQ'] as const;
 
 export interface StoreProviderKeyDto {
   projectId: string;
-  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
   keyName: string;
   plainKey: string;
 }
@@ -189,7 +189,7 @@ export class KeysService {
   /**
    * Test live upstream connection with provider credentials before storing
    */
-  async testProviderConnection(provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI', plainKey: string) {
+  async testProviderConnection(provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ', plainKey: string) {
     if (!plainKey) {
       throw new BadRequestException('API key is required for testing connection');
     }
@@ -228,6 +228,18 @@ export class KeysService {
         }
         const err = await resp.text();
         return { valid: false, message: `Gemini rejected key (HTTP ${resp.status}): ${err}` };
+      }
+
+      if (provider === 'GROQ') {
+        // Models-list call: validates the key without spending tokens
+        const base = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/$/, '');
+        const resp = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${plainKey}` } });
+        if (resp.ok) {
+          const data = await resp.json();
+          return { valid: true, message: 'Groq connection verified successfully.', modelsCount: data.data?.length || 0 };
+        }
+        const err = await resp.text();
+        return { valid: false, message: `Groq rejected key (HTTP ${resp.status}): ${err}` };
       }
 
       return { valid: false, message: `Unsupported provider: ${provider}` };

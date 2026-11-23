@@ -12,12 +12,13 @@
  *  - OpenAI    GET https://api.openai.com/v1/models            -> { data: [{ id, shutdown_date? }] }
  *  - Anthropic GET https://api.anthropic.com/v1/models         -> { data: [{ id, retires_at, lifecycle }], has_more, last_id }
  *  - Gemini    GET https://generativelanguage.googleapis.com/v1beta/models -> { models: [{ name: 'models/<id>' }], nextPageToken }
+ *  - Groq      GET https://api.groq.com/openai/v1/models       -> { data: [{ id, active? }] } (OpenAI-compatible)
  *
  * Plain relative imports only: the ops script runs this outside Nest's path mapping.
  */
 
-export type ProviderName = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
-export const PROVIDERS: ProviderName[] = ['OPENAI', 'ANTHROPIC', 'GEMINI'];
+export type ProviderName = 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
+export const PROVIDERS: ProviderName[] = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'GROQ'];
 
 export interface ProviderModelInfo {
   id: string;
@@ -84,6 +85,17 @@ export async function fetchProviderModels(
     });
     for (const m of data?.data ?? []) {
       if (m?.id) out.push({ id: String(m.id), retiresAt: parseDate(m.shutdown_date) });
+    }
+    return out;
+  }
+
+  if (provider === 'GROQ') {
+    const data = await getJson(fetchImpl, 'https://api.groq.com/openai/v1/models', {
+      Authorization: `Bearer ${apiKey}`,
+    });
+    for (const m of data?.data ?? []) {
+      // Groq marks models it has switched off with active: false. Those are not usable.
+      if (m?.id && m.active !== false) out.push({ id: String(m.id) });
     }
     return out;
   }

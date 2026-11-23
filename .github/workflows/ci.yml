@@ -111,8 +111,10 @@ jobs:
           JWT_REFRESH_SECRET: ci-refresh-secret-not-for-production-012345678
           ENCRYPTION_MASTER_KEY: ci-master-key-not-for-production-0123456789ab
           OPENAI_BASE_URL: http://localhost:4555/v1
+          GROQ_BASE_URL: http://localhost:4555/v1
           # A platform key is set on purpose: tenant traffic must never use it
           OPENAI_API_KEY: sk-platform-should-never-be-used
+          GROQ_API_KEY: gsk_platform_should_never_be_used
           # Leaves the per-email auth limit as the one under test
           AUTH_IP_RPM: '30'
         run: |

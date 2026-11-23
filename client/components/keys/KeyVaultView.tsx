@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
-import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
+import { PROVIDER_LIST, ProviderLogo, providerKeyPlaceholder, providerLabel, type ProviderId } from '@/components/ui/ProviderLogo';
 import { useEscapeToClose, ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { NumberInput } from '@/components/ui/NumberInput';
@@ -24,7 +24,7 @@ interface ProviderKey {
   id: string;
   projectId: string;
   projectName?: string;
-  provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+  provider: ProviderId;
   keyName: string;
   keyPrefix: string;
   isActive: boolean;
@@ -71,7 +71,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
     setModalProjectId(null);
   }
   const modalProjectId = pickedProjectId || selectedProjectId || projects[0]?.id || '';
-  const [provider, setProvider] = useState<'OPENAI' | 'ANTHROPIC' | 'GEMINI'>('OPENAI');
+  const [provider, setProvider] = useState<ProviderId>('OPENAI');
   const [keyName, setKeyName] = useState('');
   const [plainKey, setPlainKey] = useState('');
   const [rateLimit, setRateLimit] = useState('1200');
@@ -227,7 +227,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               </h3>
             </div>
             <p className="text-xs text-fg-secondary mt-0.5">
-              Injected into upstream OpenAI, Anthropic, and Gemini API requests in memory.
+              Injected into upstream OpenAI, Anthropic, Gemini and Groq API requests in memory.
             </p>
           </div>
 
@@ -253,7 +253,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
             <EmptyState
               icon={KeyRound}
               title="Provider key: not configured"
-              description="Gateway requests fail with missing_provider_key until you connect an OpenAI, Anthropic or Gemini key for the project."
+              description="Gateway requests fail with missing_provider_key until you connect an OpenAI, Anthropic, Gemini or Groq key for the project."
               actionText="Connect Provider Key"
               onAction={() => setShowAddProviderKeyModal(true)}
               compact
@@ -431,8 +431,8 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
 
               <div>
                 <label className="font-semibold text-fg block mb-1.5">AI Provider *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['OPENAI', 'ANTHROPIC', 'GEMINI'] as const).map((prov) => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {PROVIDER_LIST.map(({ id: prov }) => (
                     <button
                       key={prov}
                       type="button"
@@ -479,7 +479,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                 </div>
                 <input
                   type="password"
-                  placeholder="sk-proj-..."
+                  placeholder={providerKeyPlaceholder(provider)}
                   value={plainKey}
                   onChange={(e) => {
                     setPlainKey(e.target.value);

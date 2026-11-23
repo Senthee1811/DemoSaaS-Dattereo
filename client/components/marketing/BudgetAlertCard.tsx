@@ -18,11 +18,11 @@ export function BudgetAlertCard({ className = '' }: BudgetAlertCardProps) {
           <div className="w-5 h-5 rounded-md bg-[#FFF1EA] flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-[#FF6B35]" />
           </div>
-          <span className="text-[11px] font-extrabold tracking-wider uppercase">
+          <span className="text-label font-extrabold tracking-wider uppercase">
             Budget Alert
           </span>
         </div>
-        <span className="text-[10px] font-medium text-[#999999]">Just now</span>
+        <span className="text-caption font-medium text-[#999999]">Just now</span>
       </div>
 
       {/* Body */}

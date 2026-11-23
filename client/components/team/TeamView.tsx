@@ -141,11 +141,11 @@ export function TeamView() {
             <table className="w-full text-left text-xs">
               <thead className="bg-parchment-ivory text-sg-text-secondary font-semibold border-b border-sg-border">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Member</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Email</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Role</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Organization Scope</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Joined</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Member</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Email</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Role</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Organization Scope</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Joined</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-sg-border text-inversion-dark">
@@ -165,10 +165,10 @@ export function TeamView() {
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-[11px] text-sg-text-secondary">{u.email}</td>
+                      <td className="py-3.5 px-4 font-mono text-label text-sg-text-secondary">{u.email}</td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-caption font-semibold ${
                           u.role === 'OWNER'
                             ? 'bg-sg-success-bg text-[#0D9488] border border-sg-success-border'
                             : u.role === 'ADMIN'
@@ -181,7 +181,7 @@ export function TeamView() {
 
                       <td className="py-3.5 px-4 text-sg-text-secondary">{orgName}</td>
 
-                      <td className="py-3.5 px-4 text-right text-sg-text-muted text-[11px]">
+                      <td className="py-3.5 px-4 text-right text-sg-text-muted text-label">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
                       </td>
                     </tr>

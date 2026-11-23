@@ -16,11 +16,11 @@ export default function NotFound() {
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 leading-none">
               <span className="font-serif font-medium tracking-tight text-[#141413] text-sm">SpendGuard</span>
-              <span className="text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-[#EFECE6] text-[#5F6368] border border-[#E5E0D8]">
+              <span className="text-micro uppercase font-mono font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-[#EFECE6] text-[#5F6368] border border-[#E5E0D8]">
                 AI
               </span>
             </div>
-            <span className="text-[10px] text-[#888882] font-mono mt-0.5">by Dattreo</span>
+            <span className="text-caption text-[#888882] font-mono mt-0.5">by Dattreo</span>
           </div>
         </Link>
       </header>

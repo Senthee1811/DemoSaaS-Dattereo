@@ -121,7 +121,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#E4E4E0] pb-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] text-[10px] font-mono font-medium text-[#5F6368] mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E4E4E0] text-caption font-mono font-medium text-[#5F6368] mb-1.5">
             <Settings2 className="w-3 h-3 text-[#FF6B35]" />
             <span>Workspace & Identity Governance</span>
           </div>
@@ -189,37 +189,37 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-[#888882] block">
                   Account Email
                 </span>
                 <p className="text-xs font-semibold text-[#141413] truncate font-mono">
                   {user.email || '—'}
                 </p>
-                <span className="inline-flex items-center gap-1 text-[10px] text-[#0D9488] font-medium mt-1">
+                <span className="inline-flex items-center gap-1 text-caption text-[#0D9488] font-medium mt-1">
                   <CircleCheck className="w-3 h-3" />
                   <span>Verified Identity</span>
                 </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-[#888882] block">
                   Account Status
                 </span>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-xs font-semibold text-[#141413]">Active & Authenticated</span>
                 </div>
-                <p className="text-[10px] text-[#888882]">Session token valid with Redis</p>
+                <p className="text-caption text-[#888882]">Session token valid with Redis</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-[#888882] block">
                   Workspace Membership
                 </span>
                 <p className="text-xs font-semibold text-[#141413] truncate">
                   {user.orgName || 'Workspace'}
                 </p>
-                <div className="flex items-center gap-1.5 text-[10px] text-[#555550]">
+                <div className="flex items-center gap-1.5 text-caption text-[#555550]">
                   <span className="px-1.5 py-0.2 rounded-full bg-[#FFF7F2] text-[#FF6B35] font-mono font-semibold border border-[#FFD2C0]">
                     {user.role || 'MEMBER'}
                   </span>
@@ -228,13 +228,13 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
               </div>
 
               <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#888882] block">
+                <span className="text-caption font-mono font-semibold uppercase tracking-wider text-[#888882] block">
                   Active Web Session
                 </span>
                 <p className="text-xs font-semibold text-[#141413] font-mono">
                   BFF Session (Next.js)
                 </p>
-                <p className="text-[10px] text-[#888882]">AES-256 encrypted proxy</p>
+                <p className="text-caption text-[#888882]">AES-256 encrypted proxy</p>
               </div>
             </div>
           </div>
@@ -250,7 +250,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                   <h3 className="font-serif text-base font-normal text-[#141413]">
                     Deactivate User Account
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-mono font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-caption font-mono font-semibold">
                     Irreversible Session Revocation
                   </span>
                 </div>
@@ -376,7 +376,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-[#141413]">Password Cryptography</p>
-                <p className="text-[11px] text-[#888882]">Protected with PBKDF2 (100,000 iterations, 512-bit salt)</p>
+                <p className="text-label text-[#888882]">Protected with PBKDF2 (100,000 iterations, 512-bit salt)</p>
               </div>
               <button
                 type="button"
@@ -390,9 +390,9 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-[#141413]">AES-256-GCM Envelope Encryption</p>
-                <p className="text-[11px] text-[#888882]">All provider API keys are sealed with master vault rotation support</p>
+                <p className="text-label text-[#888882]">All provider API keys are sealed with master vault rotation support</p>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#0D9488] text-[10px] font-mono font-semibold border border-[#BBF7D0]">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#0D9488] text-caption font-mono font-semibold border border-[#BBF7D0]">
                 ENFORCED
               </span>
             </div>
@@ -419,9 +419,9 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] flex items-center justify-between">
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-[#141413]">Email Dispatch</p>
-                <p className="text-[11px] text-[#888882]">Email budget warnings and hard-block notifications</p>
+                <p className="text-label text-[#888882]">Email budget warnings and hard-block notifications</p>
               </div>
-              <span className="text-[11px] text-[#888882] font-semibold">Not configured — coming soon</span>
+              <span className="text-label text-[#888882] font-semibold">Not configured — coming soon</span>
             </div>
           </div>
         </div>
@@ -442,12 +442,12 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
           <div className="space-y-4 max-w-xl text-xs">
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
               <label className="font-semibold text-[#141413]">Currency Display</label>
-              <p className="text-[#888882] text-[11px]">USD ($) - Standard FinOps multi-provider denomination</p>
+              <p className="text-[#888882] text-label">USD ($) - Standard FinOps multi-provider denomination</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1">
               <label className="font-semibold text-[#141413]">Design Direction</label>
-              <p className="text-[#888882] text-[11px]">Editorial Dattreo Design System (Deep neutrals, orange accents, zero slop)</p>
+              <p className="text-[#888882] text-label">Editorial Dattreo Design System (Deep neutrals, orange accents, zero slop)</p>
             </div>
           </div>
         </div>
@@ -472,7 +472,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                   <h3 id="deactivate-modal-title" className="font-serif text-base font-normal text-[#141413]">
                     Account Deactivation
                   </h3>
-                  <span className="text-[10px] font-mono text-[#888882]">
+                  <span className="text-caption font-mono text-[#888882]">
                     Step {deactivateStep} of 3 • Security Verification
                   </span>
                 </div>
@@ -648,7 +648,7 @@ export function SettingsView({ onStartTour, onNavigateToTeam }: SettingsViewProp
                     placeholder="Type DEACTIVATE"
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-red-300 text-xs font-mono text-[#141413] placeholder-[#888882] focus:border-red-600 focus:outline-none"
                   />
-                  <p className="text-[11px] text-[#888882]">
+                  <p className="text-label text-[#888882]">
                     Clicking the button below will immediately revoke your account and sign you out.
                   </p>
                 </div>

@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TableRowSkeleton } from '@/components/ui/LoadingSkeleton';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
 import { errorMessage } from '@/lib/types';
+import { ProviderBadge, ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
 interface ProviderKey {
   id: string;
@@ -260,13 +261,13 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Provider</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Key Alias</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Bound Project</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Masked Secret</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Encryption</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Created</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Provider</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Key Alias</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Bound Project</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Masked Secret</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Encryption</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Created</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
@@ -274,19 +275,19 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                   <tr key={pk.id} className="hover:bg-[#FAF8F5] transition-colors">
                     <td className="py-3.5 px-4">
                       <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[#F3F3F0] border border-[#E4E4E0] text-[#141413]">
-                        {pk.provider}
+                        <ProviderBadge provider={pk.provider} />
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-semibold text-[#141413]">{pk.keyName}</td>
                     <td className="py-3.5 px-4 text-[#5F6368]">{pk.projectName || pk.projectId}</td>
                     <td className="py-3.5 px-4 font-mono text-xs text-[#5F6368]">{pk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-[11px] text-[#0D9488] font-medium">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-label text-[#0D9488] font-medium">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Envelope AES-256</span>
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-[#80868B] text-[11px]">
+                    <td className="py-3.5 px-4 text-[#80868B] text-label">
                       {new Date(pk.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
@@ -351,12 +352,12 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Token Name</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Bound Project</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Key Prefix</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Rate Limit</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Token Name</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Bound Project</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Key Prefix</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Rate Limit</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
@@ -367,7 +368,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     <td className="py-3.5 px-4 font-mono text-[#FF6B35] font-semibold">{gk.keyPrefix}••••••••</td>
                     <td className="py-3.5 px-4 font-mono tabular-nums text-[#5F6368]">{gk.rateLimitRpm} rpm</td>
                     <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                         Active
                       </span>
                     </td>
@@ -430,13 +431,14 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                         setProvider(prov);
                         setTestResult(null);
                       }}
-                      className={`py-2 rounded-full text-xs font-semibold transition-colors border ${
+                      className={`py-2 rounded-full text-xs font-semibold transition-colors border inline-flex items-center justify-center gap-1.5 ${
                         provider === prov
                           ? 'bg-[#FFF7F2] text-[#FF6B35] border-[#FFD2C0]'
                           : 'bg-white text-[#5F6368] border-[#E4E4E0] hover:bg-[#FAF8F5]'
                       }`}
                     >
-                      {prov}
+                      <ProviderLogo provider={prov} size={16} />
+                      <span>{providerLabel(prov)}</span>
                     </button>
                   ))}
                 </div>
@@ -460,7 +462,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     type="button"
                     onClick={handleTestProvider}
                     disabled={isTestingProvider || !plainKey}
-                    className="text-[11px] font-semibold text-[#FF6B35] hover:underline disabled:opacity-50"
+                    className="text-label font-semibold text-[#FF6B35] hover:underline disabled:opacity-50"
                   >
                     {isTestingProvider ? 'Testing live...' : '⚡ Test Connection'}
                   </button>
@@ -487,7 +489,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
                     <span>{testResult.message}</span>
                   </div>
                 )}
-                <p className="text-[11px] text-[#80868B] mt-1">
+                <p className="text-label text-[#80868B] mt-1">
                   Encrypted immediately with AES-256-GCM. Plaintext is never stored or returned.
                 </p>
               </div>
@@ -536,7 +538,7 @@ export function KeyVaultView({ projects, selectedProjectId }: KeyVaultViewProps)
               <div className="space-y-4 text-xs">
                 <div className="p-3.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl text-[#0D9488]">
                   <p className="font-semibold">Token Generated Successfully</p>
-                  <p className="text-[11px] mt-0.5">
+                  <p className="text-label mt-0.5">
                     Save this secret now. For security, it cannot be displayed again.
                   </p>
                 </div>

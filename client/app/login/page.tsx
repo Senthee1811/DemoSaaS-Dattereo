@@ -74,7 +74,7 @@ export default function LoginPage() {
             <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
               SpendGuard <span className="text-[#FF6B35]">AI</span>
             </span>
-            <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
+            <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
           </div>
         </Link>
 
@@ -93,7 +93,7 @@ export default function LoginPage() {
               <CircleCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <p className="text-xs text-amber-900 font-semibold">Account Deactivated</p>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
+                <p className="text-label text-amber-800 leading-relaxed">
                   Your account has been deactivated and all active sessions have been invalidated. 
                   Workspace data and team members remain unaffected.
                 </p>
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+              <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                 Work Email
               </label>
               <div className="relative">
@@ -139,7 +139,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider">
                   Password
                 </label>
                 <Link href="/forgot-password" className="text-xs font-medium text-[#FF6B35] hover:underline">
@@ -203,7 +203,7 @@ export default function LoginPage() {
 
           {/* Secure Infrastructure Assurance */}
           <div className="mt-6 pt-4 border-t border-parchment-border text-center">
-            <span className="text-[11px] font-mono text-[#888882]">
+            <span className="text-label font-mono text-[#888882]">
               Protected by sub-5ms Redis Lua pre-flight capacity reservations & AES-256-GCM encryption.
             </span>
           </div>

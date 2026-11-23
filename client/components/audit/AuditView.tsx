@@ -266,20 +266,20 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
             <table className="w-full text-left text-xs">
               <thead className="bg-parchment-ivory text-sg-text-secondary font-semibold border-b border-sg-border">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Request ID</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Timestamp</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Model</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Tokens In / Out</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Cost (USD)</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Latency</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-center">Status</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Request ID</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Timestamp</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Project</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Model</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Tokens In / Out</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Cost (USD)</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Latency</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-sg-border text-inversion-dark">
                 {paginatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-parchment-ivory transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-sg-text-secondary">
+                    <td className="py-3.5 px-4 font-mono text-label text-sg-text-secondary">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate max-w-27.5">{log.id}</span>
                         <button
@@ -293,7 +293,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-sg-text-muted">
+                    <td className="py-3.5 px-4 font-mono text-label text-sg-text-muted">
                       {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </td>
 
@@ -302,7 +302,7 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#F3F3F0] text-inversion-dark border border-sg-border">
+                      <span className="font-mono text-label px-2.5 py-0.5 rounded-full bg-[#F3F3F0] text-inversion-dark border border-sg-border">
                         {log.model}
                       </span>
                     </td>
@@ -321,17 +321,17 @@ export function AuditView({ projects, selectedProjectId }: AuditViewProps) {
 
                     <td className="py-3.5 px-4 text-center">
                       {log.isBlocked ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sg-critical-bg text-sg-critical border border-sg-critical-border">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-critical-bg text-sg-critical border border-sg-critical-border">
                           <ShieldAlert className="w-3 h-3" />
                           <span>429 Blocked</span>
                         </span>
                       ) : log.isAnomaly ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sg-warning-bg text-sg-warning border border-sg-warning-border" title={log.anomalyReason}>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-warning-bg text-sg-warning border border-sg-warning-border" title={log.anomalyReason}>
                           <AlertTriangle className="w-3 h-3" />
                           <span>Spike (Z&gt;3)</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-sg-success-bg text-[#0D9488] border border-sg-success-border">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-sg-success-bg text-[#0D9488] border border-sg-success-border">
                           <ShieldCheck className="w-3 h-3" />
                           <span>200 OK</span>
                         </span>

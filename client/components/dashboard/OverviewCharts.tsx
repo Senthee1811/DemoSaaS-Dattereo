@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,6 +16,7 @@ import {
 import { BarChart3, PieChart as PieIcon } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { DailySpendPoint } from '@/lib/types';
+import { DayRequestsPanel } from './DayRequestsPanel';
 
 export interface PieSlice {
   name: string;
@@ -39,19 +40,45 @@ export function OverviewCharts({
   totalSpend,
   onNavigateToPlayground,
 }: OverviewChartsProps) {
+  // The UTC day ("YYYY-MM-DD") whose individual requests are open in the side panel
+  const [openDay, setOpenDay] = useState<string | null>(null);
+
+  // Clicking a point/bar selects its day. activeTooltipIndex is the hovered data index.
+  const handleChartClick = (state: { activeTooltipIndex?: number | string | null; activeLabel?: number | string }) => {
+    const idx = Number(state?.activeTooltipIndex);
+    const point = Number.isInteger(idx) ? dailySpend[idx] : dailySpend.find((p) => p.date === state?.activeLabel);
+    if (point) setOpenDay(point.date);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      {openDay && <DayRequestsPanel day={openDay} onClose={() => setOpenDay(null)} />}
       {/* Daily Spend Velocity Chart (8 cols) */}
       <div className="lg:col-span-8 bg-white p-6 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-serif text-lg font-normal text-[#141413] tracking-tight">Daily Spend Velocity</h3>
-              <p className="text-xs text-[#5F6368] mt-0.5">30-day trailing inference expenditure</p>
+              <p className="text-xs text-[#5F6368] mt-0.5">30-day trailing inference expenditure · click a day to see its requests</p>
             </div>
-            <span className="text-[11px] font-mono text-[#80868B] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#E4E4E0]">
-              UTC Daily Buckets
-            </span>
+            <div className="flex items-center gap-2">
+              {dailySpend.length > 0 && (
+                <select
+                  aria-label="Inspect the requests of a day"
+                  value=""
+                  onChange={(e) => e.target.value && setOpenDay(e.target.value)}
+                  className="text-label font-mono text-[#5F6368] bg-white px-2.5 py-1 rounded-full border border-[#E4E4E0] cursor-pointer"
+                >
+                  <option value="">Inspect a day…</option>
+                  {[...dailySpend].reverse().map((p) => (
+                    <option key={p.date} value={p.date}>{p.date} · {p.requests} req</option>
+                  ))}
+                </select>
+              )}
+              <span className="text-label font-mono text-[#80868B] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#E4E4E0]">
+                UTC Daily Buckets
+              </span>
+            </div>
           </div>
 
           {dailySpend.length < 1 ? (
@@ -66,7 +93,12 @@ export function OverviewCharts({
           ) : (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailySpend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={dailySpend}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  onClick={handleChartClick}
+                  style={{ cursor: 'pointer' }}
+                >
                   <defs>
                     <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF6B35" stopOpacity={0.25} />
@@ -77,13 +109,13 @@ export function OverviewCharts({
                   <XAxis
                     dataKey="date"
                     stroke="#80868B"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={{ stroke: '#E4E4E0' }}
                   />
                   <YAxis
                     stroke="#80868B"
-                    fontSize={11}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v) => `$${v}`}
@@ -94,7 +126,7 @@ export function OverviewCharts({
                       borderColor: '#E4E4E0',
                       borderRadius: '16px',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       color: '#141413'
                     }}
                     formatter={(val: TooltipValue) => [formatUsd(val), 'Cost']}
@@ -155,7 +187,7 @@ export function OverviewCharts({
                         borderColor: '#E4E4E0',
                         borderRadius: '16px',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         color: '#141413'
                       }}
                       formatter={(val: TooltipValue) => [formatUsd(val), 'Spend']}
@@ -176,7 +208,7 @@ export function OverviewCharts({
                       </div>
                       <div className="flex items-center gap-2 font-mono tabular-nums text-xs shrink-0">
                         <span className="text-[#5F6368]">${m.value.toFixed(4)}</span>
-                        <span className="text-[11px] font-semibold text-[#141413]">({pct}%)</span>
+                        <span className="text-label font-semibold text-[#141413]">({pct}%)</span>
                       </div>
                     </div>
                   );

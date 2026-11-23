@@ -143,25 +143,25 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
       {/* Aggregate Alert Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Unread Incidents</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Unread Incidents</span>
           <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${unreadCount > 0 ? 'text-[#FF6B35]' : 'text-[#141413]'}`}>
             {unreadCount}
           </p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Hard-Blocks Tripped</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Hard-Blocks Tripped</span>
           <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${hardBlockCount > 0 ? 'text-[#DC2626]' : 'text-[#141413]'}`}>
             {hardBlockCount}
           </p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Statistical Spikes</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Statistical Spikes</span>
           <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${spikeCount > 0 ? 'text-[#D97706]' : 'text-[#141413]'}`}>
             {spikeCount}
           </p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Delivery</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Delivery</span>
           <p className="font-serif text-2xl font-normal text-[#141413] mt-1">
             {alerts.some((a) => a.channel === 'SLACK') ? 'In-app + Slack' : 'In-app'}
           </p>
@@ -259,12 +259,12 @@ export function AlertsView({ projects, onRefreshUnreadCount }: AlertsViewProps) 
                         {!alert.isRead && (
                           <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
                         )}
-                        <span className="text-[10px] font-mono text-[#80868B]">
+                        <span className="text-caption font-mono text-[#80868B]">
                           {alert.projectName || alert.projectId}
                         </span>
                       </div>
                       <p className="text-xs text-[#5F6368] leading-relaxed max-w-2xl">{alert.message}</p>
-                      <div className="flex items-center gap-2 pt-1 text-[11px] text-[#80868B] font-mono tabular-nums">
+                      <div className="flex items-center gap-2 pt-1 text-label text-[#80868B] font-mono tabular-nums">
                         <span>{new Date(alert.triggeredAt).toLocaleString()}</span>
                         <span>•</span>
                         <span>Channel: {alert.channel}</span>

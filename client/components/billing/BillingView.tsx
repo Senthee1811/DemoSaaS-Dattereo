@@ -138,7 +138,7 @@ export function BillingView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-2 py-0.5 rounded-full">
+            <span className="text-caption font-mono font-bold uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-2 py-0.5 rounded-full">
               Subscription
             </span>
             <span className="text-xs text-[#5F6368] font-medium flex items-center gap-1.5">
@@ -160,10 +160,10 @@ export function BillingView() {
             <CreditCard className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] font-mono font-medium text-[#5F6368] uppercase tracking-wider">Current Tier</div>
+            <div className="text-caption font-mono font-medium text-[#5F6368] uppercase tracking-wider">Current Tier</div>
             <div className="text-xs font-semibold text-[#141413] capitalize flex items-center gap-2 mt-0.5">
               <span>{currentTier} Plan</span>
-              <span className="px-2 py-0.2 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+              <span className="px-2 py-0.2 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                 {subData?.status || 'Active'}
               </span>
             </div>
@@ -193,7 +193,7 @@ export function BillingView() {
           <span className={`text-xs font-medium ${annual ? 'text-[#141413] font-semibold' : 'text-[#5F6368]'}`}>
             Annual Billing
           </span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+          <span className="px-2 py-0.5 rounded-full text-caption font-bold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
             Save 20%
           </span>
         </div>
@@ -223,11 +223,11 @@ export function BillingView() {
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-xl font-normal text-[#141413]">{plan.name}</h3>
                     {isCurrent ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF7F2] text-[#FF6B35] border border-[#FFD2C0]">
+                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#FFF7F2] text-[#FF6B35] border border-[#FFD2C0]">
                         Active Tier
                       </span>
                     ) : plan.popular ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#141413] text-white">
+                      <span className="px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#141413] text-white">
                         Recommended
                       </span>
                     ) : null}
@@ -243,12 +243,12 @@ export function BillingView() {
                     </span>
                     <span className="text-xs text-[#80868B]">/ month</span>
                     {annual && (
-                      <span className="text-[10px] text-[#80868B] ml-1">billed annually</span>
+                      <span className="text-caption text-[#80868B] ml-1">billed annually</span>
                     )}
                   </div>
 
                   <div className="pt-4 border-t border-[#E4E4E0] space-y-2.5">
-                    <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#80868B]">
+                    <div className="text-caption font-mono font-medium uppercase tracking-wider text-[#80868B]">
                       Included Features
                     </div>
                     {plan.features.map((feat, i) => (
@@ -303,25 +303,25 @@ export function BillingView() {
               <CreditCard className="w-4 h-4 text-[#5F6368]" />
               <span>Payment Method</span>
             </h4>
-            <span className="text-[10px] text-[#80868B] font-mono">PCI-DSS Level 1</span>
+            <span className="text-caption text-[#80868B] font-mono">PCI-DSS Level 1</span>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E4E4E0] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-7 bg-white rounded-lg border border-[#E4E4E0] flex items-center justify-center font-bold text-[9px] text-[#141413]">
+              <div className="w-10 h-7 bg-white rounded-lg border border-[#E4E4E0] flex items-center justify-center font-bold text-micro text-[#141413]">
                 CARD
               </div>
               <div>
                 <div className="text-xs font-mono font-semibold text-[#141413]">•••• •••• •••• 4242</div>
-                <div className="text-[10px] text-[#80868B]">Expires 12/28</div>
+                <div className="text-caption text-[#80868B]">Expires 12/28</div>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
+            <span className="px-2 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488]">
               Default
             </span>
           </div>
 
-          <p className="text-[11px] text-[#5F6368]">
+          <p className="text-label text-[#5F6368]">
             Card information is vaulted and processed by Stripe without touching SpendGuard servers.
           </p>
         </div>
@@ -333,13 +333,13 @@ export function BillingView() {
               <Receipt className="w-4 h-4 text-[#5F6368]" />
               <span>Billing Invoices</span>
             </h4>
-            <span className="text-[11px] text-[#80868B]">Monthly automatic renewal</span>
+            <span className="text-label text-[#80868B]">Monthly automatic renewal</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-[#E4E4E0] text-[#5F6368] font-semibold text-[11px]">
+                <tr className="border-b border-[#E4E4E0] text-[#5F6368] font-semibold text-label">
                   <th className="pb-3">Invoice #</th>
                   <th className="pb-3">Date</th>
                   <th className="pb-3 text-right">Amount</th>
@@ -349,11 +349,11 @@ export function BillingView() {
               </thead>
               <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
                 <tr>
-                  <td className="py-3 font-mono text-[11px] font-medium">INV-2026-003</td>
+                  <td className="py-3 font-mono text-label font-medium">INV-2026-003</td>
                   <td className="py-3 text-[#5F6368]">Nov 01, 2026</td>
                   <td className="py-3 font-mono tabular-nums text-right font-semibold">$39.00 USD</td>
                   <td className="py-3 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
+                    <span className="px-2 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488]">
                       Paid
                     </span>
                   </td>
@@ -361,7 +361,7 @@ export function BillingView() {
                     <button 
                       type="button" 
                       onClick={() => alert('Receipt PDF downloaded for INV-2026-003')}
-                      className="text-[#FF6B35] hover:underline font-semibold text-[11px] inline-flex items-center gap-1"
+                      className="text-[#FF6B35] hover:underline font-semibold text-label inline-flex items-center gap-1"
                     >
                       <span>PDF</span>
                       <ExternalLink className="w-3 h-3" />
@@ -369,11 +369,11 @@ export function BillingView() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-mono text-[11px] font-medium">INV-2026-002</td>
+                  <td className="py-3 font-mono text-label font-medium">INV-2026-002</td>
                   <td className="py-3 text-[#5F6368]">Oct 01, 2026</td>
                   <td className="py-3 font-mono tabular-nums text-right font-semibold">$39.00 USD</td>
                   <td className="py-3 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488]">
+                    <span className="px-2 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488]">
                       Paid
                     </span>
                   </td>
@@ -381,7 +381,7 @@ export function BillingView() {
                     <button 
                       type="button" 
                       onClick={() => alert('Receipt PDF downloaded for INV-2026-002')}
-                      className="text-[#FF6B35] hover:underline font-semibold text-[11px] inline-flex items-center gap-1"
+                      className="text-[#FF6B35] hover:underline font-semibold text-label inline-flex items-center gap-1"
                     >
                       <span>PDF</span>
                       <ExternalLink className="w-3 h-3" />

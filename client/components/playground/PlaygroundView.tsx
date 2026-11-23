@@ -171,7 +171,7 @@ response = client.chat.completions.create(
 
           {/* Model Selector with Pricing Cards */}
           <div>
-            <label className="text-[11px] font-mono font-medium uppercase tracking-wider text-sg-text-secondary block mb-2">
+            <label className="text-label font-mono font-medium uppercase tracking-wider text-sg-text-secondary block mb-2">
               Target Foundation Model
             </label>
             <ModelPicker
@@ -183,7 +183,7 @@ response = client.chat.completions.create(
 
           {/* Prompt Editor */}
           <div>
-            <label className="text-[11px] font-mono font-medium uppercase tracking-wider text-sg-text-secondary block mb-1.5">
+            <label className="text-label font-mono font-medium uppercase tracking-wider text-sg-text-secondary block mb-1.5">
               User Message (Prompt)
             </label>
             <textarea
@@ -250,7 +250,7 @@ response = client.chat.completions.create(
             <div className="flex items-center justify-between pb-2.5 border-b border-sg-border">
               <h3 className="font-serif text-lg font-normal text-inversion-dark">Gateway Telemetry</h3>
               {executionResult && (
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold ${
+                <span className={`px-2.5 py-0.5 rounded-full text-label font-mono font-semibold ${
                   executionResult.status === 200
                     ? 'bg-sg-success-bg text-[#0D9488] border border-sg-success-border'
                     : 'bg-sg-critical-bg text-sg-critical border border-sg-critical-border'
@@ -265,13 +265,13 @@ response = client.chat.completions.create(
                 {/* Cost & Latency Metrics */}
                 <div className="grid grid-cols-2 gap-2.5 bg-parchment-ivory p-3.5 rounded-2xl border border-sg-border font-mono tabular-nums">
                   <div>
-                    <span className="text-[10px] text-sg-text-secondary uppercase block">Incurred Cost</span>
+                    <span className="text-caption text-sg-text-secondary uppercase block">Incurred Cost</span>
                     <span className="text-sm font-bold text-[#0D9488]">
                       {executionResult.headers?.['x-spendguard-cost'] ? `$${executionResult.headers['x-spendguard-cost']}` : '$0.00000'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-sg-text-secondary uppercase block">Proxy Latency</span>
+                    <span className="text-caption text-sg-text-secondary uppercase block">Proxy Latency</span>
                     <span className="text-sm font-bold text-inversion-dark">
                       {executionResult.headers?.['x-spendguard-latency'] || '0ms'}
                     </span>
@@ -280,7 +280,7 @@ response = client.chat.completions.create(
 
                 {/* Completion Text */}
                 <div>
-                  <span className="text-[11px] font-mono font-medium text-sg-text-secondary uppercase block mb-1.5">
+                  <span className="text-label font-mono font-medium text-sg-text-secondary uppercase block mb-1.5">
                     Upstream Model Output
                   </span>
                   <div className="p-3.5 bg-parchment-ivory border border-sg-border rounded-2xl font-mono text-xs text-inversion-dark max-h-56 overflow-y-auto leading-relaxed whitespace-pre-wrap">
@@ -307,7 +307,7 @@ response = client.chat.completions.create(
                     key={tab}
                     type="button"
                     onClick={() => setCodeTab(tab)}
-                    className={`px-3 py-1 rounded-full text-[11px] font-mono transition-colors ${
+                    className={`px-3 py-1 rounded-full text-label font-mono transition-colors ${
                       codeTab === tab
                         ? 'bg-inversion-dark text-white shadow-2xs font-semibold'
                         : 'text-sg-text-secondary hover:text-inversion-dark'
@@ -321,14 +321,14 @@ response = client.chat.completions.create(
               <button
                 type="button"
                 onClick={handleCopySnippet}
-                className="text-[11px] text-sg-text-secondary hover:text-inversion-dark flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-parchment-ivory transition-colors"
+                className="text-label text-sg-text-secondary hover:text-inversion-dark flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-parchment-ivory transition-colors"
               >
                 {copied ? <Check className="w-3 h-3 text-[#0D9488]" /> : <Copy className="w-3 h-3" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
 
-            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-2xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
+            <pre className="p-3.5 bg-inversion-dark text-[#ECECE8] rounded-2xl font-mono text-label overflow-x-auto leading-relaxed border border-white/10 shadow-2xs">
               <code>{getCodeSnippet()}</code>
             </pre>
           </div>

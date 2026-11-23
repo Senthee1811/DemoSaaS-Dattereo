@@ -175,7 +175,7 @@ export function OverviewView({
         <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">MTD AI Spend</span>
+              <span className="font-mono uppercase tracking-wider text-label font-medium">MTD AI Spend</span>
               <DollarSign className="w-4 h-4 text-[#FF6B35]" />
             </div>
             <div className="mt-3 flex items-baseline gap-1.5">
@@ -196,7 +196,7 @@ export function OverviewView({
                 }`}
               />
             </div>
-            <div className="flex items-center justify-between mt-1.5 text-[11px] text-[#5F6368] font-mono tabular-nums">
+            <div className="flex items-center justify-between mt-1.5 text-label text-[#5F6368] font-mono tabular-nums">
               <span>{utilizationPct}% utilized</span>
               <span>${Math.max(0, totalBudget - totalSpend).toFixed(2)} remaining</span>
             </div>
@@ -207,7 +207,7 @@ export function OverviewView({
         <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Projected Burn</span>
+              <span className="font-mono uppercase tracking-wider text-label font-medium">Projected Burn</span>
               <TrendingUp className="w-4 h-4 text-[#5F6368]" />
             </div>
             <div className="mt-3">
@@ -216,7 +216,7 @@ export function OverviewView({
               </span>
             </div>
           </div>
-          <div className="mt-4 text-[11px] text-[#5F6368] flex items-center gap-1.5">
+          <div className="mt-4 text-label text-[#5F6368] flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${projectedSpend > totalBudget ? 'bg-[#DC2626]' : 'bg-[#0D9488]'}`} />
             <span>{projectedSpend > totalBudget ? 'Projected to exceed budget' : 'Pacing within monthly limit'}</span>
           </div>
@@ -226,7 +226,7 @@ export function OverviewView({
         <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Tokens Processed</span>
+              <span className="font-mono uppercase tracking-wider text-label font-medium">Tokens Processed</span>
               <Zap className="w-4 h-4 text-[#5F6368]" />
             </div>
             <div className="mt-3">
@@ -235,7 +235,7 @@ export function OverviewView({
               </span>
             </div>
           </div>
-          <div className="mt-4 text-[11px] text-[#5F6368]">
+          <div className="mt-4 text-label text-[#5F6368]">
             Across <span className="font-mono tabular-nums font-semibold text-[#141413]">{(summary.totalRequests || 0).toLocaleString()}</span> requests
           </div>
         </div>
@@ -244,19 +244,19 @@ export function OverviewView({
         <div className="p-5 bg-white rounded-[24px] border border-[#E4E4E0] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[#5F6368]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-medium">Guardrails & Alerts</span>
+              <span className="font-mono uppercase tracking-wider text-label font-medium">Guardrails & Alerts</span>
               <Activity className="w-4 h-4 text-[#5F6368]" />
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="font-serif text-3xl font-normal text-[#141413] tabular-nums tracking-tight">
                 {summary.anomalyCount || 0}
               </span>
-              <span className="text-[11px] font-semibold text-[#D97706] bg-[#FFFBEB] px-2 py-0.5 rounded-full border border-[#FDE68A]">
+              <span className="text-label font-semibold text-[#D97706] bg-[#FFFBEB] px-2 py-0.5 rounded-full border border-[#FDE68A]">
                 Spikes Flagged
               </span>
             </div>
           </div>
-          <div className="mt-4 text-[11px] text-[#5F6368]">
+          <div className="mt-4 text-label text-[#5F6368]">
             <span className="font-mono tabular-nums font-semibold text-[#141413]">{summary.blockedCount || 0}</span> requests hard-blocked
           </div>
         </div>
@@ -299,7 +299,7 @@ export function OverviewView({
           <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#E4E4E0] text-[11px] font-mono text-[#5F6368] uppercase tracking-wider">
+                <tr className="border-b border-[#E4E4E0] text-label font-mono text-[#5F6368] uppercase tracking-wider">
                   <th className="py-3 px-3">Request ID</th>
                   <th className="py-3 px-3">Model</th>
                   <th className="py-3 px-3">Tokens</th>
@@ -331,20 +331,20 @@ export function OverviewView({
                     </td>
                     <td className="py-3 px-3">
                       {req.is_blocked ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                           429 BLOCKED
                         </span>
                       ) : req.is_anomaly ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
+                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                           FLAGGED SPIKE
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                        <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                           200 OK
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right text-[#80868B] font-mono text-[11px]">
+                    <td className="py-3 px-3 text-right text-[#80868B] font-mono text-label">
                       {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </td>
                   </tr>

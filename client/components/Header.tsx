@@ -140,7 +140,7 @@ export function Header({
         >
           <Bell className="w-4 h-4" />
           {unreadAlertsCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-micro font-bold flex items-center justify-center">
               {unreadAlertsCount}
             </span>
           )}
@@ -153,7 +153,7 @@ export function Header({
           </div>
           <div className="hidden sm:block text-left text-xs">
             <p className="font-semibold text-[#141413] leading-none">{userName}</p>
-            <p className="text-[10px] text-[#5F6368] leading-none mt-1">{userRole}</p>
+            <p className="text-caption text-[#5F6368] leading-none mt-1">{userRole}</p>
           </div>
           <button
             type="button"

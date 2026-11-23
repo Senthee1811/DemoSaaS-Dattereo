@@ -101,7 +101,7 @@ export function PricingSection() {
     <section id="pricing" className="w-full py-20 px-4 sm:px-6 lg:px-8 max-w-310 mx-auto border-t border-parchment-border">
       {/* Header — Editorial */}
       <div className="text-center max-w-2xl mx-auto mb-14">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+        <span className="text-label font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
           Transparent Pricing &amp; Quotas
         </span>
         <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
@@ -133,7 +133,7 @@ export function PricingSection() {
             <span className={`text-xs font-medium ${isAnnual ? 'text-inversion-dark' : 'text-[#888882]'}`}>
               Annual
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+            <span className="px-2 py-0.5 rounded-full text-caption font-mono font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
               Save 20%
             </span>
           </div>
@@ -156,7 +156,7 @@ export function PricingSection() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-serif text-lg font-normal text-inversion-dark">{plan.name}</h3>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono ${
+                  <span className={`px-2.5 py-0.5 rounded-full text-caption font-mono ${
                     plan.popular
                       ? 'bg-[#FF6B35] text-white font-semibold'
                       : 'bg-parchment-ivory text-[#666660] border border-parchment-border'
@@ -175,12 +175,12 @@ export function PricingSection() {
                   </span>
                   <span className="text-xs text-[#888882] font-mono">/ mo</span>
                   {isAnnual && (
-                    <span className="text-[10px] text-[#888882] ml-1 font-mono">billed annually</span>
+                    <span className="text-caption text-[#888882] ml-1 font-mono">billed annually</span>
                   )}
                 </div>
 
                 <div className="pt-5 border-t border-[#F0ECE6] space-y-2.5">
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#888882]">
+                  <div className="text-caption font-mono uppercase tracking-wider text-[#888882]">
                     Capabilities Included
                   </div>
                   {plan.features.map((feat, i) => (
@@ -189,7 +189,7 @@ export function PricingSection() {
                       <div className="flex items-center gap-1.5 font-sans">
                         <span>{feat.text}</span>
                         {feat.badge && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-parchment-ivory text-[#555550] border border-parchment-border font-mono">
+                          <span className="text-micro px-1.5 py-0.2 rounded-full bg-parchment-ivory text-[#555550] border border-parchment-border font-mono">
                             {feat.badge}
                           </span>
                         )}

@@ -33,7 +33,7 @@ export function TeamMemberCard({
     >
       <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#E8E8E8] flex-shrink-0 bg-[#FFF1EA]">
         {/* Fallback initials if image fails or while loading */}
-        <div className="w-full h-full flex items-center justify-center text-[11px] font-bold text-[#FF6B35]">
+        <div className="w-full h-full flex items-center justify-center text-label font-bold text-[#FF6B35]">
           {name
             .split(' ')
             .map((n) => n[0])
@@ -50,7 +50,7 @@ export function TeamMemberCard({
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-[10.5px] text-[#666666] leading-none">{role}</span>
-          <span className="text-[9px] text-[#999999] leading-none">· {statusText}</span>
+          <span className="text-micro text-[#999999] leading-none">· {statusText}</span>
         </div>
       </div>
     </div>

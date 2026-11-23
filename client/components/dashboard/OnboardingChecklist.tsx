@@ -101,7 +101,7 @@ export function OnboardingChecklist({
               <h3 className="font-serif text-base font-normal text-[#141413] tracking-tight">
                 FinOps Activation Checklist
               </h3>
-              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E5E0D8] text-[#555550]">
+              <span className="text-label font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#E5E0D8] text-[#555550]">
                 {completedCount} of {tasks.length} completed ({progressPct}%)
               </span>
             </div>

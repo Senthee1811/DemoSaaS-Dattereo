@@ -123,7 +123,7 @@ export default function RegisterPage() {
             <span className="font-serif text-xl font-normal tracking-tight text-[#141413]">
               SpendGuard <span className="text-[#FF6B35]">AI</span>
             </span>
-            <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
+            <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
           </div>
         </Link>
 
@@ -149,7 +149,7 @@ export default function RegisterPage() {
           <form className="space-y-3.5" onSubmit={handleSubmit}>
             {/* 1. Full Name */}
             <div>
-              <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+              <label className="block text-label font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
                 Full Name
               </label>
               <div className="relative">
@@ -170,7 +170,7 @@ export default function RegisterPage() {
 
             {/* 2. Work Email */}
             <div>
-              <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+              <label className="block text-label font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
                 Work Email
               </label>
               <div className="relative">
@@ -191,7 +191,7 @@ export default function RegisterPage() {
 
             {/* 3. Organization Name */}
             <div>
-              <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
+              <label className="block text-label font-mono font-medium text-[#141413] uppercase tracking-wider mb-1">
                 Organization Name
               </label>
               <div className="relative">
@@ -213,11 +213,11 @@ export default function RegisterPage() {
             {/* 4. Password */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
+                <label className="block text-label font-mono font-medium text-[#141413] uppercase tracking-wider">
                   Password
                 </label>
                 {password && (
-                  <span className={`text-[10px] font-mono font-semibold ${strengthInfo.textCol}`}>
+                  <span className={`text-caption font-mono font-semibold ${strengthInfo.textCol}`}>
                     {strengthInfo.label}
                   </span>
                 )}
@@ -263,11 +263,11 @@ export default function RegisterPage() {
             {/* 5. Confirm Password */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-mono font-medium text-[#141413] uppercase tracking-wider">
+                <label className="block text-label font-mono font-medium text-[#141413] uppercase tracking-wider">
                   Confirm Password
                 </label>
                 {confirmPassword && (
-                  <span className="text-[10px] font-mono flex items-center gap-1">
+                  <span className="text-caption font-mono flex items-center gap-1">
                     {passwordsMatch ? (
                       <span className="text-emerald-600 flex items-center gap-0.5">
                         <Check className="w-3 h-3" /> Match

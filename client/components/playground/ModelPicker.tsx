@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CatalogModel, formatPricingDate, useModelCatalog } from '@/lib/model-catalog';
+import { ProviderLogo, providerLabel } from '@/components/ui/ProviderLogo';
 
 interface ModelPickerProps {
   selectedModel: string;
@@ -67,17 +68,20 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
             }`}
           >
             <div className="text-xs font-semibold text-[#141413] truncate">{m.displayName}</div>
-            <div className="text-[10px] text-[#5F6368] mt-0.5">{m.provider}</div>
-            <div className="text-[10px] font-mono text-[#5F6368] mt-1">
+            <div className="text-caption text-[#5F6368] mt-0.5 inline-flex items-center gap-1.5">
+              <ProviderLogo provider={m.provider} size={14} />
+              <span>{providerLabel(m.provider)}</span>
+            </div>
+            <div className="text-caption font-mono text-[#5F6368] mt-1">
               ${fmt(m.inputPricePerMillion)} in / ${fmt(m.outputPricePerMillion)} out
             </div>
             {m.providerStatus === 'missing' && (
-              <div className="text-[10px] font-semibold text-[#B45309] mt-1">Provider no longer lists this model</div>
+              <div className="text-caption font-semibold text-[#B45309] mt-1">Provider no longer lists this model</div>
             )}
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-[#5F6368] mt-2">
+      <p className="text-caption text-[#5F6368] mt-2">
         Prices per 1M tokens.{' '}
         {asOf ? `Pricing as of ${asOf}` : 'Pricing date unavailable'} — a maintained table, not a live provider feed.
       </p>

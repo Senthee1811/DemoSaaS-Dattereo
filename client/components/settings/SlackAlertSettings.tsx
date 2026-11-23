@@ -37,7 +37,7 @@ function StatusBadge({ config }: { config: SlackConfig | null }) {
     label = config.lastSlackStatus === 'QUEUED' ? 'Sending…' : 'Saved, not verified. Send a test alert';
     tone = 'text-[#D97706]';
   }
-  return <span className={`text-[11px] font-semibold ${tone}`}>{label}</span>;
+  return <span className={`text-label font-semibold ${tone}`}>{label}</span>;
 }
 
 export function SlackAlertSettings() {
@@ -165,17 +165,17 @@ export function SlackAlertSettings() {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
           <p className="text-xs font-semibold text-[#141413]">Slack Webhook Notifications</p>
-          <p className="text-[11px] text-[#888882]">
+          <p className="text-label text-[#888882]">
             Post budget and anomaly alerts for a project to a Slack channel through your own Incoming Webhook.
           </p>
         </div>
         <StatusBadge config={config} />
       </div>
 
-      {loadError && <p className="text-[11px] text-[#DC2626]">{loadError}</p>}
+      {loadError && <p className="text-label text-[#DC2626]">{loadError}</p>}
 
       {projects.length === 0 && !loadError ? (
-        <p className="text-[11px] text-[#888882]">Create a project first. Slack alerts are configured per project.</p>
+        <p className="text-label text-[#888882]">Create a project first. Slack alerts are configured per project.</p>
       ) : (
         <>
           <div className="flex items-center gap-2 text-xs">
@@ -214,8 +214,8 @@ export function SlackAlertSettings() {
               aria-invalid={urlError ? true : undefined}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#E4E4E0] text-xs font-mono text-[#141413] placeholder-[#888882] focus:border-[#FF6B35] focus:outline-none"
             />
-            {urlError && <p className="text-[11px] text-[#DC2626]">{urlError}</p>}
-            <p className="text-[11px] text-[#888882]">The URL is stored encrypted and is never shown again.</p>
+            {urlError && <p className="text-label text-[#DC2626]">{urlError}</p>}
+            <p className="text-label text-[#888882]">The URL is stored encrypted and is never shown again.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -251,12 +251,12 @@ export function SlackAlertSettings() {
           </div>
 
           {notice && (
-            <p role="status" className={`text-[11px] ${notice.kind === 'ok' ? 'text-[#0D9488]' : 'text-[#DC2626]'}`}>
+            <p role="status" className={`text-label ${notice.kind === 'ok' ? 'text-[#0D9488]' : 'text-[#DC2626]'}`}>
               {notice.text}
             </p>
           )}
           {!notice && config?.lastSlackStatus === 'FAILED' && config.lastSlackError && (
-            <p className="text-[11px] text-[#DC2626]">Last delivery failed: {config.lastSlackError}</p>
+            <p className="text-label text-[#DC2626]">Last delivery failed: {config.lastSlackError}</p>
           )}
         </>
       )}

@@ -16,6 +16,34 @@
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-jetbrains-mono), "SF Mono", Monaco, Menlo, Consolas, monospace;
 
+  /*
+   * Type scale: every step is one notch above Tailwind's default (xs 12→13px, sm 14→15px,
+   * base 16→17px, lg 18→20px, xl 20→22px, 2xl 24→26px, 3xl 30→32px). Change sizes here, not
+   * in components. Display sizes (4xl and up) are used by marketing headlines and are unchanged.
+   */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.25;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.55;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.7;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.7;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 1.2;
+
+  /* Sizes below xs, formerly hardcoded as text-[9px] / [10px] / [11px] (now 10 / 11 / 12px) */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1.3;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.35;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.4;
+
   /* === Core Dattreo Brand Palette === */
   --color-dattreo-orange: #FF6B35;
   --color-dattreo-orange-hover: #E55A25;
@@ -102,6 +130,17 @@
 
   .font-mono {
     font-family: var(--font-mono);
+  }
+
+  /*
+   * Icon scale: every lucide icon is one step (12.5%) larger than its w-/h- class says,
+   * e.g. w-4 renders at 18px. Layout follows the zoomed size. Change --icon-zoom to retune.
+   */
+  :root {
+    --icon-zoom: 1.125;
+  }
+  svg.lucide {
+    zoom: var(--icon-zoom);
   }
 
   /* Accessible Focus Rings */

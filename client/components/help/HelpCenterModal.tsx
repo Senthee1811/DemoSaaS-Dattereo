@@ -75,7 +75,7 @@ export function HelpCenterModal({
                 <h2 id="help-title" className="font-serif text-lg font-normal text-[#141413] tracking-tight">
                   SpendGuard FinOps Knowledge Base
                 </h2>
-                <span className="text-[10px] font-mono text-[#888882]">v2.0 • Dattreo Studio</span>
+                <span className="text-caption font-mono text-[#888882]">v2.0 • Dattreo Studio</span>
               </div>
               <p className="text-xs text-[#555550]">
                 Official developer documentation, gateway reference, and operational troubleshooting.
@@ -176,7 +176,7 @@ export function HelpCenterModal({
                 </div>
                 <div className="text-xs text-[#555550] space-y-2">
                   <p className="font-semibold text-[#141413]">Governance Response Headers:</p>
-                  <ul className="list-disc pl-5 space-y-1 font-mono text-[11px]">
+                  <ul className="list-disc pl-5 space-y-1 font-mono text-label">
                     <li><strong className="text-[#141413]">x-spendguard-cost:</strong> Exact USD billed for the request ($0.00750)</li>
                     <li><strong className="text-[#141413]">x-spendguard-latency:</strong> Upstream + proxy duration in milliseconds</li>
                     <li><strong className="text-[#141413]">x-spendguard-tokens:</strong> Combined input + output token count</li>
@@ -193,7 +193,7 @@ export function HelpCenterModal({
                   <p className="text-xs text-[#555550]">Drop-in compatibility with the official OpenAI Python library.</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-[#141413] text-zinc-300 font-mono text-xs overflow-x-auto border border-white/10">
-                  <pre className="text-[11px] leading-relaxed">
+                  <pre className="text-label leading-relaxed">
 {`from openai import OpenAI
 
 # Simply configure baseURL to SpendGuard Gateway
@@ -220,7 +220,7 @@ print(response.choices[0].message.content)`}
                   <p className="text-xs text-[#555550]">Zero-rewrite drop-in for Node.js, Next.js, and Express apps.</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-[#141413] text-zinc-300 font-mono text-xs overflow-x-auto border border-white/10">
-                  <pre className="text-[11px] leading-relaxed">
+                  <pre className="text-label leading-relaxed">
 {`import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -288,17 +288,17 @@ console.log(completion.choices[0].message.content);`}
                   <div className="p-3 rounded-xl border border-[#E4E4E0] bg-white space-y-1">
                     <p className="font-bold text-[#141413]">Starter Plan</p>
                     <p className="font-mono text-[#FF6B35]">$49 / month</p>
-                    <p className="text-[#888882] text-[11px]">Up to $2,500 monthly AI spend, 3 projects, 50k RPM.</p>
+                    <p className="text-[#888882] text-label">Up to $2,500 monthly AI spend, 3 projects, 50k RPM.</p>
                   </div>
                   <div className="p-3 rounded-xl border border-[#FFD2C0] bg-[#FFF7F2] space-y-1">
                     <p className="font-bold text-[#141413]">Growth Plan</p>
                     <p className="font-mono text-[#FF6B35]">$199 / month</p>
-                    <p className="text-[#888882] text-[11px]">Up to $25,000 monthly AI spend, 15 projects, Z-score anomalies.</p>
+                    <p className="text-[#888882] text-label">Up to $25,000 monthly AI spend, 15 projects, Z-score anomalies.</p>
                   </div>
                   <div className="p-3 rounded-xl border border-[#E4E4E0] bg-white space-y-1">
                     <p className="font-bold text-[#141413]">Enterprise</p>
                     <p className="font-mono text-[#FF6B35]">Custom Pricing</p>
-                    <p className="text-[#888882] text-[11px]">Unlimited spend, dedicated Redis clusters, custom SLAs.</p>
+                    <p className="text-[#888882] text-label">Unlimited spend, dedicated Redis clusters, custom SLAs.</p>
                   </div>
                 </div>
               </div>

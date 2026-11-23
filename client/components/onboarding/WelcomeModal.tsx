@@ -50,7 +50,7 @@ export function WelcomeModal({
 
         {/* Brand mark & Heading */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[11px] font-mono text-[#FF6B35]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-label font-mono text-[#FF6B35]">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Workspace Created • Dattreo Studio</span>
           </div>
@@ -73,7 +73,7 @@ export function WelcomeModal({
               <Lock className="w-3.5 h-3.5" />
             </div>
             <p className="text-xs font-semibold text-[#141413]">Key Vault</p>
-            <p className="text-[11px] text-[#888882] leading-snug">Zero plaintext leaks with cryptographic envelopes.</p>
+            <p className="text-label text-[#888882] leading-snug">Zero plaintext leaks with cryptographic envelopes.</p>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1.5">
@@ -81,7 +81,7 @@ export function WelcomeModal({
               <Zap className="w-3.5 h-3.5" />
             </div>
             <p className="text-xs font-semibold text-[#141413]">Budget Caps</p>
-            <p className="text-[11px] text-[#888882] leading-snug">Fail-closed Lua hard blocks at 100% capacity.</p>
+            <p className="text-label text-[#888882] leading-snug">Fail-closed Lua hard blocks at 100% capacity.</p>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#E5E0D8] space-y-1.5">
@@ -89,7 +89,7 @@ export function WelcomeModal({
               <Cpu className="w-3.5 h-3.5" />
             </div>
             <p className="text-xs font-semibold text-[#141413]">Multi-Model</p>
-            <p className="text-[11px] text-[#888882] leading-snug">OpenAI, Claude, and Gemini under one gateway.</p>
+            <p className="text-label text-[#888882] leading-snug">OpenAI, Claude, and Gemini under one gateway.</p>
           </div>
         </div>
 
@@ -110,11 +110,11 @@ export function WelcomeModal({
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
                   <p className="text-xs sm:text-sm font-semibold">Start Interactive Product Tour</p>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white text-[#FF6B35] font-mono font-bold uppercase tracking-wider">
+                  <span className="text-caption px-1.5 py-0.2 rounded-full bg-white text-[#FF6B35] font-mono font-bold uppercase tracking-wider">
                     Recommended
                   </span>
                 </div>
-                <p className="text-[11px] text-white/80">9-step walkthrough of spend telemetry, budget caps, and virtual gateway</p>
+                <p className="text-label text-white/80">9-step walkthrough of spend telemetry, budget caps, and virtual gateway</p>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 mr-1 group-hover:translate-x-0.5 transition-transform" />
@@ -134,7 +134,7 @@ export function WelcomeModal({
               </div>
               <div className="text-left">
                 <p className="text-xs sm:text-sm font-semibold text-[#141413]">Skip Tour & Configure Workspace</p>
-                <p className="text-[11px] text-[#888882]">Jump straight into Key Vault setup, project budgets, and gateway tokens</p>
+                <p className="text-label text-[#888882]">Jump straight into Key Vault setup, project budgets, and gateway tokens</p>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 mr-1 text-[#888882] group-hover:text-[#141413] group-hover:translate-x-0.5 transition-transform" />

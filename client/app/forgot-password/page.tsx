@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
             <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
               SpendGuard <span className="text-[#FF6B35]">AI</span>
             </span>
-            <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
+            <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
           </div>
         </Link>
 
@@ -165,14 +165,14 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <p className="text-[11px] text-[#555550]">
+              <p className="text-label text-[#555550]">
                 Check your inbox for a link to choose a new password. It expires in 1 hour.
               </p>
 
               {/* Reset Password Form when token is available */}
               <form className="space-y-3.5 pt-2" onSubmit={handlePerformReset}>
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     Reset Token
                   </label>
                   <div className="relative">
@@ -191,7 +191,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     New Password
                   </label>
                   <div className="relative">
@@ -220,7 +220,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
+                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1">
                     Confirm New Password
                   </label>
                   <div className="relative">
@@ -267,7 +267,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form className="space-y-4" onSubmit={handleRequestReset}>
               <div>
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Account Work Email
                 </label>
                 <div className="relative">

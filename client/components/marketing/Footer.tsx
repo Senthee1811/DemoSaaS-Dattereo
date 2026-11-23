@@ -20,7 +20,7 @@ export function Footer() {
                 <span className="font-serif text-lg font-normal tracking-tight text-white">
                   SpendGuard <span className="text-[#FF6B35]">AI</span>
                 </span>
-                <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
+                <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
               </div>
             </Link>
 
@@ -28,7 +28,7 @@ export function Footer() {
               Real-time AI spend governance, sub-5ms Redis budget guardrails, and cryptographic token audit ledgers. Built by <a href="https://www.dattreo.com" target="_blank" rel="noopener noreferrer" className="text-[#D6D6D0] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">Dattreo</a>.
             </p>
 
-            <div className="flex items-center gap-4 text-[11px] font-mono text-[#888882] pt-1">
+            <div className="flex items-center gap-4 text-label font-mono text-[#888882] pt-1">
               <span className="inline-flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-[#FF6B35]" />
                 AES-256-GCM Vault
@@ -43,7 +43,7 @@ export function Footer() {
 
           {/* Product Links */}
           <div className="space-y-3 font-sans">
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-[#A0A09B]">Platform</h4>
+            <h4 className="text-label font-mono uppercase tracking-wider text-[#A0A09B]">Platform</h4>
             <ul className="space-y-2 text-xs text-[#888882]">
               <li><a href="#demo" className="hover:text-white transition-colors">Interactive Gateway</a></li>
               <li><a href="#features" className="hover:text-white transition-colors">Atomic Budget Engine</a></li>
@@ -55,19 +55,19 @@ export function Footer() {
 
           {/* Providers & SDKs */}
           <div className="space-y-3 font-sans">
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-[#A0A09B]">Integrations</h4>
+            <h4 className="text-label font-mono uppercase tracking-wider text-[#A0A09B]">Integrations</h4>
             <ul className="space-y-2 text-xs text-[#888882]">
-              <li><span className="text-white font-mono text-[11px]">OpenAI</span></li>
-              <li><span className="text-white font-mono text-[11px]">Anthropic</span></li>
-              <li><span className="text-white font-mono text-[11px]">Google (Gemini)</span></li>
-              <li><span className="text-white font-mono text-[11px]">OpenAI SDK Drop-in</span></li>
-              <li><span className="text-white font-mono text-[11px]">LangChain &amp; LlamaIndex</span></li>
+              <li><span className="text-white font-mono text-label">OpenAI</span></li>
+              <li><span className="text-white font-mono text-label">Anthropic</span></li>
+              <li><span className="text-white font-mono text-label">Google (Gemini)</span></li>
+              <li><span className="text-white font-mono text-label">OpenAI SDK Drop-in</span></li>
+              <li><span className="text-white font-mono text-label">LangChain &amp; LlamaIndex</span></li>
             </ul>
           </div>
 
           {/* Studio & Legal */}
           <div className="space-y-3 font-sans">
-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-[#A0A09B]">Studio</h4>
+            <h4 className="text-label font-mono uppercase tracking-wider text-[#A0A09B]">Studio</h4>
             <ul className="space-y-2 text-xs text-[#888882]">
               <li><a href="https://www.dattreo.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#FF6B35] transition-colors">Dattreo Studio</a></li>
               <li><Link href="/dashboard" className="hover:text-white transition-colors">FinOps Console</Link></li>
@@ -79,7 +79,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono text-[#888882]">
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-label font-mono text-[#888882]">
           <p>© {new Date().getFullYear()} SpendGuard AI · A Dattreo Studio Company. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="hover:text-white cursor-pointer">Privacy Policy</span>

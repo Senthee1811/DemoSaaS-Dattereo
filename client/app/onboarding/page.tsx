@@ -300,7 +300,7 @@ console.log(response.choices[0].message.content);`;
               <span className="font-serif text-xl font-normal tracking-tight text-inversion-dark">
                 SpendGuard <span className="text-[#FF6B35]">AI</span>
               </span>
-              <span className="text-[10px] font-mono text-[#888882]">by Dattreo</span>
+              <span className="text-caption font-mono text-[#888882]">by Dattreo</span>
             </div>
           </Link>
           <h1 className="mt-4 font-serif text-2xl sm:text-3xl font-normal text-inversion-dark tracking-tight">
@@ -354,7 +354,7 @@ console.log(response.choices[0].message.content);`;
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Organization Name
                 </label>
                 <div className="relative">
@@ -395,7 +395,7 @@ console.log(response.choices[0].message.content);`;
 
               {/* Provider Selection Tabs */}
               <div>
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Select Provider
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -414,7 +414,7 @@ console.log(response.choices[0].message.content);`;
                       }`}
                     >
                       <div className="text-xs font-bold">{p.label}</div>
-                      <div className="text-[10px] font-mono text-[#888882] mt-0.5">{p.desc}</div>
+                      <div className="text-caption font-mono text-[#888882] mt-0.5">{p.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -423,10 +423,10 @@ console.log(response.choices[0].message.content);`;
               {/* API Key Input with Connection Test */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
+                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     {provider} API Key
                   </label>
-                  <span className="text-[10px] font-mono text-[#888882]">Encrypted at rest (AES-256-GCM)</span>
+                  <span className="text-caption font-mono text-[#888882]">Encrypted at rest (AES-256-GCM)</span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
@@ -452,7 +452,7 @@ console.log(response.choices[0].message.content);`;
                     type="button"
                     onClick={handleTestConnection}
                     disabled={isTestingKey || !providerKey}
-                    className="absolute right-2 top-2 px-3 py-1 rounded-full bg-parchment-ivory hover:bg-parchment-oat border border-parchment-border text-[11px] font-mono font-semibold text-inversion-dark transition-colors disabled:opacity-40"
+                    className="absolute right-2 top-2 px-3 py-1 rounded-full bg-parchment-ivory hover:bg-parchment-oat border border-parchment-border text-label font-mono font-semibold text-inversion-dark transition-colors disabled:opacity-40"
                   >
                     {isTestingKey ? 'Testing...' : '⚡ Test'}
                   </button>
@@ -502,7 +502,7 @@ console.log(response.choices[0].message.content);`;
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   Project Name
                 </label>
                 <input
@@ -515,10 +515,10 @@ console.log(response.choices[0].message.content);`;
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
+                  <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     Monthly Budget Cap (USD)
                   </label>
-                  <span className="text-[10px] font-mono text-[#FF6B35] font-semibold">Pre-Flight Guardrail</span>
+                  <span className="text-caption font-mono text-[#FF6B35] font-semibold">Pre-Flight Guardrail</span>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#888882]">
@@ -542,7 +542,7 @@ console.log(response.choices[0].message.content);`;
                     <ShieldCheck className="w-4 h-4 text-[#FF6B35]" />
                     <span>Fail-Closed Hard Block Policy</span>
                   </div>
-                  <p className="text-[11px] text-[#555550] mt-0.5 leading-relaxed font-sans">
+                  <p className="text-label text-[#555550] mt-0.5 leading-relaxed font-sans">
                     Automatically reject requests with HTTP 429 once monthly spend exceeds ${budgetMonthly}. If Redis is offline, fail closed with 503.
                   </p>
                 </div>
@@ -609,7 +609,7 @@ console.log(response.choices[0].message.content);`;
 
               {/* Gateway Key Reveal Box */}
               <div>
-                <label className="block text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
+                <label className="block text-label font-mono font-medium text-inversion-dark uppercase tracking-wider mb-1.5">
                   SpendGuard Scoped Live Token
                 </label>
                 <div className="flex items-center gap-2 p-3 rounded-2xl bg-inversion-dark text-white font-mono text-xs border border-white/10 shadow-xs">
@@ -617,13 +617,13 @@ console.log(response.choices[0].message.content);`;
                   <button
                     type="button"
                     onClick={() => copyToClipboard(gatewayKey, 'key')}
-                    className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0 flex items-center gap-1.5 text-[11px] font-mono"
+                    className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0 flex items-center gap-1.5 text-label font-mono"
                   >
                     {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedKey ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-[#FF6B35] font-mono mt-1.5 flex items-center gap-1.5">
+                <p className="text-label text-[#FF6B35] font-mono mt-1.5 flex items-center gap-1.5">
                   <Lock className="w-3 h-3" />
                   <span>Hash persisted on server. Store securely; cannot be retrieved again.</span>
                 </p>
@@ -632,7 +632,7 @@ console.log(response.choices[0].message.content);`;
               {/* Code Snippet Tabs */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-mono font-medium text-inversion-dark uppercase tracking-wider">
+                  <span className="text-label font-mono font-medium text-inversion-dark uppercase tracking-wider">
                     Drop-In Integration Snippet
                   </span>
                   <div className="flex items-center gap-1 p-0.5 rounded-full bg-parchment-oat border border-parchment-border">
@@ -641,7 +641,7 @@ console.log(response.choices[0].message.content);`;
                         key={tab}
                         type="button"
                         onClick={() => setActiveCodeTab(tab)}
-                        className={`px-3 py-1 rounded-full text-[11px] font-mono transition-colors ${
+                        className={`px-3 py-1 rounded-full text-label font-mono transition-colors ${
                           activeCodeTab === tab
                             ? 'bg-white text-inversion-dark font-bold shadow-xs'
                             : 'text-sg-text-secondary hover:text-inversion-dark'
@@ -666,7 +666,7 @@ console.log(response.choices[0].message.content);`;
                         'snippet',
                       )
                     }
-                    className="absolute right-3 top-3 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5 text-[11px] font-mono"
+                    className="absolute right-3 top-3 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center gap-1.5 text-label font-mono"
                   >
                     {copiedSnippet ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     <span>{copiedSnippet ? 'Copied' : 'Copy'}</span>
@@ -684,7 +684,7 @@ console.log(response.choices[0].message.content);`;
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-semibold text-inversion-dark">Verify Gateway Integration</h4>
-                    <p className="text-[11px] text-[#555550]">
+                    <p className="text-label text-[#555550]">
                       Execute a real pre-flight reservation probe through the gateway right now.
                     </p>
                   </div>
@@ -764,16 +764,16 @@ console.log(response.choices[0].message.content);`;
               {/* Status Breakdown Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
-                  <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Connected Provider</span>
+                  <span className="text-caption font-mono text-[#888882] uppercase tracking-wider block">Connected Provider</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-inversion-dark">{provider}</span>
-                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">AES-256-GCM Sealed</span>
+                    <span className="text-caption font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">AES-256-GCM Sealed</span>
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
-                  <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Provisioned Project</span>
+                  <span className="text-caption font-mono text-[#888882] uppercase tracking-wider block">Provisioned Project</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-inversion-dark truncate">{projectName}</span>
@@ -781,20 +781,20 @@ console.log(response.choices[0].message.content);`;
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
-                  <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Monthly Budget Cap</span>
+                  <span className="text-caption font-mono text-[#888882] uppercase tracking-wider block">Monthly Budget Cap</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-semibold text-inversion-dark font-mono tabular-nums">${budgetMonthly.toLocaleString()}/mo</span>
-                    <span className="text-[10px] font-mono text-[#FF6B35] bg-[#FFF7F2] px-2 py-0.5 rounded-full border border-[#FFD2C0]">Hard Block Enforced</span>
+                    <span className="text-caption font-mono text-[#FF6B35] bg-[#FFF7F2] px-2 py-0.5 rounded-full border border-[#FFD2C0]">Hard Block Enforced</span>
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-parchment-ivory border border-parchment-border space-y-1">
-                  <span className="text-[10px] font-mono text-[#888882] uppercase tracking-wider block">Virtual Gateway Token</span>
+                  <span className="text-caption font-mono text-[#888882] uppercase tracking-wider block">Virtual Gateway Token</span>
                   <div className="flex items-center gap-2">
                     <CircleCheck className="w-4 h-4 text-emerald-600" />
                     <span className="text-xs font-mono text-inversion-dark">{gatewayKey.substring(0, 11)}••••••••</span>
-                    <span className="text-[10px] font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">SHA-256 Hashed</span>
+                    <span className="text-caption font-mono text-zinc-700 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">SHA-256 Hashed</span>
                   </div>
                 </div>
               </div>

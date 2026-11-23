@@ -33,7 +33,7 @@ export function HowItWorks() {
       <div className="bg-white rounded-2xl border border-parchment-border p-8 sm:p-12 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
         {/* Header — Editorial */}
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
+          <span className="text-label font-mono uppercase tracking-wider text-[#FF6B35] bg-[#FFF7F2] border border-[#FFD2C0] px-3 py-1 rounded-full">
             Integration Workflow
           </span>
           <h2 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-inversion-dark mt-3">
@@ -72,7 +72,7 @@ export function HowItWorks() {
                   </p>
                 </div>
 
-                <div className="p-3 bg-inversion-dark rounded-lg border border-[#2A2A28] text-[11px] font-mono text-[#D6D6D0] overflow-x-auto">
+                <div className="p-3 bg-inversion-dark rounded-lg border border-[#2A2A28] text-label font-mono text-[#D6D6D0] overflow-x-auto">
                   <code>{s.snippet}</code>
                 </div>
               </div>

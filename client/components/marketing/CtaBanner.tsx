@@ -28,15 +28,15 @@ export function CtaBanner() {
           {/* Architecture Guarantees Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
             <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
-              <span className="text-[10px] font-mono text-[#888882] block uppercase">Verification Latency</span>
+              <span className="text-caption font-mono text-[#888882] block uppercase">Verification Latency</span>
               <span className="text-sm font-mono font-bold text-white tabular-nums">&lt; 5.0ms (Redis Lua)</span>
             </div>
             <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
-              <span className="text-[10px] font-mono text-[#888882] block uppercase">Over-Budget Mode</span>
+              <span className="text-caption font-mono text-[#888882] block uppercase">Over-Budget Mode</span>
               <span className="text-sm font-mono font-bold text-[#FF6B35]">Fail-Closed HTTP 429</span>
             </div>
             <div className="p-3.5 rounded-xl bg-[#1B1B1A] border border-[#2A2A28]">
-              <span className="text-[10px] font-mono text-[#888882] block uppercase">Key Storage</span>
+              <span className="text-caption font-mono text-[#888882] block uppercase">Key Storage</span>
               <span className="text-sm font-mono font-bold text-white">AES-256-GCM Envelope</span>
             </div>
           </div>

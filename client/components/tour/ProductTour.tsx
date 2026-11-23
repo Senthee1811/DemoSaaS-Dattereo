@@ -186,10 +186,10 @@ export function ProductTour({
       {/* Top Bar with Badge, Progress & Dismiss */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-[10px] font-mono font-semibold text-[#FF6B35]">
+          <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7F2] border border-[#FFD2C0] text-caption font-mono font-semibold text-[#FF6B35]">
             {currentStep.badge}
           </span>
-          <span className="text-[11px] font-mono text-[#888882]">
+          <span className="text-label font-mono text-[#888882]">
             Step {currentStep.step} of {TOUR_STEPS.length}
           </span>
         </div>

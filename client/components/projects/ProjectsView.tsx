@@ -154,19 +154,19 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
       {/* Aggregate FinOps Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-5 rounded-[24px] border border-[#E4E4E0] shadow-2xs">
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Active Projects</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Active Projects</span>
           <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">{projects.length}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Total Allocation</span>
           <p className="font-serif text-2xl font-normal text-[#141413] tabular-nums mt-1">${totalAllocation.toLocaleString()}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Current Period Spend</span>
           <p className="font-serif text-2xl font-normal text-[#0D9488] tabular-nums mt-1">${totalSpend.toFixed(2)}</p>
         </div>
         <div>
-          <span className="text-[10px] font-mono font-medium uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
+          <span className="text-caption font-mono font-medium uppercase tracking-wider text-[#5F6368]">Emergency Freezes</span>
           <p className={`font-serif text-2xl font-normal tabular-nums mt-1 ${blockedCount > 0 ? 'text-[#DC2626]' : 'text-[#5F6368]'}`}>
             {blockedCount}
           </p>
@@ -188,12 +188,12 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF8F5] text-[#5F6368] font-semibold border-b border-[#E4E4E0]">
                 <tr>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Project Name & ID</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">MTD Spend vs Budget</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Utilization</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider">Enforcement</th>
-                  <th className="py-3 px-4 font-mono text-[11px] uppercase tracking-wider text-right">Actions</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Project Name & ID</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">MTD Spend vs Budget</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Utilization</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider">Enforcement</th>
+                  <th className="py-3 px-4 font-mono text-label uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E4E4E0] text-[#141413]">
@@ -208,25 +208,25 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                     <tr key={proj.id} className="hover:bg-[#FAF8F5] transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-xs text-[#141413]">{proj.name}</div>
-                        <div className="text-[11px] font-mono text-[#80868B]">id: {proj.id}</div>
+                        <div className="text-label font-mono text-[#80868B]">id: {proj.id}</div>
                         {proj.description && (
-                          <div className="text-[11px] text-[#5F6368] mt-0.5 line-clamp-1">{proj.description}</div>
+                          <div className="text-label text-[#5F6368] mt-0.5 line-clamp-1">{proj.description}</div>
                         )}
                       </td>
 
                       <td className="py-3.5 px-4">
                         {proj.isBlocked ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
                             <ShieldAlert className="w-3 h-3" />
                             <span>BLOCKED</span>
                           </span>
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                             <AlertTriangle className="w-3 h-3" />
                             <span>WARNING (80%)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-caption font-semibold bg-[#F0FDF4] text-[#0D9488] border border-[#BBF7D0]">
                             <ShieldCheck className="w-3 h-3" />
                             <span>HEALTHY</span>
                           </span>
@@ -234,7 +234,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                       </td>
 
                       <td className="py-3.5 px-4 min-w-[200px]">
-                        <div className="flex items-center justify-between text-[11px] font-mono tabular-nums mb-1.5">
+                        <div className="flex items-center justify-between text-label font-mono tabular-nums mb-1.5">
                           <span className="font-semibold text-[#141413]">${currentSpend.toFixed(2)}</span>
                           <span className="text-[#80868B]">/ ${budget.toLocaleString()}</span>
                         </div>
@@ -255,7 +255,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        <span className={`text-label font-medium px-2 py-0.5 rounded-full ${
                           proj.budgetHardBlockEnabled
                             ? 'bg-[#F3F3F0] text-[#141413] border border-[#E4E4E0]'
                             : 'bg-transparent text-[#80868B]'
@@ -368,7 +368,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   />
                   <div>
                     <span className="font-semibold text-[#141413] block">Enforce Atomic Hard-Block (Fail-Closed)</span>
-                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                    <span className="text-[#5F6368] text-label block mt-0.5">
                       Rejects proxy requests with HTTP 429 once allocation is exhausted.
                     </span>
                   </div>
@@ -438,7 +438,7 @@ export function ProjectsView({ projects, onRefresh }: ProjectsViewProps) {
                   />
                   <div>
                     <span className="font-semibold text-[#141413] block">Fail-Closed Hard Limit</span>
-                    <span className="text-[#5F6368] text-[11px] block mt-0.5">
+                    <span className="text-[#5F6368] text-label block mt-0.5">
                       Enforces sub-5ms Redis reservation checks to block overspend immediately.
                     </span>
                   </div>

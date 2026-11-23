@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/Badge';
 import { NumberInput } from '@/components/ui/NumberInput';
 import { RATE_LIMIT_RPM, isNumberInRange } from '@/lib/limits';
 import { useScope } from '@/lib/scope';
+import { CredentialProtection } from './CredentialProtection';
 
 interface ProviderKey {
   id: string;
@@ -212,9 +213,11 @@ export function KeyVaultView() {
           Key Vault & Gateway Tokens
         </h2>
         <p className="text-xs text-fg-secondary mt-1">
-          Two-tier envelope encryption (AES-256-GCM). Zero plaintext provider credentials stored or returned.
+          Connect your AI provider keys and issue gateway tokens for your apps.
         </p>
       </div>
+
+      <CredentialProtection keys={providerKeys} />
 
       {/* Section 1: Provider API Keys Table */}
       <div className="bg-surface rounded-card border border-line shadow-2xs overflow-hidden">

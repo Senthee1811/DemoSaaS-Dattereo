@@ -114,6 +114,8 @@ export class AuditService {
         anomalyReason: l.anomalyReason,
         reservedCost: l.reservedCostUsd != null ? Number(l.reservedCostUsd) : null,
         reservationOverrun: Number(l.reservationOverrunUsd ?? 0),
+        // CONFIRMED = provider-reported usage, ESTIMATED = SpendGuard's estimate was used, null = not recorded (older rows)
+        usageStatus: l.usageStatus ?? null,
         isBlocked: l.isBlocked,
         ...(canSeeContent(l) ? { promptPreview: l.promptPreview, responsePreview: l.responsePreview } : {}),
         timestamp: l.createdAt,
@@ -137,8 +139,17 @@ export class AuditService {
     endDate?: string;
     limit?: number;
     offset?: number;
+    /** Comma list of NOT_EXPECTED | UNCERTAIN | LIKELY_CHARGED */
+    billingStatus?: string;
+    unreconciledOnly?: boolean;
   }) {
     const where: any = { orgId: params.orgId };
+    if (params.billingStatus) {
+      const allowed = ['NOT_EXPECTED', 'UNCERTAIN', 'LIKELY_CHARGED'];
+      const list = params.billingStatus.split(',').map((x) => x.trim().toUpperCase()).filter((x) => allowed.includes(x));
+      if (list.length) where.billingStatus = { in: list };
+    }
+    if (params.unreconciledOnly) where.reconciledStatus = null;
     if (params.projectId) where.projectId = params.projectId;
     if (params.gatewayKeyId) where.gatewayKeyId = params.gatewayKeyId;
     if (params.errorClass) where.errorClass = params.errorClass;
@@ -333,6 +344,7 @@ export class AuditService {
       'Anomaly Status',
       'Reserved (USD)',
       'Reservation Overrun (USD)',
+      'Usage Status',
     ];
 
     const escapeCsv = (val: any) => {
@@ -387,6 +399,7 @@ export class AuditService {
             escapeCsv(r.anomalyStatus),
             r.reservedCostUsd != null ? Number(r.reservedCostUsd).toFixed(6) : '',
             Number(r.reservationOverrunUsd ?? 0).toFixed(6),
+            escapeCsv(r.usageStatus ?? ''),
           ].join(','),
         );
       }

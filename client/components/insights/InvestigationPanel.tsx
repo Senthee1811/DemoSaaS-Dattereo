@@ -43,6 +43,21 @@ export function InvestigationPanel({ projectId }: { projectId: string }) {
               </Badge>
             </div>
 
+            <p className="mb-3 text-caption text-fg-muted" data-testid="investigation-ranges">
+              Comparing <span className="text-fg-secondary" title={`${utcLabel(data.window.from)} → ${utcLabel(data.window.to)}`}>{formatDateTime(data.window.from)} → {formatDateTime(data.window.to)}</span>{' '}
+              with the {data.baseline.days} days before it{data.baseline.from ? <> (<span title={`${utcLabel(data.baseline.from)} → ${utcLabel(data.baseline.to ?? data.window.from)}`}>from {formatDateTime(data.baseline.from)}</span>)</> : null}, scaled to the same length.
+            </p>
+
+            {data.decomposition.status === 'no_baseline' && (
+              <InlineAlert variant="info" title="Not enough history to explain the change">
+                {data.decomposition.note ?? 'There was no comparable spend before this window.'} This is not the same as &ldquo;no change&rdquo;: the window
+                below is real spend, but there is nothing to compare it with yet.
+              </InlineAlert>
+            )}
+            {data.decomposition.status === 'ok' && Math.abs(data.decomposition.deltaUsd) < 0.005 && (
+              <p className="mb-3 text-xs text-fg-secondary" data-testid="no-change">Spend matched the baseline: no change worth explaining.</p>
+            )}
+
             {data.decomposition.effects && (
               <div className="mb-4 space-y-2" data-testid="decomposition">
                 <p className="text-label text-fg-muted">The change of {signedUsd(data.decomposition.deltaUsd)} splits exactly into:</p>

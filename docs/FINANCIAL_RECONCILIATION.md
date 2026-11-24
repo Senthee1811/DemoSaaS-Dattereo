@@ -65,6 +65,9 @@ treated as free: they stay visible as **exposure**.
 * A confirmed charge is **not** written into the spend ledger or the budget counters: inventing a usage row for a call we have no usage for
   would fabricate accounting. It is shown as `confirmedUnledgeredUsd` so finance can book it outside SpendGuard.
 * Gauges: `spendguard_unreconciled_exposure_attempts`, `spendguard_unreconciled_exposure_usd`.
+* **UI:** Audit → *Failed calls & estimates* (owner/admin) shows the exposure (labelled as an upper bound), the calls waiting for an
+  invoice check in plain words, a "Record outcome" form with a confirmation step, and the estimator-accuracy verdicts with their sample
+  sizes. The request ledger marks `estimated` usage and `over reserve` amounts on each row.
 
 ## Token-estimator validation
 

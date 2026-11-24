@@ -151,6 +151,19 @@ withDb('rollup equals the ledger (real Postgres)', () => {
     });
   }
 
+  it.each(windows)('summary (one GROUPING SETS scan): %s → identical to totals() + members() for every dimension, with and without the rollup', async (_n, from, to) => {
+    const dims = ['project', 'model', 'key', 'application', 'team', 'provider'] as const;
+    const norm = (xs: any[]) => xs.map((x) => ({ ...x, costUsd: Number(x.costUsd.toFixed(6)) })).sort((a, b) => String(a.key).localeCompare(String(b.key)));
+    const normT = (t: any) => ({ ...t, costUsd: Number(t.costUsd.toFixed(6)) });
+    for (const svc of [withRollup, ledgerOnly]) {
+      for (const scope of [undefined, projA]) {
+        const s = await svc.summary(orgA, scope, from, to, [...dims]);
+        expect(normT(s.totals)).toEqual(normT(await ledgerOnly.totals(orgA, scope, from, to)));
+        for (const d of dims) expect(norm(s.members[d])).toEqual(norm(await ledgerOnly.members(orgA, scope, from, to, d)));
+      }
+    }
+  });
+
   it.each(windows)('totals: %s → identical to the ledger (to the micro-dollar)', async (_n, from, to) => {
     const a = await withRollup.totals(orgA, undefined, from, to);
     const b = await ledgerOnly.totals(orgA, undefined, from, to);

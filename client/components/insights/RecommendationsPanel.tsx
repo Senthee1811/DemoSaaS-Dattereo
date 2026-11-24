@@ -18,7 +18,7 @@ type Decision = 'acknowledge' | 'dismiss' | 'approve_evaluation';
 const STATUS_LABEL: Record<Recommendation['status'], string> = {
   OPEN: 'Open',
   ACKNOWLEDGED: 'Acknowledged',
-  APPROVED_FOR_EVALUATION: 'Approved for evaluation',
+  APPROVED_FOR_EVALUATION: 'Approved for evaluation (not applied)',
   DISMISSED: 'Dismissed',
   RESOLVED: 'Resolved',
 };
@@ -59,6 +59,9 @@ export function RecommendationsPanel({ projectId }: { projectId: string }) {
         <div className="flex items-center justify-between gap-3">
           <p className="text-label text-fg-muted max-w-2xl">
             Each finding is computed from your ledger with fixed rules, and shows its numbers, how it was calculated and how sure we are. Nothing is changed automatically.
+            <span className="block mt-1" data-testid="approval-is-not-execution">
+              Approving a recommendation records your decision. It does not switch models, edit keys or change any gateway behaviour; your team makes the change.
+            </span>
           </p>
           {canApprove && (
             <button type="button" onClick={refresh} disabled={refreshing} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-line text-label font-semibold text-fg-secondary hover:text-fg disabled:opacity-60">

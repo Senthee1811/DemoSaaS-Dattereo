@@ -186,6 +186,70 @@ export class InsightsDataService {
     }));
   }
 
+  /**
+   * Totals AND per-dimension members for one window in a single scan per range (GROUP BY GROUPING SETS), instead of one
+   * aggregate plus one GROUP BY per dimension. Exactly the same numbers as `totals()` + `members()` (tested against them on
+   * real Postgres); GROUPING() tells a real NULL ("unattributed") apart from "not grouped by this column".
+   */
+  async summary(orgId: string, projectId: string | undefined, from: Date, to: Date, dims: Dimension[]): Promise<{ totals: Totals; members: Record<string, MemberTotals[]> }> {
+    const COL: Record<Dimension, string> = { project: 'project_id', key: 'gateway_key_id', application: 'application', team: 'team', provider: 'provider', model: 'model' };
+    const list = [...new Set(dims)];
+    const plan = await this.plan(from, to);
+    type Acc = { key: string | null; requests: number; tokensIn: number; tokensOut: number; costUsd: number };
+    const totals: Totals = { requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+    const acc = new Map<Dimension, Map<string, Acc>>(list.map((d) => [d, new Map()]));
+    const fold = (rows: any[], emptyAsNull: boolean) => {
+      for (const r of rows) {
+        const v = { requests: num(r.n), tokensIn: num(r.ti), tokensOut: num(r.tout), costUsd: num(r.cost) };
+        const grouped = list.filter((d) => Number(r[`g_${d}`]) === 0);
+        if (grouped.length === 0) {
+          totals.requests += v.requests;
+          totals.tokensIn += v.tokensIn;
+          totals.tokensOut += v.tokensOut;
+          totals.costUsd += v.costUsd;
+          continue;
+        }
+        const d = grouped[0];
+        const raw = r[`k_${d}`];
+        const key = raw == null || (emptyAsNull && raw === '') ? null : String(raw);
+        const m = acc.get(d)!;
+        const id = key ?? '\u0000null';
+        const cur = m.get(id) ?? { key, requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+        cur.requests += v.requests;
+        cur.tokensIn += v.tokensIn;
+        cur.tokensOut += v.tokensOut;
+        cur.costUsd += v.costUsd;
+        m.set(id, cur);
+      }
+    };
+    // Column names come from the fixed map above, never from input
+    const sel = (prefix: string, cast: (c: string) => string) =>
+      Prisma.raw(list.map((d) => `GROUPING(${prefix}${COL[d]}) AS g_${d}, ${cast(`${prefix}${COL[d]}`)} AS k_${d}`).join(', '));
+    const sets = (prefix: string) => Prisma.raw(`GROUPING SETS (${[...list.map((d) => `(${prefix}${COL[d]})`), '()'].join(', ')})`);
+    for (const r of plan.raw) {
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT ${sel('r.', (c) => (c.endsWith('provider') ? `${c}::text` : c))}, COUNT(*) AS n, COALESCE(SUM(r.tokens_in),0) AS ti, COALESCE(SUM(r.tokens_out),0) AS tout, COALESCE(SUM(r.cost_estimate),0) AS cost
+        FROM requests r JOIN projects p ON p.id = r.project_id
+        WHERE ${this.sqlScope(orgId, projectId)} AND r.created_at >= ${r.from} AND r.created_at < ${r.to}
+        GROUP BY ${sets('r.')}`);
+      fold(rows, false);
+    }
+    if (plan.rollup) {
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT ${sel('', (c) => c)}, COALESCE(SUM(requests),0) AS n, COALESCE(SUM(tokens_in),0) AS ti, COALESCE(SUM(tokens_out),0) AS tout, COALESCE(SUM(cost_usd),0) AS cost
+        FROM request_daily_rollups WHERE ${this.rollupScope(orgId, projectId, plan.rollup.from, plan.rollup.to)}
+        GROUP BY ${sets('')}`);
+      fold(rows, true);
+    }
+    const members: Record<string, MemberTotals[]> = {};
+    for (const d of list) {
+      const groups = [...acc.get(d)!.values()];
+      const labels = await this.labels(orgId, d, groups.map((g) => g.key).filter((k): k is string => !!k));
+      members[d] = groups.map((g) => ({ ...g, label: g.key == null ? UNATTRIBUTED[d] : labels.get(g.key) ?? g.key }));
+    }
+    return { totals, members };
+  }
+
   private async labels(orgId: string, dimension: Dimension, ids: string[]): Promise<Map<string, string>> {
     if (!ids.length) return new Map();
     if (dimension === 'project') {

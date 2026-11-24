@@ -46,14 +46,17 @@ export class InvestigationService {
     const gridStart = new Date(Math.floor(baselineFrom.getTime() / bucketMs) * bucketMs);
 
     const dims: Dimension[] = q.projectId ? ['model', 'key', 'application', 'team'] : ['project', 'model', 'key', 'application', 'team'];
-    const [win, base, series, dailyBase, windowMembers, baselineMembers] = await Promise.all([
-      this.data.totals(orgId, q.projectId, from, to),
-      this.data.totals(orgId, q.projectId, baselineFrom, from),
+    // One GROUPING SETS scan per range gives the totals and every dimension (was 1 + one query per dimension, twice)
+    const [winSummary, baseSummary, series, dailyBase] = await Promise.all([
+      this.data.summary(orgId, q.projectId, from, to, dims),
+      this.data.summary(orgId, q.projectId, baselineFrom, from, dims),
       this.data.bucketSeries(orgId, q.projectId, gridStart, to, unit),
       this.data.dailySpend(orgId, q.projectId, baselineFrom, from),
-      Promise.all(dims.map((d) => this.data.members(orgId, q.projectId, from, to, d))),
-      Promise.all(dims.map((d) => this.data.members(orgId, q.projectId, baselineFrom, from, d))),
     ]);
+    const win = winSummary.totals;
+    const base = baseSummary.totals;
+    const windowMembers = dims.map((d) => winSummary.members[d]);
+    const baselineMembers = dims.map((d) => baseSummary.members[d]);
 
     const baseNorm = normalizeTotals(base, scale);
     const decomposition = decompose(win, baseNorm);

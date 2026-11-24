@@ -87,12 +87,16 @@ export class AuditController {
     @Query('endDate') endDate?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('billingStatus') billingStatus?: string,
+    @Query('unreconciled') unreconciled?: string,
   ) {
     assertDate('startDate', startDate);
     assertDate('endDate', endDate);
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
     const parsedOffset = offset ? parseInt(offset, 10) : 0;
     return this.auditService.listAttempts({
+      billingStatus,
+      unreconciledOnly: unreconciled === 'true',
       orgId: user.orgId, // always the caller's organization, never a client-supplied one
       projectId,
       gatewayKeyId,

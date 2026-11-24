@@ -153,6 +153,23 @@ Practical budget used here: **interactive endpoints p95 ≤ 1 s**.
 * Memory: heap growth per call was ≤ 2 MB at every size (aggregation is in the database; nothing loads ledger history into the application).
 * Queries per call: attribution 2–3 (6–7 with rollups: two raw edge windows + the rollup), forecast 3, investigation 21–28, model comparison 2–3.
 
+### Investigation: one scan per range (`GROUPING SETS`)
+The investigation used to run a totals aggregate plus one `GROUP BY` per dimension, for the window and again for the baseline
+(about a dozen scans of the same rows). `InsightsDataService.summary()` now returns the totals and every dimension from **one**
+`GROUP BY GROUPING SETS (...)` scan per range; `GROUPING()` keeps a real NULL ("unattributed") apart from "not grouped". It is
+rollup-aware and was proven identical to `totals()` + `members()` on real Postgres for every dimension, window, scope, with and
+without rollups (`test/rollup.spec.ts`). Re-measured at 1M rows on the same machine (`docs/benchmarks/insights-2026-11-24-grouping-sets*.md`):
+
+| investigation (organization-wide) | before p50 / p95 | after, ledger only | after, rollups on |
+|---|---:|---:|---:|
+| 24 h vs 7 d | 2,108 / 3,588 ms (28 queries) | **940 / 1,256 ms (16 queries)** | 1,044 / 3,145 ms* |
+| 30 d vs 7 d | 4,759 / 6,777 ms | 2,749 / 4,036 ms | 2,108 / 3,133 ms |
+| 24 h vs 7 d, one project | 655 / 917 ms | 478 / 1,046 ms | **353 / 453 ms** |
+
+\* p95 here is the maximum of 15 samples on a shared laptop; run-to-run variation on unchanged endpoints in the same runs was about
+±20%. Organization-wide investigation is **still over the 1 s p95 budget** at 1M rows; the remaining cost is the hourly bucket series and
+the evidence queries, which read the raw ledger.
+
 ### Daily rollups (`INSIGHTS_ROLLUPS=on`, off by default)
 Justified by the measurements above, implemented as **derived, disposable** data: `request_daily_rollups` (project, UTC day, provider, model, key,
 application, team), rebuilt per day from the ledger (`DELETE + INSERT … SELECT` in one transaction, so idempotent and atomic for readers). `requests` is

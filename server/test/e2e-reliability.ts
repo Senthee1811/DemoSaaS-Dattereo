@@ -118,6 +118,36 @@ async function run() {
   const noAuth = await api('GET', '/api/v1/audit/attempts');
   check('the attempts API requires authentication', noAuth.status === 401, noAuth.status);
 
+  // ── Unknown provider cost: classification, exposure, reconciliation (Phase 2.4) ──
+  console.log('▶ Failed calls that may have been billed: exposure and reconciliation');
+  check('a provider 401/429 is "no charge expected"; a provider 500 is "uncertain" (it may have run)',
+    byClass.upstream_auth_failed?.billingStatus === 'NOT_EXPECTED' && byClass.upstream_rate_limited?.billingStatus === 'NOT_EXPECTED' && byClass.upstream_server_error?.billingStatus === 'UNCERTAIN' && byClass.upstream_server_error?.executionStatus === 'PROVIDER_ERROR', mine);
+  const exposure = await api('GET', '/api/v1/audit/attempts/exposure', { token: alice.token });
+  const openai = (exposure.body.unreconciled ?? []).find((r: any) => r.provider === 'OPENAI' && r.billingStatus === 'UNCERTAIN');
+  check('exposure lists the uncertain call with its upper bound, and says it is not a charge', exposure.status === 200 && openai?.attempts >= 1 && openai?.maxExposureUsd > 0 && /upper bound/.test(exposure.body.note), exposure.body);
+  const bobExposure = await api('GET', '/api/v1/audit/attempts/exposure', { token: bob.token });
+  check("bob's exposure does not include alice's calls", bobExposure.status === 200 && (bobExposure.body.unreconciled ?? []).length === 0, bobExposure.body);
+  const uncertainId = byClass.upstream_server_error?.id;
+  const bobReconcile = await api('PATCH', `/api/v1/audit/attempts/${uncertainId}/reconcile`, { token: bob.token, body: { status: 'NOT_CHARGED_CONFIRMED' } });
+  check("bob cannot reconcile alice's attempt (404, unchanged)", bobReconcile.status === 404, bobReconcile.status);
+  const badAmount = await api('PATCH', `/api/v1/audit/attempts/${uncertainId}/reconcile`, { token: alice.token, body: { status: 'CHARGED_CONFIRMED' } });
+  check('"charged" without an invoiced amount is refused (400)', badAmount.status === 400, badAmount.body);
+  const spendBefore = await prisma.request.aggregate({ where: { projectId: bad500.projectId }, _sum: { costEstimate: true }, _count: { id: true } });
+  const rec = await api('PATCH', `/api/v1/audit/attempts/${uncertainId}/reconcile`, { token: alice.token, body: { status: 'CHARGED_CONFIRMED', costUsd: 0.0123, note: 'INV-1' } });
+  check('alice records the invoice outcome', rec.status === 200 && rec.body.reconciledStatus === 'CHARGED_CONFIRMED' && rec.body.reconciledCostUsd === 0.0123, rec.body);
+  const spendAfter = await prisma.request.aggregate({ where: { projectId: bad500.projectId }, _sum: { costEstimate: true }, _count: { id: true } });
+  check('recording it wrote NOTHING to the spend ledger', spendAfter._count.id === spendBefore._count.id && Number(spendAfter._sum.costEstimate ?? 0) === Number(spendBefore._sum.costEstimate ?? 0), { spendBefore, spendAfter });
+  const again = await api('PATCH', `/api/v1/audit/attempts/${uncertainId}/reconcile`, { token: alice.token, body: { status: 'NOT_CHARGED_CONFIRMED' } });
+  check('a recorded outcome cannot be silently overwritten (400)', again.status === 400, again.body);
+  const after = await api('GET', '/api/v1/audit/attempts/exposure', { token: alice.token });
+  check('it leaves the open exposure and appears as "confirmed, not in the ledger"', !(after.body.unreconciled ?? []).some((r: any) => r.billingStatus === 'UNCERTAIN' && r.provider === 'OPENAI') && (after.body.confirmedUnledgeredUsd ?? []).some((r: any) => r.usd === 0.0123), after.body);
+  const auditRow = await prisma.auditLog.findFirst({ where: { action: 'attempt.reconciled', orgId: alice.orgId } });
+  check('the reconciliation is in the audit trail with the actor', !!auditRow && JSON.parse(auditRow.metadata ?? '{}').attemptId === uncertainId, auditRow);
+  const acc = await api('GET', '/api/v1/audit/estimator-accuracy?days=30', { token: alice.token });
+  check('the estimator report answers, scoped to the org, without enough data to change any margin', acc.status === 200 && Array.isArray(acc.body.groups) && acc.body.providers.every((p: any) => p.verdict === 'insufficient_data'), acc.body);
+  const memberProbe = await api('GET', '/api/v1/audit/attempts/exposure');
+  check('exposure requires authentication', memberProbe.status === 401, memberProbe.status);
+
   const ledger = await Promise.all([bad401, bad500, bad429].map((p) => auditRows(alice.token, p.projectId)));
   check('failed calls left NO rows in the spend ledger and charged nothing', ledger.every((rows) => rows.length === 0), ledger.map((r) => r.length));
   const spend = await prisma.request.aggregate({ where: { projectId: { in: [bad401.projectId, bad500.projectId, bad429.projectId] } }, _sum: { costEstimate: true }, _count: { id: true } });

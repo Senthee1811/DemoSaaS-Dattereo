@@ -88,7 +88,7 @@ export interface EvidenceRequest {
 
 export interface InvestigationResponse {
   window: { from: string; to: string; hours: number };
-  baseline: { days: number; daysWithSpend: number };
+  baseline: { days: number; daysWithSpend: number; from?: string; to?: string };
   decomposition: {
     status: 'ok' | 'no_baseline';
     baselineSpendUsd: number;

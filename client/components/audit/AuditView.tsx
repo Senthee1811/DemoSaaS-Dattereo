@@ -24,6 +24,8 @@ import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { providerLabel } from '@/lib/providers';
 import { useScope } from '@/lib/scope';
 import { Tip } from '@/components/ui/tooltip';
+import { Segmented } from '@/components/insights/shared';
+import { ReconciliationPanel } from './ReconciliationPanel';
 
 interface AuditLog {
   id: string;
@@ -45,10 +47,41 @@ interface AuditLog {
   isBlocked: boolean;
   promptPreview?: string;
   responsePreview?: string;
+  /** Worst case that was reserved before the call, and how much the actual charge exceeded it. */
+  reservedCost?: number | null;
+  reservationOverrun?: number;
+  /** CONFIRMED = provider-reported usage; ESTIMATED = SpendGuard's own estimate; null = not recorded (older rows). */
+  usageStatus?: 'CONFIRMED' | 'ESTIMATED' | null;
   timestamp: string;
 }
 
+type Section = 'requests' | 'reconciliation';
+
 export function AuditView() {
+  const [section, setSection] = useState<Section>('requests');
+  return (
+    <div className="space-y-6 pb-12">
+      <div>
+        <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">Audit Trail & Ledger</h2>
+        <p className="text-xs text-sg-text-secondary mt-1">
+          Append-only record of every proxied AI request: what was reserved, what was charged, and whether the provider reported the usage.
+        </p>
+      </div>
+      <Segmented
+        label="Audit section"
+        value={section}
+        onChange={setSection}
+        options={[
+          { id: 'requests', label: 'Requests' },
+          { id: 'reconciliation', label: 'Failed calls & estimates' },
+        ]}
+      />
+      {section === 'requests' ? <RequestsLedger /> : <ReconciliationPanel />}
+    </div>
+  );
+}
+
+function RequestsLedger() {
   // Global scope is the project filter: there is no second, separate project filter here
   const { scopeId: filterProject, projects } = useScope();
   const scopeName = projects.find((p) => p.id === filterProject)?.name;
@@ -147,18 +180,8 @@ export function AuditView() {
   const paginatedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-serif text-2xl font-normal text-fg tracking-tight">
-            Immutable Audit Trail & Ledger
-          </h2>
-          <p className="text-xs text-sg-text-secondary mt-1">
-            Append-only, cryptographically verifiable record of all proxied AI requests for FinOps attribution and compliance.
-          </p>
-        </div>
-
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
         <button
           type="button"
           onClick={handleExportCsv}
@@ -303,8 +326,20 @@ export function AuditView() {
                       {log.tokensIn.toLocaleString()} / {log.tokensOut.toLocaleString()}
                     </td>
 
-                    <td className="py-3.5 px-4 font-mono tabular-nums text-right font-semibold text-success">
-                      ${Number(log.costEstimate).toFixed(5)}
+                    <td className="py-3.5 px-4 font-mono tabular-nums text-right">
+                      <span className="font-semibold text-success">${Number(log.costEstimate).toFixed(5)}</span>
+                      {(log.usageStatus === 'ESTIMATED' || (log.reservationOverrun ?? 0) > 0) && (
+                        <div className="mt-1 flex justify-end gap-1">
+                          {log.usageStatus === 'ESTIMATED' && (
+                            <Badge tone="warning" title="The provider did not report token usage; this cost is calculated from SpendGuard's own estimate.">estimated</Badge>
+                          )}
+                          {(log.reservationOverrun ?? 0) > 0 && (
+                            <Badge tone="critical" title={`Reserved $${Number(log.reservedCost ?? 0).toFixed(5)} before the call; the actual charge was higher by this amount (charged in full).`}>
+                              {`+$${Number(log.reservationOverrun).toFixed(5)} over reserve`}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 font-mono tabular-nums text-right text-sg-text-secondary">

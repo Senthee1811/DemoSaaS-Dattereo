@@ -98,8 +98,9 @@ it fans out to the in-app inbox plus every enabled organization channel that wan
   are refused). Checked at creation and again before each delivery; redirects are never followed.
 * **Injection:** dimensions are a whitelist (no free-form column names); all raw SQL is parameterised.
 * **Roles:** channels/deliveries/refresh/approval are OWNER or ADMIN; reading insights and acknowledging/dismissing is any member.
-* **Known limit:** DNS is resolved by the check and again by `fetch`, so a hostile DNS server could answer differently the
-  second time (DNS rebinding). Pinning the validated IP would close it; not done.
+* **DNS rebinding:** closed. The hostname is resolved once, every answer is validated, and the connection is pinned to those
+  addresses (TLS still verifies the original hostname). See `docs/SECURITY_HARDENING.md`, which also documents the signature
+  format with a receiver example, secret rotation (grace window) and the channel audit trail.
 
 ## 8. Performance considerations (reasoned, **not benchmarked**)
 * Insight endpoints are read-only aggregates over `requests` using the existing `(project_id, created_at)` index plus new

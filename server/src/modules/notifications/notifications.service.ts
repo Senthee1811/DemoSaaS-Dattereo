@@ -22,10 +22,21 @@ export interface ChannelConfig {
   url?: string;
   /** WEBHOOK: signing secret (shown to the admin once). */
   secret?: string;
+  /** WEBHOOK: the secret before the last rotation; also signs deliveries until previousSecretExpiresAt. */
+  previousSecret?: string;
+  previousSecretExpiresAt?: string;
   /** EMAIL */
   recipients?: string[];
 }
 
+const safeJson = (v: string | null) => {
+  try {
+    return v ? JSON.parse(v) : null;
+  } catch {
+    return null;
+  }
+};
+const DEFAULT_GRACE_HOURS = 24;
 const maskEmail = (e: string) => e.replace(/^(.).*(@.*)$/, '$1***$2');
 
 @Injectable()
@@ -37,6 +48,23 @@ export class NotificationsService {
     private readonly encryption: EncryptionService,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly queue: Queue,
   ) {}
+
+  /**
+   * Administrative audit trail for channel changes. Records WHO did WHAT to WHICH channel, never the destination,
+   * secret or recipients. Best-effort for the caller (a failed audit write is logged loudly, not swallowed silently).
+   */
+  private async audit(orgId: string, actor: string | undefined, action: string, channelId: string, extra: Record<string, unknown> = {}) {
+    try {
+      await this.prisma.auditLog.create({ data: { orgId, actor: actor ?? 'system', action: `notification.channel.${action}`, metadata: JSON.stringify({ channelId, ...extra }) } });
+    } catch (err: any) {
+      this.logger.error(`AUDIT WRITE FAILED for ${action} on channel ${channelId}: ${err?.message}`);
+    }
+  }
+
+  async channelAudit(orgId: string, limit = 100) {
+    const rows = await this.prisma.auditLog.findMany({ where: { orgId, action: { startsWith: 'notification.channel.' } }, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) });
+    return { events: rows.map((r) => ({ id: r.id, action: r.action.replace('notification.channel.', ''), actor: r.actor, at: r.createdAt, details: safeJson(r.metadata) })) };
+  }
 
   // ── Publishing ────────────────────────────────────────────────────────────
   /**
@@ -128,6 +156,7 @@ export class NotificationsService {
     const row = await this.prisma.notificationChannel.create({
       data: { orgId, type, name, eventTypes, encryptedConfig: this.encryption.encryptApiKey(JSON.stringify(config)), configHint: hint, createdById: userId },
     });
+    await this.audit(orgId, userId, 'created', row.id, { type, name, eventTypes });
     return { ...this.publicChannel(row), ...(revealSecret ? { signingSecret: revealSecret, signingSecretNote: 'Shown once. Store it now; it cannot be retrieved again (you can rotate it).' } : {}) };
   }
 
@@ -183,8 +212,8 @@ export class NotificationsService {
     };
   }
 
-  async updateChannel(orgId: string, id: string, body: { name?: string; enabled?: boolean; eventTypes?: string[] }) {
-    await this.channelOr404(orgId, id);
+  async updateChannel(orgId: string, id: string, body: { name?: string; enabled?: boolean; eventTypes?: string[] }, actor?: string) {
+    const wasEnabled = (await this.channelOr404(orgId, id)).enabled;
     const data: Prisma.NotificationChannelUpdateInput = {};
     if (body.name !== undefined) {
       const n = String(body.name).trim();
@@ -193,27 +222,47 @@ export class NotificationsService {
     }
     if (body.enabled !== undefined) data.enabled = !!body.enabled;
     if (body.eventTypes !== undefined) data.eventTypes = this.validateEventTypes(body.eventTypes);
-    return this.publicChannel(await this.prisma.notificationChannel.update({ where: { id }, data }));
+    const row = await this.prisma.notificationChannel.update({ where: { id }, data });
+    if (body.enabled !== undefined && !!body.enabled !== wasEnabled) await this.audit(orgId, actor, body.enabled ? 'resumed' : 'paused', id);
+    if (data.name !== undefined || data.eventTypes !== undefined) await this.audit(orgId, actor, 'updated', id, { name: data.name !== undefined, eventTypes: data.eventTypes !== undefined });
+    return this.publicChannel(row);
   }
 
-  async deleteChannel(orgId: string, id: string) {
-    await this.channelOr404(orgId, id);
+  async deleteChannel(orgId: string, id: string, actor?: string) {
+    const c = await this.channelOr404(orgId, id);
     await this.prisma.notificationChannel.delete({ where: { id } }); // delivery history is kept (channel_id -> NULL)
+    await this.audit(orgId, actor, 'removed', id, { type: c.type, name: c.name });
     return { deleted: true };
   }
 
-  async rotateSecret(orgId: string, id: string) {
+  /**
+   * Rotation policy: the new secret signs every delivery from now on. Unless `immediate` is set, the previous secret
+   * keeps signing too (a second `v1=` entry in the signature header) for a grace window (default 24 h, max 7 days), so a
+   * receiver that has not deployed the new secret yet, and deliveries already retrying, keep verifying. `immediate`
+   * revokes the old secret at once (use it when the old secret is believed to be compromised).
+   */
+  async rotateSecret(orgId: string, id: string, opts: { immediate?: boolean; graceHours?: number } = {}, actor?: string) {
     const c = await this.channelOr404(orgId, id);
     if (c.type !== 'WEBHOOK') throw new BadRequestException('Only webhook channels have a signing secret.');
     const config = JSON.parse(this.encryption.decryptApiKey(c.encryptedConfig)) as ChannelConfig;
     const secret = generateWebhookSecret();
-    await this.prisma.notificationChannel.update({ where: { id }, data: { encryptedConfig: this.encryption.encryptApiKey(JSON.stringify({ ...config, secret })) } });
-    return { signingSecret: secret, signingSecretNote: 'Shown once. The previous secret no longer verifies.' };
+    const requested = Number(opts.graceHours ?? DEFAULT_GRACE_HOURS);
+    const hours = Math.min(Math.max(Number.isFinite(requested) ? requested : DEFAULT_GRACE_HOURS, 0), 168);
+    const keepOld = !opts.immediate && hours > 0 && Boolean(config.secret);
+    const next: ChannelConfig = { ...config, secret, previousSecret: keepOld ? config.secret : undefined, previousSecretExpiresAt: keepOld ? new Date(Date.now() + hours * 3_600_000).toISOString() : undefined };
+    await this.prisma.notificationChannel.update({ where: { id }, data: { encryptedConfig: this.encryption.encryptApiKey(JSON.stringify(next)) } });
+    await this.audit(orgId, actor, 'secret_rotated', id, { immediate: !keepOld, graceHours: keepOld ? hours : 0 });
+    return {
+      signingSecret: secret,
+      previousSecretValidUntil: next.previousSecretExpiresAt ?? null,
+      signingSecretNote: keepOld ? `Shown once. The previous secret keeps verifying until ${next.previousSecretExpiresAt}.` : 'Shown once. The previous secret no longer verifies.',
+    };
   }
 
   /** Sends a clearly labelled test event to this one destination only. */
-  async sendTest(orgId: string, id: string) {
+  async sendTest(orgId: string, id: string, actor?: string) {
     await this.channelOr404(orgId, id);
+    await this.audit(orgId, actor, 'tested', id);
     const event: NotificationEvent = {
       id: `test:${randomUUID()}`, type: 'notification.test', orgId, occurredAt: new Date().toISOString(),
       data: { title: 'SpendGuard test notification', message: 'If you can read this, this destination is wired up correctly.', severity: 'info', test: true },

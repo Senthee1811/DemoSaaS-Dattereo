@@ -7,7 +7,7 @@ import { EmailService } from '@/modules/email/email.service';
 import { scrubSecrets } from '@/common/scrub-secrets';
 import { DELIVER_JOB, DELIVER_JOB_OPTS, NOTIFICATION_QUEUE, NotificationEvent, REQUEUE_STALE_JOB } from './notification.events';
 import { ChannelConfig, NotificationsService, slackHosts } from './notifications.service';
-import { signWebhook } from './signing';
+import { signWebhookHeader } from './signing';
 import { Resolver, UnsafeDestinationError } from './url-safety';
 import { OutboundError, PostOptions, safePost } from './safe-http';
 
@@ -106,7 +106,9 @@ export class NotificationDeliveryProcessor extends WorkerHost {
       headers['X-SpendGuard-Event-Id'] = event.id;
       headers['X-SpendGuard-Delivery'] = deliveryId;
       headers['X-SpendGuard-Timestamp'] = String(ts);
-      headers['X-SpendGuard-Signature'] = signWebhook(config.secret ?? '', ts, body);
+      const secrets = [config.secret ?? ''];
+      if (config.previousSecret && config.previousSecretExpiresAt && Date.parse(config.previousSecretExpiresAt) > Date.now()) secrets.push(config.previousSecret);
+      headers['X-SpendGuard-Signature'] = signWebhookHeader(secrets, ts, body);
     }
 
     // Validation, DNS resolution and the pinned connection all happen inside safePost, on every attempt

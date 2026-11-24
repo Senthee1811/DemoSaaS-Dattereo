@@ -38,26 +38,34 @@ export class NotificationsController {
   @Patch('channels/:id')
   @Roles('OWNER', 'ADMIN')
   update(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateChannelBody) {
-    return this.service.updateChannel(user.orgId, id, body ?? {});
+    return this.service.updateChannel(user.orgId, id, body ?? {}, user.id);
   }
 
   @Delete('channels/:id')
   @Roles('OWNER', 'ADMIN')
   remove(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.service.deleteChannel(user.orgId, id);
+    return this.service.deleteChannel(user.orgId, id, user.id);
   }
 
   @Post('channels/:id/rotate-secret')
   @Roles('OWNER', 'ADMIN')
-  rotate(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.service.rotateSecret(user.orgId, id);
+  @ApiOperation({ summary: 'Rotate the signing secret. The previous secret keeps verifying for a grace window unless immediate=true' })
+  rotate(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: { immediate?: boolean; graceHours?: number }) {
+    return this.service.rotateSecret(user.orgId, id, { immediate: body?.immediate === true, graceHours: body?.graceHours }, user.id);
   }
 
   @Post('channels/:id/test')
   @Roles('OWNER', 'ADMIN')
   @ApiOperation({ summary: 'Send a clearly labelled test event to one channel' })
   test(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.service.sendTest(user.orgId, id);
+    return this.service.sendTest(user.orgId, id, user.id);
+  }
+
+  @Get('audit')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Audit trail of channel changes (who created, tested, rotated, paused or removed what)' })
+  audit(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
+    return this.service.channelAudit(user.orgId, int(limit, 100, 1, 200));
   }
 
   @Get('deliveries')

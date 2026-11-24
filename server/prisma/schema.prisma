@@ -416,10 +416,13 @@ model AuditLog {
   actor     String
   action    String
   metadata  String?  @map("metadata") // JSON details
+  // Set for organization-level administrative actions (e.g. notification channel changes); NULL for request-level rows
+  orgId     String?  @map("org_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   request   Request? @relation(fields: [requestId], references: [id], onDelete: SetNull)
 
+  @@index([orgId, createdAt])
   @@index([requestId])
   @@index([createdAt])
   @@index([actor, createdAt])

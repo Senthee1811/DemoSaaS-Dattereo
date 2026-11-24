@@ -6,6 +6,21 @@ export class FakeNotificationDb {
   channels: Row[] = [];
   deliveries: Row[] = [];
   failDeliveryCreate = false;
+  auditRows: Row[] = [];
+  failAudit = false;
+
+  auditLog = {
+    create: async ({ data }: any) => {
+      if (this.failAudit) throw new Error('audit db down');
+      const row = { id: randomUUID(), createdAt: new Date(), ...data };
+      this.auditRows.push(row);
+      return row;
+    },
+    findMany: async ({ where }: any) =>
+      this.auditRows
+        .filter((r) => r.orgId === where.orgId && String(r.action).startsWith(where.action.startsWith))
+        .sort((a, b) => b.createdAt - a.createdAt),
+  };
 
   private hasEventTypeFilter(r: Row, where: Row): boolean {
     if (!where.OR) return true;

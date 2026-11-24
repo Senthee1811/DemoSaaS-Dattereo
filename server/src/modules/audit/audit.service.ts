@@ -1,5 +1,7 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { assessMargin, MIN_SAMPLES_PER_MODEL } from '@/modules/gateway/estimator-accuracy';
 
 /**
  * Audit service — enforces append-only immutability.
@@ -168,12 +170,137 @@ export class AuditService {
         httpStatus: a.httpStatus,
         upstreamStatus: a.upstreamStatus,
         upstreamCode: a.upstreamCode,
+        // The worst case that could have been charged, NOT a charge. See billingStatus for whether one is expected.
         estimatedCostUsd: Number(a.estimatedCostUsd),
+        executionStatus: a.executionStatus,
+        billingStatus: a.billingStatus,
+        reconciledStatus: a.reconciledStatus,
+        reconciledCostUsd: a.reconciledCostUsd != null ? Number(a.reconciledCostUsd) : null,
+        reconciledAt: a.reconciledAt,
         durationMs: a.durationMs,
         timestamp: a.createdAt,
       })),
       total,
     };
+  }
+
+  /**
+   * How well the token estimator predicted real usage, per provider/model/estimator version, from ledger numbers only.
+   * Only rows whose usage the PROVIDER reported (usage_status = CONFIRMED) are scored: an estimate cannot validate an estimate.
+   */
+  async estimatorAccuracy(orgId: string, days = 30) {
+    const d = Math.min(Math.max(Math.floor(days) || 30, 1), 180);
+    const since = new Date(Date.now() - d * 86_400_000);
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT r.provider::text AS provider, r.model, r.estimator_version,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL AND r.tokens_in > 0) AS samples,
+        COUNT(*) FILTER (WHERE r.usage_status = 'ESTIMATED') AS estimated_usage_rows,
+        COUNT(*) FILTER (WHERE r.usage_status IS NULL OR r.estimated_input_tokens IS NULL) AS unscored_rows,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens < r.tokens_in) AS under_raw,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens > r.tokens_in) AS over_raw,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.reserved_input_tokens < r.tokens_in) AS under_reserved,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.reserved_input_tokens > r.tokens_in) AS over_reserved,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.reserved_output_tokens < r.tokens_out) AS output_exceeded_reserve,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY r.estimated_input_tokens::float8 / r.tokens_in) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL AND r.tokens_in > 0) AS ratio_p50,
+        percentile_cont(0.95) WITHIN GROUP (ORDER BY r.estimated_input_tokens::float8 / r.tokens_in) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL AND r.tokens_in > 0) AS ratio_p95,
+        percentile_cont(0.99) WITHIN GROUP (ORDER BY r.tokens_in::float8 / NULLIF(r.estimated_input_tokens, 0)) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens > 0) AS margin_needed_p99,
+        COALESCE(SUM(r.cost_estimate) FILTER (WHERE r.usage_status = 'CONFIRMED'), 0) AS cost,
+        COALESCE(SUM(r.reservation_overrun_usd) FILTER (WHERE r.usage_status = 'CONFIRMED'), 0) AS overrun,
+        COUNT(*) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.reservation_overrun_usd > 0) AS overrun_requests,
+        COALESCE(SUM(r.cost_estimate * ABS(r.estimated_input_tokens::float8 / r.tokens_in - 1)) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL AND r.tokens_in > 0), 0)
+          / NULLIF(SUM(r.cost_estimate) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL AND r.tokens_in > 0), 0) AS cost_weighted_error,
+        MIN(r.created_at) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL) AS first_at,
+        MAX(r.created_at) FILTER (WHERE r.usage_status = 'CONFIRMED' AND r.estimated_input_tokens IS NOT NULL) AS last_at
+      FROM requests r JOIN projects p ON p.id = r.project_id
+      WHERE p.org_id = ${orgId} AND r.is_blocked = false AND r.created_at >= ${since}
+      GROUP BY r.provider, r.model, r.estimator_version
+      ORDER BY cost DESC`);
+    const n = (v: unknown) => Number(v ?? 0);
+    const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 10000) / 100 : null);
+    const groups = rows.map((r) => {
+      const samples = n(r.samples);
+      return {
+        provider: r.provider, model: r.model, estimatorVersion: r.estimator_version, samples,
+        indicativeOnly: samples < MIN_SAMPLES_PER_MODEL,
+        excluded: { estimatedUsage: n(r.estimated_usage_rows), unscored: n(r.unscored_rows) },
+        underestimatedPct: pct(n(r.under_raw), samples), overestimatedPct: pct(n(r.over_raw), samples),
+        reservationUnderCoveredInputPct: pct(n(r.under_reserved), samples), reservationOverCoveredInputPct: pct(n(r.over_reserved), samples),
+        outputExceededReservePct: pct(n(r.output_exceeded_reserve), samples),
+        estimateToActualRatio: { p50: r.ratio_p50 == null ? null : Math.round(n(r.ratio_p50) * 1000) / 1000, p95: r.ratio_p95 == null ? null : Math.round(n(r.ratio_p95) * 1000) / 1000 },
+        marginNeededForP99Coverage: r.margin_needed_p99 == null ? null : Math.round(n(r.margin_needed_p99) * 1000) / 1000,
+        costWeightedErrorPct: r.cost_weighted_error == null ? null : Math.round(n(r.cost_weighted_error) * 10000) / 100,
+        financialOverrun: { requests: n(r.overrun_requests), usd: n(r.overrun), pctOfCost: pct(n(r.overrun), n(r.cost)) },
+        _span: r.first_at && r.last_at ? (new Date(r.last_at).getTime() - new Date(r.first_at).getTime()) / 86_400_000 : 0,
+        _under: pct(n(r.under_reserved), samples),
+      };
+    });
+    const byProvider = new Map<string, { samples: number; span: number; weightedUnder: number }>();
+    for (const g of groups) {
+      const e = byProvider.get(g.provider) ?? { samples: 0, span: 0, weightedUnder: 0 };
+      e.samples += g.samples;
+      e.span = Math.max(e.span, g._span);
+      e.weightedUnder += (g._under ?? 0) * g.samples;
+      byProvider.set(g.provider, e);
+    }
+    return {
+      windowDays: d,
+      note: 'Computed from ledger counts only (no prompts or responses). Rows with estimated usage are excluded. Margins are never changed automatically.',
+      providers: [...byProvider].map(([provider, e]) => ({ provider, ...assessMargin({ providerSamples: e.samples, spanDays: e.span, underReservedPct: e.samples ? Math.round((e.weightedUnder / e.samples) * 100) / 100 : null }) })),
+      groups: groups.map(({ _span, _under, ...g }) => g),
+    };
+  }
+
+  /**
+   * Failed calls where the provider may have billed us but no usage reached the ledger, not yet compared with the
+   * provider's invoice. This is EXPOSURE, not spend: nothing here is in the ledger or the budget counters.
+   *  - maxExposureUsd: the sum of the worst cases that were reserved and released (an upper bound, not a charge)
+   *  - confirmedUnledgeredUsd: provider-confirmed charges a human recorded; still not in the ledger (manual accounting)
+   */
+  async attemptExposure(orgId: string) {
+    const [open, confirmed] = await Promise.all([
+      this.prisma.requestAttempt.groupBy({
+        by: ['provider', 'billingStatus'],
+        where: { orgId, billingStatus: { in: ['UNCERTAIN', 'LIKELY_CHARGED'] }, reconciledStatus: null },
+        _count: { id: true },
+        _sum: { estimatedCostUsd: true },
+      }),
+      this.prisma.requestAttempt.groupBy({
+        by: ['provider'],
+        where: { orgId, reconciledStatus: 'CHARGED_CONFIRMED' },
+        _count: { id: true },
+        _sum: { reconciledCostUsd: true },
+      }),
+    ]);
+    return {
+      unreconciled: open.map((r) => ({ provider: r.provider, billingStatus: r.billingStatus, attempts: r._count.id, maxExposureUsd: Number(r._sum.estimatedCostUsd ?? 0) })),
+      confirmedUnledgeredUsd: confirmed.map((r) => ({ provider: r.provider, attempts: r._count.id, usd: Number(r._sum.reconciledCostUsd ?? 0) })),
+      note: 'Exposure is an upper bound from released reservations, not a charge. Confirm against the provider invoice, then record the outcome per attempt.',
+    };
+  }
+
+  /**
+   * Records a human's comparison of one failed attempt with the provider invoice. It changes NOTHING in the spend ledger
+   * or the budget counters (a charge discovered later is an accounting correction made outside SpendGuard).
+   */
+  async reconcileAttempt(orgId: string, userId: string, id: string, body: { status?: string; costUsd?: number; note?: string }) {
+    const row = await this.prisma.requestAttempt.findFirst({ where: { id, orgId } }); // another tenant's id is a 404
+    if (!row) throw new NotFoundException('Attempt not found');
+    if (row.reconciledStatus) throw new BadRequestException('This attempt has already been reconciled.');
+    const status = String(body?.status ?? '');
+    if (status !== 'NOT_CHARGED_CONFIRMED' && status !== 'CHARGED_CONFIRMED') throw new BadRequestException('status must be NOT_CHARGED_CONFIRMED or CHARGED_CONFIRMED');
+    let cost: number | null = null;
+    if (status === 'CHARGED_CONFIRMED') {
+      cost = Number(body?.costUsd);
+      if (!Number.isFinite(cost) || cost <= 0 || cost > 100000) throw new BadRequestException('costUsd (the amount on the provider invoice) is required for CHARGED_CONFIRMED');
+    } else if (body?.costUsd !== undefined && Number(body.costUsd) !== 0) {
+      throw new BadRequestException('costUsd must be omitted (or 0) for NOT_CHARGED_CONFIRMED');
+    }
+    const updated = await this.prisma.requestAttempt.update({
+      where: { id },
+      data: { reconciledStatus: status, reconciledCostUsd: cost, reconciledById: userId, reconciledAt: new Date(), reconciledNote: typeof body?.note === 'string' ? body.note.slice(0, 300) : null },
+    });
+    await this.prisma.auditLog.create({ data: { orgId, actor: userId, action: 'attempt.reconciled', metadata: JSON.stringify({ attemptId: id, status, costUsd: cost }) } }).catch((e: any) => this.logger.error(`AUDIT WRITE FAILED for attempt.reconciled ${id}: ${e?.message}`));
+    return { id: updated.id, reconciledStatus: updated.reconciledStatus, reconciledCostUsd: updated.reconciledCostUsd != null ? Number(updated.reconciledCostUsd) : null, reconciledAt: updated.reconciledAt };
   }
 
   /**

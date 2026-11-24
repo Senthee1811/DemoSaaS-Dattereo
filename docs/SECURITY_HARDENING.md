@@ -88,7 +88,16 @@ immediate rotation, no-secret-leakage across API/history/audit/logs).
 * Notifications: every service method takes `orgId` first and filters by it; the inbox and mark-read are org-scoped.
 * Request-attempt audit: filtered by the row's own `org_id`.
 
-## 5. Limitations
+## 5. Operational endpoints
+
+* `/health/live` and `/health/ready` are public and reveal only ok/down; errors are never echoed (no driver text, hosts or connection strings).
+* `/health/diagnostics` and `/health/metrics` expose internal state (workers, backlogs, counters). They are **disabled (404) unless
+  `HEALTH_DIAGNOSTICS_TOKEN` (>= 16 chars) is set**, then require it in `X-Health-Token` (constant-time comparison). They return counts only, never
+  organization identifiers, row content or credentials. Metric labels are bounded enums.
+* The estimator-accuracy, attempt-exposure and attempt-reconcile endpoints are owner/admin only and organization-scoped (another organization's
+  attempt id is a 404 and is not modified).
+
+## 6. Limitations
 
 * Pinning relies on Node's `lookup` option; behaviour was verified on the Node version in this environment only.
 * The hostname hint shown to admins is not a secret but does reveal the destination host.

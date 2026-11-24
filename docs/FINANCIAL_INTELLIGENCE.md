@@ -122,12 +122,48 @@ it fans out to the in-app inbox plus every enabled organization channel that wan
   addresses (TLS still verifies the original hostname). See `docs/SECURITY_HARDENING.md`, which also documents the signature
   format with a receiver example, secret rotation (grace window) and the channel audit trail.
 
-## 8. Performance considerations (reasoned, **not benchmarked**)
-* Insight endpoints are read-only aggregates over `requests` using the existing `(project_id, created_at)` index plus new
-  `(project_id, application|team, created_at)` indexes; the org filter is a join to `projects`. Windows are capped (≤ 92 days
-  attribution, ≤ 31 days investigation, ≤ 90 days comparison).
-* An investigation runs roughly 15–20 small queries, mostly in parallel; the model comparison runs one `percentile_cont` aggregate. On a very large
-  ledger these are the first things to measure; materialised daily rollups would be the next step.
-* Recommendation generation runs off the request path (BullMQ, every 6 h, one organization at a time, one project's failure
-  does not stop the rest). The gateway hot path gained only string validation of three optional headers.
-* The migration backfills nothing in `requests` except the two new nullable columns (no table rewrite).
+## 8. Performance (measured; see `docs/benchmarks/`)
+
+Method: `server/bench/insights.bench.ts` drives the real services over real PostgreSQL 16 (Docker, default config: `shared_buffers=128MB`,
+`work_mem=4MB`, benchmark and database sharing one laptop) with synthetic data (8 projects, skewed models/applications, 60 days, 2% blocked,
+a second organization present). Warm cache, 30 iterations (15 at 1M), p99 is therefore the maximum of that few samples. **These numbers describe
+that environment only**; nothing is claimed about production hardware.
+
+Practical budget used here: **interactive endpoints p95 ≤ 1 s**.
+
+| endpoint (organization-wide unless noted) | 10k rows p95 | 100k rows p95 | 1M rows p50 / p95 (ledger) | 1M p50 / p95 (rollups on) |
+|---|---:|---:|---:|---:|
+| attribution by model, 30 days | 40 ms | 137 ms | 1,300 / 1,550 ms | **307 / 505 ms** |
+| attribution by key, 30 days | 27 ms | 339 ms | 1,729 / 5,111 ms | **293 / 648 ms** |
+| forecast | 20 ms | 144 ms | 909 / 1,352 ms | **148 / 444 ms** |
+| forecast, one project | 16 ms | 54 ms | 302 / 642 ms | 47 / 53 ms |
+| investigation 24 h vs 7 d | 48 ms | 349 ms | 2,108 / 3,588 ms | 1,528 / 2,141 ms (**over budget**) |
+| investigation 30 d vs 7 d | 53 ms | 349 ms | 4,759 / 6,777 ms | 2,616 / 3,886 ms (**over budget**) |
+| model comparison 30 d | 16 ms | 171 ms | 907 / 1,366 ms | 725 / 907 ms |
+| recommendations list / notification history / inbox | < 15 ms | < 15 ms | 10–16 ms | same |
+
+* **With ~100k ledger rows in total (about half inside a 30-day window) every endpoint met the budget without any rollup.**
+* **At ~1M rows** the org-wide attribution and forecast exceed it on the raw ledger; **investigation and model comparison are still slow or over
+  budget even with rollups**, because they need hourly buckets and percentile statistics that a daily rollup cannot answer. The next step for them
+  (not built) is an hourly rollup or per-model percentile sketches; until then, scope investigations to a project or a shorter window.
+* **Query plans (1M rows):** every query used an index (`requests_project_id_created_at_idx`, `requests_created_at_idx`, `projects_org_id_slug_key`);
+  there were no unindexed scans except the planner's own parallel sequential scan for the widest windows. The cost is the number of rows aggregated
+  (hundreds of thousands per query), plus a `Sort Method: external merge Disk: ~36MB` where `work_mem=4MB` spills. **No additional index is supported by
+  the plans**, so none was added. Raising `work_mem` for the reporting connection is a cheap thing to try in staging (not tested here).
+* Memory: heap growth per call was ≤ 2 MB at every size (aggregation is in the database; nothing loads ledger history into the application).
+* Queries per call: attribution 2–3 (6–7 with rollups: two raw edge windows + the rollup), forecast 3, investigation 21–28, model comparison 2–3.
+
+### Daily rollups (`INSIGHTS_ROLLUPS=on`, off by default)
+Justified by the measurements above, implemented as **derived, disposable** data: `request_daily_rollups` (project, UTC day, provider, model, key,
+application, team), rebuilt per day from the ledger (`DELETE + INSERT … SELECT` in one transaction, so idempotent and atomic for readers). `requests` is
+never changed and stays the source of truth.
+
+* Reads use the rollup only for **whole UTC days up to the watermark** (`rollup_state.complete_through`); partial days at the edges and today come from the
+  ledger, so results equal the ledger exactly. Proven against real Postgres for every dimension, partial/whole/future windows, NULL attribution, blocked
+  rows, two organizations (`test/rollup.spec.ts`), plus a 2,000-window property test that the pieces tile the window with no gap or overlap.
+* **Late-arriving rows** (a retried ledger write keeps its original timestamp): every build re-materialises the last 2 complete days; a daily
+  **reconciliation** compares the ledger with the rollup for the last 35 days, logs every discrepancy, repairs the day and records the count
+  (`spendguard_rollup_last_discrepancies`). Between a late row landing and the next repair a rollup-served read can be short by that row; the
+  reconciliation reports it.
+* Backfill: 60 days / 1M rows took ~8 s (31 days per run); the 35-day reconciliation scan took ~1 s on that data.
+* Not covered: hourly buckets, percentile statistics, evidence rows (still read from the ledger).

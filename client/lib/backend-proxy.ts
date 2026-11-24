@@ -14,6 +14,11 @@ const FORWARDED_REQUEST_HEADERS = [
   'x-spendguard-project-id',
   'x-project-id',
   'x-request-id',
+  // Cost attribution. Forwarded verbatim and re-validated by the backend (the key's assignment still wins); never
+  // trusted or interpreted here, and nothing else starting with x-spendguard- is forwarded.
+  'x-spendguard-application',
+  'x-spendguard-team',
+  'x-spendguard-tags',
   'stripe-signature',
   'user-agent',
 ];
@@ -25,6 +30,7 @@ const FORWARDED_RESPONSE_HEADERS = [
   'x-spendguard-cost',
   'x-spendguard-latency',
   'x-spendguard-blocked',
+  'x-spendguard-attribution-ignored',
   'x-request-id',
   'x-ratelimit-limit',
   'x-ratelimit-remaining',

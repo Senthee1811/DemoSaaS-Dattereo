@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { assertProjectInOrg } from '@/common/tenant';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { AlertDispatchService } from './alert-dispatch.service';
 import { isValidSlackWebhookUrl } from './slack-blocks';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 
 const THRESHOLD_TYPES = ['PERCENT_80', 'HARD_BLOCK', 'ANOMALY_DETECTED'] as const;
 
@@ -13,6 +14,7 @@ export class AlertsService {
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
     private readonly dispatcher: AlertDispatchService,
+    @Optional() private readonly notifications?: NotificationsService,
   ) {}
 
   async listAlerts(orgId: string, projectId?: string) {
@@ -105,7 +107,14 @@ export class AlertsService {
       update: { slackWebhookUrl: encrypted },
       create: { projectId, slackWebhookUrl: encrypted },
     });
-    return this.getConfig(orgId, projectId);
+    const config = await this.getConfig(orgId, projectId);
+    // Warn (never block) when an organization Slack channel already points at exactly this webhook
+    let warnings: string[] = [];
+    if (encrypted && this.notifications) {
+      const dupes = await this.notifications.channelOverlapForSlackUrl(orgId, url!.trim()).catch(() => []);
+      if (dupes.length) warnings = [`The organization Slack channel ${dupes.map((d) => `"${d}"`).join(', ')} uses the same webhook: budget alerts will arrive twice. Remove one of them.`];
+    }
+    return { ...config, warnings };
   }
 
   async triggerTestAlert(

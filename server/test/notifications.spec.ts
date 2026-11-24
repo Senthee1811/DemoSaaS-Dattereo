@@ -9,6 +9,7 @@ import { assertSafeDestination, isPrivateAddress } from '../src/modules/notifica
 import { generateWebhookSecret, signWebhook, verifyWebhook } from '../src/modules/notifications/signing';
 import { DELIVER_JOB_OPTS, NotificationEvent } from '../src/modules/notifications/notification.events';
 import { FakeNotificationDb, fakeEncryption } from './helpers/notification-fakes';
+import { fakeTransport } from './helpers/fake-transport';
 
 const env = { ...process.env };
 const realFetch = global.fetch;
@@ -317,32 +318,36 @@ describe('delivery: Slack, signed webhook and email', () => {
     const d = s.db.deliveries.find((x) => x.channelId === ch.id)!;
     return { ...s, ch, d, secret: (ch as any).signingSecret as string };
   }
-  const ok = () => jest.fn(async () => new Response('ok', { status: 200 }));
+  const use = (p: any, behaviour: any = 200) => {
+    const t = fakeTransport(behaviour);
+    p.requestImpl = t.impl;
+    return t;
+  };
 
   it('webhook: POSTs the event signed with the channel secret (verifiable with the documented scheme), marks SENT', async () => {
     const { processor, d, db, secret } = await queued('WEBHOOK');
-    const f = (global.fetch = ok() as any) as jest.Mock;
+    const t = use(processor);
     await processor.deliver(job(d.id));
-    const [url, init] = f.mock.calls[0] as unknown as [URL, any];
-    expect(String(url)).toBe(PUBLIC_URL);
-    expect(init.redirect).toBe('manual');
-    expect(init.headers['X-SpendGuard-Event']).toBe('budget.alert');
-    expect(init.headers['X-SpendGuard-Delivery']).toBe(d.id);
-    expect(verifyWebhook(secret, init.headers['X-SpendGuard-Signature'], init.headers['X-SpendGuard-Timestamp'], init.body)).toBe(true);
-    expect(JSON.parse(init.body)).toMatchObject({ type: 'budget.alert', orgId: 'org-a', data: { title: 'Budget warning: Support' } });
-    expect(init.body).not.toContain(secret);
+    const { options, body } = t.calls[0];
+    expect(options.hostname).toBe('93.184.216.34');
+    expect(options.path).toBe('/hooks/spendguard');
+    expect(options.headers['X-SpendGuard-Event']).toBe('budget.alert');
+    expect(options.headers['X-SpendGuard-Delivery']).toBe(d.id);
+    expect(options.headers['Content-Length']).toBe(String(Buffer.byteLength(body)));
+    expect(verifyWebhook(secret, options.headers['X-SpendGuard-Signature'], options.headers['X-SpendGuard-Timestamp'], body)).toBe(true);
+    expect(JSON.parse(body)).toMatchObject({ type: 'budget.alert', orgId: 'org-a', data: { title: 'Budget warning: Support' } });
+    expect(body).not.toContain(secret);
     expect(db.deliveries.find((x) => x.id === d.id)).toMatchObject({ status: 'SENT', attempts: 1, lastError: null });
   });
 
   it('slack: posts a text + block payload, escaping markup, with no signature headers', async () => {
     const { processor, d, db } = await queued('SLACK');
     db.deliveries.find((x) => x.id === d.id)!.payload.data.message = 'Spend <!channel> & more';
-    const f = (global.fetch = ok() as any) as jest.Mock;
+    const t = use(processor);
     await processor.deliver(job(d.id));
-    const init = (f.mock.calls[0] as any)[1];
-    const body = JSON.parse(init.body);
-    expect(body.blocks[0].text.text).toContain('Spend &lt;!channel&gt; &amp; more');
-    expect(init.headers['X-SpendGuard-Signature']).toBeUndefined();
+    const { options, body } = t.calls[0];
+    expect(JSON.parse(body).blocks[0].text.text).toContain('Spend &lt;!channel&gt; &amp; more');
+    expect(options.headers['X-SpendGuard-Signature']).toBeUndefined();
   });
 
   it('email: sends to every recipient; refuses when email is not configured (permanent, honest reason)', async () => {
@@ -361,12 +366,12 @@ describe('delivery: Slack, signed webhook and email', () => {
   it('TRANSIENT failures (5xx, 429, 408, network, timeout) go RETRYING with the attempt recorded, and FAILED after the last attempt', async () => {
     for (const status of [500, 502, 429, 408]) {
       const { processor, d, db } = await queued('WEBHOOK');
-      global.fetch = jest.fn(async () => new Response('x', { status })) as any;
+      use(processor, status);
       await expect(processor.deliver(job(d.id, 0))).rejects.not.toBeInstanceOf(UnrecoverableError);
       expect(db.deliveries.find((x) => x.id === d.id)).toMatchObject({ status: 'RETRYING', attempts: 1, lastError: `The destination answered HTTP ${status}` });
     }
     const { processor, d, db } = await queued('WEBHOOK');
-    global.fetch = jest.fn(async () => { throw new Error('connect ECONNREFUSED https://93.184.216.34/hooks/spendguard'); }) as any;
+    use(processor, new Error('connect ECONNREFUSED https://93.184.216.34/hooks/spendguard'));
     await expect(processor.deliver(job(d.id, 0))).rejects.toThrow();
     expect(db.deliveries.find((x) => x.id === d.id)!.lastError).toBe('Could not reach the destination'); // the URL in the error text is NOT echoed
     await expect(processor.deliver(job(d.id, DELIVER_JOB_OPTS.attempts - 1))).rejects.toThrow();
@@ -376,7 +381,7 @@ describe('delivery: Slack, signed webhook and email', () => {
   it('PERMANENT failures (4xx other than 408/429, redirects, unsafe destination) fail at once without burning retries', async () => {
     for (const status of [400, 401, 403, 404, 410, 302]) {
       const { processor, d, db } = await queued('WEBHOOK');
-      global.fetch = jest.fn(async () => new Response('', { status })) as any;
+      use(processor, status);
       await expect(processor.deliver(job(d.id))).rejects.toBeInstanceOf(UnrecoverableError);
       expect(db.deliveries.find((x) => x.id === d.id)!.status).toBe('FAILED');
     }
@@ -391,18 +396,18 @@ describe('delivery: Slack, signed webhook and email', () => {
     const enc = fakeEncryption();
     (processor as any).encryption = enc;
     ch.encryptedConfig = enc.encryptApiKey(JSON.stringify({ url: 'https://hooks.example.com/x', secret: 's' }));
-    const f = (global.fetch = jest.fn() as any) as jest.Mock;
+    const t = use(processor);
     await expect(processor.deliver(job(d.id))).rejects.toBeInstanceOf(UnrecoverableError);
-    expect(f).not.toHaveBeenCalled();
+    expect(t.calls).toHaveLength(0);
     expect(db.deliveries.find((x) => x.id === d.id)!.lastError).toMatch(/Destination rejected/);
   });
 
   it('is idempotent: a duplicate job for a SENT delivery does nothing; a deleted/disabled channel fails permanently', async () => {
     const { processor, d, db, service, ch } = await queued('WEBHOOK');
-    const f = (global.fetch = ok() as any) as jest.Mock;
+    const t = use(processor);
     await processor.deliver(job(d.id));
     await processor.deliver(job(d.id));
-    expect(f).toHaveBeenCalledTimes(1);
+    expect(t.calls).toHaveLength(1);
 
     const other = await queued('WEBHOOK');
     await other.service.updateChannel('org-a', other.ch.id, { enabled: false });
@@ -413,7 +418,7 @@ describe('delivery: Slack, signed webhook and email', () => {
 
   it('the history never stores the destination URL, secret or recipients', async () => {
     const { processor, d, service } = await queued('WEBHOOK');
-    global.fetch = jest.fn(async () => new Response('', { status: 500 })) as any;
+    use(processor, 500);
     await processor.deliver(job(d.id)).catch(() => undefined);
     const out = JSON.stringify(await service.deliveries('org-a', {}));
     expect(out).not.toMatch(/93\.184\.216\.34|whsec_|encryptedConfig/);
@@ -449,6 +454,46 @@ describe('in-app inbox', () => {
     await service.markRead('org-a', [inbox.items[0].id]);
     expect((await service.inbox('org-a')).unread).toBe(1);
     expect((await service.inbox('org-a', true)).items).toHaveLength(1);
+  });
+
+  it('pages newest-first with a bounded size and a cursor; the last page has no cursor', async () => {
+    const { service, db } = setup();
+    for (let i = 0; i < 5; i++) {
+      await service.publish(event({ id: `p${i}`, data: { title: `T${i}`, message: 'm' } }));
+      db.deliveries.at(-1)!.createdAt = new Date(2026, 10, 1, 10, i); // distinct, increasing
+    }
+    const first = await service.inbox('org-a', false, { limit: 2 });
+    expect(first.items.map((i: any) => i.title)).toEqual(['T4', 'T3']);
+    expect(first.nextCursor).toBeTruthy();
+    const second = await service.inbox('org-a', false, { limit: 2, cursor: first.nextCursor! });
+    expect(second.items.map((i: any) => i.title)).toEqual(['T2', 'T1']);
+    const last = await service.inbox('org-a', false, { limit: 2, cursor: second.nextCursor! });
+    expect(last.items.map((i: any) => i.title)).toEqual(['T0']);
+    expect(last.nextCursor).toBeNull();
+    expect(first.unread).toBe(5); // the badge counts everything unread, not just the page
+  });
+  it('clamps the page size and rejects a malformed cursor', async () => {
+    const { service } = setup();
+    await expect(service.inbox('org-a', false, { cursor: 'not-a-date' })).rejects.toThrow(/cursor/);
+    await expect(service.inbox('org-a', false, { limit: 100000 })).resolves.toBeDefined();
+  });
+  it('unreadCount is organization-scoped and counts only in-app rows', async () => {
+    const { service } = setup();
+    await service.createChannel('org-a', 'u1', { type: 'WEBHOOK', name: 'w', config: { url: PUBLIC_URL } });
+    await service.publish(event({ id: 'a1' }));
+    await service.publish(event({ id: 'b1', orgId: 'org-b' }));
+    expect(await service.unreadCount('org-a')).toEqual({ unread: 1 }); // the webhook delivery row is not an inbox item
+    await service.markRead('org-a');
+    expect(await service.unreadCount('org-a')).toEqual({ unread: 0 });
+    expect(await service.unreadCount('org-b')).toEqual({ unread: 1 });
+  });
+  it('mark-all never touches another organization, and marking an id from another organization changes nothing', async () => {
+    const { service } = setup();
+    await service.publish(event({ id: 'a1' }));
+    await service.publish(event({ id: 'b1', orgId: 'org-b' }));
+    const b = await service.inbox('org-b');
+    expect(await service.markRead('org-a', [b.items[0].id])).toEqual({ updated: 0 });
+    expect((await service.unreadCount('org-b')).unread).toBe(1);
   });
 });
 

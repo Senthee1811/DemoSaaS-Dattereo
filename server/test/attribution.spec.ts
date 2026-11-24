@@ -120,3 +120,62 @@ describe('the controller applies the precedence rule end to end', () => {
     expect(r.setHeader).not.toHaveBeenCalledWith('X-SpendGuard-Attribution-Ignored', expect.anything());
   });
 });
+
+describe('dashboard-session (Playground) attribution policy', () => {
+  it('with no key and no header, the server attributes the application as the playground, source "session"', () => {
+    const a = resolveAttribution({ sessionDefaultApplication: 'dashboard-playground' });
+    expect(a).toMatchObject({ application: 'dashboard-playground', team: null, sources: { application: 'session', team: null }, ignored: [] });
+  });
+  it('a valid header from the session user wins over the default (same rules as the gateway)', () => {
+    const a = resolveAttribution({ headerApplication: 'Checkout-Test', headerTeam: 'Growth', sessionDefaultApplication: 'dashboard-playground' });
+    expect(a).toMatchObject({ application: 'checkout-test', team: 'growth', sources: { application: 'header', team: 'header' } });
+  });
+  it('an invalid header is reported and replaced by the server default, never by the invalid text', () => {
+    const a = resolveAttribution({ headerApplication: '<script>', sessionDefaultApplication: 'dashboard-playground' });
+    expect(a.application).toBe('dashboard-playground');
+    expect(a.ignored.join()).toMatch(/application header ignored/);
+  });
+  it('a gateway key assignment still beats the session default; the default never applies to team', () => {
+    const a = resolveAttribution({ keyApplication: 'billing', sessionDefaultApplication: 'dashboard-playground' });
+    expect(a).toMatchObject({ application: 'billing', sources: { application: 'key' } });
+    expect(resolveAttribution({ sessionDefaultApplication: 'x' }).team).toBeNull();
+  });
+  it('without the option nothing changes: unattributed stays unattributed', () => {
+    expect(resolveAttribution({})).toMatchObject({ application: null, team: null });
+  });
+});
+
+describe('the controller attributes a dashboard session, but never a gateway key, as the playground', () => {
+  const pricing = new PricingService({ modelPricing: { findMany: async () => [] } } as any, { getCache: async () => null } as any);
+  const build = (key: any) => {
+    const processChatCompletion = jest.fn(async () => ({ headers: {} }));
+    const prisma: any = { gatewayApiKey: { findUnique: async () => key, update: async () => ({}) }, project: { findFirst: async ({ where }: any) => (where.orgId === 'org-a' ? { id: where.id } : null) } };
+    const auth: any = { verifyAccessToken: async (t: string) => (t === 'jwt-a' ? { id: 'u1', orgId: 'org-a' } : null) };
+    const controller = new GatewayController({ processChatCompletion } as any, prisma, { hashToken: (t: string) => t } as any, pricing, { getClient: () => null } as any, auth);
+    return { controller, processChatCompletion };
+  };
+  const res = () => { const r: any = { setHeader: jest.fn(), status: jest.fn(() => r), json: jest.fn() }; return r; };
+  const body = { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], projectId: 'p1' };
+
+  it('a session request with no headers is attributed to "dashboard-playground"', async () => {
+    const { controller, processChatCompletion } = build(null);
+    await controller.createChatCompletion(body as any, 'Bearer jwt-a', '', '', '', { ip: '1.1.1.1', socket: {}, headers: {} } as any, res());
+    expect((processChatCompletion.mock.calls[0] as any[])[0].attribution).toMatchObject({ application: 'dashboard-playground', sources: { application: 'session' } });
+  });
+  it('forwarded headers from the proxy are honoured for a session, with the same validation', async () => {
+    const { controller, processChatCompletion } = build(null);
+    await controller.createChatCompletion(body as any, 'Bearer jwt-a', '', '', '', { ip: '1.1.1.1', socket: {}, headers: { 'x-spendguard-application': 'Pricing-Page', 'x-spendguard-team': 'Growth', 'x-spendguard-tags': 'env=staging' } } as any, res());
+    expect((processChatCompletion.mock.calls[0] as any[])[0].attribution).toMatchObject({ application: 'pricing-page', team: 'growth', tags: { env: 'staging' } });
+  });
+  it('an unauthenticated session reaches neither attribution nor the service', async () => {
+    const { controller, processChatCompletion } = build(null);
+    await expect(controller.createChatCompletion(body as any, 'Bearer nope', '', '', '', { ip: '1', socket: {}, headers: { 'x-spendguard-application': 'x' } } as any, res())).rejects.toBeDefined();
+    expect(processChatCompletion).not.toHaveBeenCalled();
+  });
+  it('a gateway-key request with no assignment and no headers stays unattributed (the default is for sessions only)', async () => {
+    const key = { id: 'k', projectId: 'p', isActive: true, expiresAt: null, allowedModels: null, allowedProviders: null, rateLimitRpm: 0, rateLimitTpm: null, budgetMonthly: null, project: { orgId: 'o' }, application: null, team: null };
+    const { controller, processChatCompletion } = build(key);
+    await controller.createChatCompletion({ model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] } as any, 'Bearer sg_live_x', '', '', '', { ip: '1', socket: {}, headers: {} } as any, res());
+    expect((processChatCompletion.mock.calls[0] as any[])[0].attribution).toMatchObject({ application: null, sources: { application: null } });
+  });
+});

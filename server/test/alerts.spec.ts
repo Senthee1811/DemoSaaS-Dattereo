@@ -1,6 +1,7 @@
 import { AlertDeliveryProcessor } from '../src/modules/alerts/alert-delivery.processor';
 import { AlertDispatchService } from '../src/modules/alerts/alert-dispatch.service';
 import { AlertsService } from '../src/modules/alerts/alerts.service';
+import { fakeTransport } from './helpers/fake-transport';
 import { buildAlertBlocks, isValidSlackWebhookUrl } from '../src/modules/alerts/slack-blocks';
 
 const WEBHOOK = 'https://hooks.slack.com/services/T000/B000/XXXXXXXX';
@@ -47,24 +48,31 @@ const job = (attemptsMade = 0, attempts = 3): any => ({
   opts: { attempts },
 });
 
-const realFetch = global.fetch;
 afterEach(() => {
-  global.fetch = realFetch;
   jest.clearAllMocks();
 });
+
+const PUBLIC_RESOLVER = async () => ['93.184.216.34'];
+function processorWith(prisma: any, behaviour: any = 200) {
+  const t = fakeTransport(behaviour);
+  const p = new AlertDeliveryProcessor(prisma, encryption as any);
+  p.resolver = PUBLIC_RESOLVER;
+  p.requestImpl = t.impl;
+  return { p, t };
+}
 
 describe('AlertDeliveryProcessor', () => {
   it('marks SENT only after a 2xx from Slack, and posts the blocks', async () => {
     const { prisma, updates } = fakePrisma();
-    const fetchMock = jest.fn(async () => new Response('ok', { status: 200 }));
-    global.fetch = fetchMock as any;
+    const { p, t } = processorWith(prisma, 200);
 
-    await new AlertDeliveryProcessor(prisma, encryption as any).process(job());
+    await p.process(job());
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, any];
-    expect(url).toBe(WEBHOOK);
-    expect(JSON.parse(init.body)).toEqual({ blocks: [{ type: 'section' }] });
+    expect(t.calls).toHaveLength(1);
+    expect(t.calls[0].options.hostname).toBe('hooks.slack.com');
+    expect(t.calls[0].options.path).toBe('/services/T000/B000/XXXXXXXX');
+    expect(t.calls[0].lookedUp).toBe('93.184.216.34'); // pinned to the validated address
+    expect(JSON.parse(t.calls[0].body)).toEqual({ blocks: [{ type: 'section' }] });
     expect(updates).toHaveLength(1);
     expect(updates[0].data.status).toBe('SENT');
     expect(updates[0].data.deliveredAt).toBeInstanceOf(Date);
@@ -72,17 +80,17 @@ describe('AlertDeliveryProcessor', () => {
 
   it('a failed attempt with retries left is rethrown and the row is NOT marked yet', async () => {
     const { prisma, updates } = fakePrisma();
-    global.fetch = jest.fn(async () => new Response('no_service', { status: 404 })) as any;
+    const { p } = processorWith(prisma, 404);
 
-    await expect(new AlertDeliveryProcessor(prisma, encryption as any).process(job(0))).rejects.toThrow('Slack responded 404');
+    await expect(p.process(job(0))).rejects.toThrow('Slack responded 404');
     expect(updates).toHaveLength(0);
   });
 
   it('marks FAILED with the error once retries are exhausted', async () => {
     const { prisma, updates } = fakePrisma();
-    global.fetch = jest.fn(async () => new Response('no_service', { status: 404 })) as any;
+    const { p } = processorWith(prisma, 404);
 
-    await expect(new AlertDeliveryProcessor(prisma, encryption as any).process(job(2))).rejects.toThrow();
+    await expect(p.process(job(2))).rejects.toThrow();
     expect(updates).toHaveLength(1);
     expect(updates[0].data.status).toBe('FAILED');
     expect(updates[0].data.deliveryError).toContain('404');
@@ -91,11 +99,9 @@ describe('AlertDeliveryProcessor', () => {
 
   it('a network error never leaks the webhook URL into the stored error', async () => {
     const { prisma, updates } = fakePrisma();
-    global.fetch = jest.fn(async () => {
-      throw new Error(`connect ECONNREFUSED ${WEBHOOK}`);
-    }) as any;
+    const { p } = processorWith(prisma, new Error(`connect ECONNREFUSED ${WEBHOOK}`));
 
-    await expect(new AlertDeliveryProcessor(prisma, encryption as any).process(job(2))).rejects.toThrow();
+    await expect(p.process(job(2))).rejects.toThrow();
     expect(updates[0].data.status).toBe('FAILED');
     expect(updates[0].data.deliveryError).toBe('Could not reach Slack');
   });
@@ -103,11 +109,21 @@ describe('AlertDeliveryProcessor', () => {
   it('webhook removed before delivery → FAILED, no HTTP call', async () => {
     const { prisma, updates } = fakePrisma();
     prisma.alertConfig.findUnique = jest.fn(async () => ({ slackWebhookUrl: null }));
-    const fetchMock = jest.fn();
-    global.fetch = fetchMock as any;
+    const { p, t } = processorWith(prisma);
 
-    await expect(new AlertDeliveryProcessor(prisma, encryption as any).process(job(2))).rejects.toThrow();
-    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(p.process(job(2))).rejects.toThrow();
+    expect(t.calls).toHaveLength(0);
+    expect(updates[0].data.status).toBe('FAILED');
+  });
+});
+
+describe('AlertDeliveryProcessor outbound safety', () => {
+  it('a Slack URL whose host now resolves internally is never connected to', async () => {
+    const { prisma, updates } = fakePrisma();
+    const { p, t } = processorWith(prisma);
+    p.resolver = async () => ['10.0.0.9'];
+    await expect(p.process(job(2))).rejects.toThrow(/rejected by the outbound safety check/);
+    expect(t.calls).toHaveLength(0);
     expect(updates[0].data.status).toBe('FAILED');
   });
 });

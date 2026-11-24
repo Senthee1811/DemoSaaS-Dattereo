@@ -52,6 +52,87 @@ const fill = (name: string, dest: string) => {
   fireEvent.change(screen.getByLabelText(/Destination URL/), { target: { value: dest } });
 };
 
+describe('NotificationChannels: duplicates, rotation, test-send', () => {
+  it('shows server-side duplicate warnings on the channel row, with the channel still listed', async () => {
+    channels.push({ id: 'c1', type: 'SLACK', name: 'Ops', destination: 'hooks.slack.com/…', eventTypes: [], enabled: true, warnings: ['Also the alert webhook of project "Support": budget alerts arrive twice.'], stats: { sent: 0, failed: 0, pending: 0 } });
+    render(<NotificationChannels />);
+    expect(await screen.findByTestId('channel-warning')).toHaveTextContent(/alert webhook of project "Support"/);
+    expect(screen.getAllByTestId('channel-row')).toHaveLength(1);
+  });
+
+  it('after creating a channel that duplicates another, the warning is shown prominently and the channel exists', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if ((init?.method ?? 'GET') === 'POST' && url.endsWith('/channels')) return json({ id: 'c2', type: 'WEBHOOK', name: 'Copy', warnings: ['Same destination as "Pager": each event will be delivered to it more than once.'], signingSecret: SECRET }, 201);
+      if (url.includes('/channels')) return json({ channels });
+      return json({ deliveries });
+    });
+    render(<NotificationChannels />);
+    await screen.findByText(/No channels yet/);
+    fill('Copy', URL_TYPED);
+    fireEvent.click(screen.getByRole('button', { name: 'Add channel' }));
+    expect(await screen.findByTestId('create-warnings')).toHaveTextContent(/Same destination as "Pager"/);
+  });
+
+  it('rotation tells the admin how long the previous secret keeps working', async () => {
+    channels.push({ id: 'c1', type: 'WEBHOOK', name: 'Pager', destination: 'hooks.example.com/…', eventTypes: [], enabled: true, stats: { sent: 0, failed: 0, pending: 0 } });
+    let rotateBody: unknown;
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (input: RequestInit | URL | string, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/rotate-secret')) {
+        rotateBody = JSON.parse(String(init?.body));
+        return json({ signingSecret: SECRET, previousSecretValidUntil: '2026-11-26T10:00:00Z' }, 201);
+      }
+      if (url.includes('/channels')) return json({ channels });
+      return json({ deliveries });
+    });
+    render(<NotificationChannels />);
+    await screen.findAllByTestId('channel-row');
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate secret' }));
+    await waitFor(() => expect(screen.getByTestId('signing-secret')).toHaveTextContent(SECRET));
+    expect(rotateBody).toEqual({ immediate: false });
+    expect(screen.getByTestId('rotation-note')).toHaveTextContent(/previous secret keeps verifying until/);
+  });
+
+  it('revoking immediately needs a confirmation and then sends immediate: true', async () => {
+    channels.push({ id: 'c1', type: 'WEBHOOK', name: 'Pager', destination: 'hooks.example.com/…', eventTypes: [], enabled: true, stats: { sent: 0, failed: 0, pending: 0 } });
+    let rotateBody: unknown = null;
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/rotate-secret')) {
+        rotateBody = JSON.parse(String(init?.body));
+        return json({ signingSecret: SECRET, previousSecretValidUntil: null }, 201);
+      }
+      if (url.includes('/channels')) return json({ channels });
+      return json({ deliveries });
+    });
+    render(<NotificationChannels />);
+    await screen.findAllByTestId('channel-row');
+    fireEvent.click(screen.getByRole('button', { name: /Revoke & rotate/ }));
+    expect(rotateBody).toBeNull(); // nothing happens before confirming
+    fireEvent.click(await screen.findByRole('button', { name: 'Revoke and rotate' }));
+    await waitFor(() => expect(rotateBody).toEqual({ immediate: true }));
+    await waitFor(() => expect(screen.getByTestId('rotation-note')).toHaveTextContent(/no longer verifies/));
+  });
+
+  it('test-send on a paused channel says so instead of claiming it was queued', async () => {
+    channels.push({ id: 'c1', type: 'WEBHOOK', name: 'Pager', destination: 'x', eventTypes: [], enabled: false, stats: { sent: 0, failed: 0, pending: 0 } });
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/test')) return json({ queued: false }, 201);
+      if (url.includes('/channels')) return json({ channels });
+      return json({ deliveries });
+    });
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined); // toasts degrade to console.info outside a provider
+    render(<NotificationChannels />);
+    await screen.findAllByTestId('channel-row');
+    fireEvent.click(screen.getByRole('button', { name: /Test/ }));
+    await waitFor(() => expect(info).toHaveBeenCalledWith('Test not sent', expect.stringMatching(/paused/)));
+    expect(info).not.toHaveBeenCalledWith('Test queued', expect.anything());
+    info.mockRestore();
+  });
+});
+
 describe('NotificationChannels', () => {
   it('members get no manager, only an explanation', () => {
     localStorage.setItem('spendguard_user', JSON.stringify({ name: 'Mo', orgName: 'Acme', role: 'MEMBER' }));

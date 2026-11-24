@@ -7,8 +7,9 @@ import { EmailService } from '@/modules/email/email.service';
 import { scrubSecrets } from '@/common/scrub-secrets';
 import { DELIVER_JOB, DELIVER_JOB_OPTS, NOTIFICATION_QUEUE, NotificationEvent, REQUEUE_STALE_JOB } from './notification.events';
 import { ChannelConfig, NotificationsService, slackHosts } from './notifications.service';
-import { signWebhook } from './signing';
-import { assertSafeDestination, UnsafeDestinationError } from './url-safety';
+import { signWebhookHeader } from './signing';
+import { Resolver, UnsafeDestinationError } from './url-safety';
+import { OutboundError, PostOptions, safePost } from './safe-http';
 
 const TIMEOUT_MS = 5000;
 
@@ -33,6 +34,9 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 @Processor(NOTIFICATION_QUEUE)
 export class NotificationDeliveryProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationDeliveryProcessor.name);
+  /** Test seam only: production uses the system resolver. */
+  resolver?: Resolver;
+  requestImpl?: PostOptions['requestImpl'];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -94,13 +98,6 @@ export class NotificationDeliveryProcessor extends WorkerHost {
   private async send(type: string, config: ChannelConfig, event: NotificationEvent, deliveryId: string): Promise<void> {
     if (type === 'EMAIL') return this.sendEmail(config, event);
     const slack = type === 'SLACK';
-    let url: URL;
-    try {
-      url = await assertSafeDestination(config.url ?? '', slack ? { hosts: slackHosts() } : {});
-    } catch (err) {
-      throw new DeliveryError(err instanceof UnsafeDestinationError ? `Destination rejected: ${err.message}` : 'Destination rejected', true);
-    }
-
     const body = slack ? JSON.stringify(this.slackBody(event)) : JSON.stringify({ id: event.id, type: event.type, createdAt: event.occurredAt, orgId: event.orgId, data: event.data });
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'SpendGuard-Notifications/1' };
     if (!slack) {
@@ -109,15 +106,24 @@ export class NotificationDeliveryProcessor extends WorkerHost {
       headers['X-SpendGuard-Event-Id'] = event.id;
       headers['X-SpendGuard-Delivery'] = deliveryId;
       headers['X-SpendGuard-Timestamp'] = String(ts);
-      headers['X-SpendGuard-Signature'] = signWebhook(config.secret ?? '', ts, body);
+      const secrets = [config.secret ?? ''];
+      if (config.previousSecret && config.previousSecretExpiresAt && Date.parse(config.previousSecretExpiresAt) > Date.now()) secrets.push(config.previousSecret);
+      headers['X-SpendGuard-Signature'] = signWebhookHeader(secrets, ts, body);
     }
 
-    let res: Response;
+    // Validation, DNS resolution and the pinned connection all happen inside safePost, on every attempt
+    let res: { status: number };
     try {
-      res = await fetch(url, { method: 'POST', headers, body, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) });
+      res = await safePost(config.url ?? '', body, { headers, hosts: slack ? slackHosts() : undefined, timeoutMs: TIMEOUT_MS, resolver: this.resolver, requestImpl: this.requestImpl });
     } catch (err: any) {
+      if (err instanceof UnsafeDestinationError) throw new DeliveryError(`Destination rejected: ${err.message}`, true);
+      if (err instanceof OutboundError) {
+        if (err.kind === 'timeout') throw new DeliveryError(`The destination did not respond within ${TIMEOUT_MS / 1000}s`, false);
+        if (err.kind === 'tls') throw new DeliveryError('TLS certificate verification failed for the destination', true);
+        if (err.kind === 'too_large') throw new DeliveryError('The destination response was too large', true);
+      }
       // Never echo err.message: it can contain the destination URL
-      throw new DeliveryError(err?.name === 'TimeoutError' ? `The destination did not respond within ${TIMEOUT_MS / 1000}s` : 'Could not reach the destination', false);
+      throw new DeliveryError('Could not reach the destination', false);
     }
     if (res.status >= 200 && res.status < 300) return;
     if (res.status >= 300 && res.status < 400) throw new DeliveryError(`The destination answered with a redirect (HTTP ${res.status}); redirects are not followed`, true);

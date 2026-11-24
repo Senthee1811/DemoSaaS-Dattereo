@@ -6,6 +6,26 @@ export class FakeNotificationDb {
   channels: Row[] = [];
   deliveries: Row[] = [];
   failDeliveryCreate = false;
+  auditRows: Row[] = [];
+  alertConfigs: Row[] = [];
+  failAudit = false;
+
+  alertConfig = {
+    findMany: async () => this.alertConfigs.map((r) => ({ ...r })),
+  };
+
+  auditLog = {
+    create: async ({ data }: any) => {
+      if (this.failAudit) throw new Error('audit db down');
+      const row = { id: randomUUID(), createdAt: new Date(), ...data };
+      this.auditRows.push(row);
+      return row;
+    },
+    findMany: async ({ where }: any) =>
+      this.auditRows
+        .filter((r) => r.orgId === where.orgId && String(r.action).startsWith(where.action.startsWith))
+        .sort((a, b) => b.createdAt - a.createdAt),
+  };
 
   private hasEventTypeFilter(r: Row, where: Row): boolean {
     if (!where.OR) return true;
@@ -46,6 +66,7 @@ export class FakeNotificationDb {
     create: async ({ data }: any) => {
       if (this.failDeliveryCreate) throw new Error('db down');
       if (data.channelId && this.deliveries.some((d) => d.channelId === data.channelId && d.eventId === data.eventId)) throw Object.assign(new Error('unique'), { code: 'P2002' });
+      if (data.inAppKey && this.deliveries.some((d) => d.inAppKey === data.inAppKey)) throw Object.assign(new Error('unique'), { code: 'P2002' });
       const row = { id: randomUUID(), attempts: 0, lastError: null, lastAttemptAt: null, deliveredAt: null, readAt: null, createdAt: new Date(), ...data };
       this.deliveries.push(row);
       return { ...row };
@@ -93,5 +114,5 @@ export const fakeEncryption = () => {
   // Reversible but opaque, so tests can prove the stored value is not the plaintext
   const enc = (s: string) => `enc:${Buffer.from(s).toString('base64').split('').reverse().join('')}`;
   const dec = (s: string) => Buffer.from(s.slice(4).split('').reverse().join(''), 'base64').toString();
-  return { encryptApiKey: jest.fn(enc), decryptApiKey: jest.fn(dec) };
+  return { encryptApiKey: jest.fn(enc), decryptApiKey: jest.fn(dec), hashToken: jest.fn((s: string) => `h:${Buffer.from(s).toString('base64')}`) };
 };

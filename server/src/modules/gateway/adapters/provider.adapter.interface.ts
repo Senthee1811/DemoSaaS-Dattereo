@@ -21,12 +21,25 @@ export interface GatewayChatRequest {
   };
 }
 
+/**
+ * Normalised usage. Provider-specific shapes are converted here so pricing sees one meaning:
+ *  - promptTokens     = ALL input tokens, including cached reads and cache writes
+ *  - completionTokens = ALL billed output tokens, including reasoning/thinking tokens
+ */
 export interface AdapterExecutionResult {
   responseText: string;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
   isSimulated: boolean;
+  /** Of promptTokens: tokens read from the provider's prompt cache (billed at the cached rate). */
+  cachedPromptTokens?: number;
+  /** Of promptTokens: tokens written to Anthropic's cache (5-minute / 1-hour TTL). */
+  cacheWriteTokens?: { fiveMinute: number; oneHour: number };
+  /** Of completionTokens: reasoning/thinking tokens (informational; already inside completionTokens). */
+  reasoningTokens?: number;
+  /** True when the provider returned no usage block and token counts are SpendGuard estimates. */
+  usageEstimated?: boolean;
 }
 
 export interface ProviderAdapter {

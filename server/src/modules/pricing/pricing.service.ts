@@ -18,6 +18,47 @@ export function modelNotPricedError(model: string): HttpException {
   );
 }
 
+/** Cache-related parts of a request's INPUT tokens (all are subsets of the total input). */
+export interface CostUsageDetail {
+  /** Tokens read from the provider's prompt cache: billed at the model's cachedInputPrice. */
+  cachedTokens?: number;
+  /** Anthropic cache writes: billed at 1.25x (5-minute TTL) / 2x (1-hour TTL) of the input price. */
+  cacheWriteTokens?: { fiveMinute: number; oneHour: number };
+}
+
+/** Anthropic's documented cache-write multipliers on the base input price (prompt-caching docs). */
+export const ANTHROPIC_CACHE_WRITE_5M_MULTIPLIER = 1.25;
+export const ANTHROPIC_CACHE_WRITE_1H_MULTIPLIER = 2.0;
+
+/**
+ * USD cost for one request against ONE price row (a snapshot), 6 decimals.
+ *
+ * `tokensIn` is the TOTAL input (cached and cache-write tokens included) and `tokensOut` the TOTAL
+ * billed output (reasoning included). Input is split:
+ *   uncached  -> inputPricePerMillion
+ *   cached    -> cachedInputPrice, or the full input price when the model has none (never cheaper
+ *                than we can prove; over-charging a cached read is safe, under-charging is not)
+ *   cache writes -> input price x the documented multiplier (Anthropic only; others report none)
+ * Counts are clamped so the parts can never exceed the total.
+ */
+export function computeCost(config: ModelPricingConfig, tokensIn: number, tokensOut: number, detail: CostUsageDetail = {}): number {
+  const total = Math.max(0, tokensIn);
+  const cached = Math.min(Math.max(0, detail.cachedTokens ?? 0), total);
+  const w5 = Math.min(Math.max(0, detail.cacheWriteTokens?.fiveMinute ?? 0), total - cached);
+  const w1 = Math.min(Math.max(0, detail.cacheWriteTokens?.oneHour ?? 0), total - cached - w5);
+  const uncached = total - cached - w5 - w1;
+
+  const inRate = config.inputPricePerMillion;
+  const cachedRate = config.cachedInputPrice ?? inRate;
+  const inCost =
+    (uncached / 1_000_000) * inRate +
+    (cached / 1_000_000) * cachedRate +
+    (w5 / 1_000_000) * inRate * ANTHROPIC_CACHE_WRITE_5M_MULTIPLIER +
+    (w1 / 1_000_000) * inRate * ANTHROPIC_CACHE_WRITE_1H_MULTIPLIER;
+  const outCost = (Math.max(0, tokensOut) / 1_000_000) * config.outputPricePerMillion;
+  return Number((inCost + outCost).toFixed(6));
+}
+
 @Injectable()
 export class PricingService implements OnModuleInit {
   private readonly logger = new Logger(PricingService.name);
@@ -125,11 +166,17 @@ export class PricingService implements OnModuleInit {
    * Calculates USD cost estimate for a model inference request (6 decimal precision).
    * Throws 400 model_not_priced for models with no price.
    */
-  calculateCost(modelName: string, tokensIn: number, tokensOut: number): number {
-    const config = this.requirePrice(modelName);
-    const inCost = (tokensIn / 1_000_000) * config.inputPricePerMillion;
-    const outCost = (tokensOut / 1_000_000) * config.outputPricePerMillion;
-    return Number((inCost + outCost).toFixed(6));
+  calculateCost(modelName: string, tokensIn: number, tokensOut: number, detail: CostUsageDetail = {}): number {
+    return computeCost(this.requirePrice(modelName), tokensIn, tokensOut, detail);
+  }
+
+  /**
+   * The price row for a model, or a 400 model_not_priced. The gateway snapshots it BEFORE the
+   * upstream call so the reservation and the settlement use the same price even if an admin
+   * edits or deactivates the model while the request is in flight.
+   */
+  requireModelPrice(modelName: string): ModelPricingConfig {
+    return this.requirePrice(modelName);
   }
 
   /**
@@ -259,13 +306,21 @@ export class PricingService implements OnModuleInit {
         },
       });
 
-      this.memoryCache.set(dto.model, {
-        provider: dto.provider,
-        inputPricePerMillion: dto.inputPricePerMillion,
-        outputPricePerMillion: dto.outputPricePerMillion,
-        displayName: dto.displayName,
-        contextWindow: dto.contextWindow,
-      });
+      // Cache what the table now holds (including its cachedInputPrice, which an edit of the
+      // input/output rates does not touch). Rebuilding the entry from the DTO alone dropped the
+      // cached rate, so cached tokens were billed at the full input price until the next refresh.
+      this.memoryCache.set(
+        dto.model,
+        result
+          ? this.rowToConfig(result)
+          : {
+              provider: dto.provider,
+              inputPricePerMillion: dto.inputPricePerMillion,
+              outputPricePerMillion: dto.outputPricePerMillion,
+              displayName: dto.displayName,
+              contextWindow: dto.contextWindow,
+            },
+      );
 
       return result;
     } catch (err: any) {

@@ -470,6 +470,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Atomically claims `key` for `ttlSeconds` (SET NX EX): true if this caller got it, false if
+   * someone already holds it, null if Redis is unavailable. Used to suppress duplicate alerts.
+   */
+  async acquireOnce(key: string, ttlSeconds: number): Promise<boolean | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      const res = await client.set(key, '1', 'EX', Math.max(1, Math.floor(ttlSeconds)), 'NX');
+      return res === 'OK';
+    } catch (err: any) {
+      this.logger.warn(`Redis acquireOnce failed for ${key}: ${err.message}`);
+      return null;
+    }
+  }
+
   async delCache(key: string): Promise<void> {
     const client = this.getClient();
     if (!client) return;

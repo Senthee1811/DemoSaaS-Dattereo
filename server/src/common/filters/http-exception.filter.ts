@@ -8,20 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
-/**
- * Scrubs potential API keys and secrets from error messages.
- * Per Step 13: "Scrub API keys and other secrets from all log output."
- */
-function scrubSecrets(text: string): string {
-  if (typeof text !== 'string') return text;
-  // Scrub patterns: sk-..., AIzaSy..., Bearer tokens, etc.
-  return text
-    .replace(/sk-[a-zA-Z0-9_-]{10,}/g, 'sk-***REDACTED***')
-    .replace(/sk-ant-[a-zA-Z0-9_-]{10,}/g, 'sk-ant-***REDACTED***')
-    .replace(/AIzaSy[a-zA-Z0-9_-]{10,}/g, 'AIzaSy***REDACTED***')
-    .replace(/spnd_live_[a-zA-Z0-9]{10,}/g, 'spnd_live_***REDACTED***')
-    .replace(/Bearer\s+[a-zA-Z0-9._-]{20,}/g, 'Bearer ***REDACTED***');
-}
+import { scrubSecrets } from '@/common/scrub-secrets';
 
 @Catch()
 export class GlobalHttpExceptionFilter implements ExceptionFilter {

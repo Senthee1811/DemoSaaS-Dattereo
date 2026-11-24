@@ -395,13 +395,17 @@ export class BudgetService {
     thresholdValue: number;
     title: string;
     message: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
+    // Never throws: a notification problem must not change a budget decision. The boolean says
+    // whether the alert row was actually recorded (callers that dedupe use it to release a claim).
     try {
       // IN_APP, or QUEUED for Slack delivery when the project has a webhook.
       const alert = await this.alertDispatch.dispatch(params);
       this.logger.log(`[ALERT ${alert.status}] ${params.title}`);
+      return true;
     } catch (err: any) {
       this.logger.error(`Failed to record alert: ${err.message}`);
+      return false;
     }
   }
 

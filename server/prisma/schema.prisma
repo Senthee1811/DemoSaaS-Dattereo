@@ -239,6 +239,16 @@ model Request {
   /// Input tokens served from the provider's prompt cache (a subset of tokensIn). NULL = not recorded (rows from
   /// before this column existed); the model comparison treats NULL as 0 and says how many rows lacked it.
   cachedTokensIn  Int?         @map("cached_tokens_in")
+  /// Where the token counts (and therefore the cost) came from. CONFIRMED = the provider reported both prompt and
+  /// completion usage. ESTIMATED = at least one was missing and SpendGuard's own estimate was used. NULL = rows from
+  /// before this column existed (unknown; never backfilled with a guess).
+  usageStatus     String?      @map("usage_status") @db.VarChar(16)
+  /// Estimator validation (no content stored): the raw prompt-token estimate, the amount reserved after the provider
+  /// safety margin, the output tokens reserved, and which estimator produced them.
+  estimatedInputTokens Int?    @map("estimated_input_tokens")
+  reservedInputTokens  Int?    @map("reserved_input_tokens")
+  reservedOutputTokens Int?    @map("reserved_output_tokens")
+  estimatorVersion     String? @map("estimator_version") @db.VarChar(32)
   createdAt       DateTime     @default(now()) @map("created_at")
 
   project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -382,8 +392,21 @@ model RequestAttempt {
   upstreamStatus   Int?         @map("upstream_status")
   /// Provider's own short error code (scrubbed, truncated), e.g. rate_limit_exceeded.
   upstreamCode     String?      @map("upstream_code")
+  /// The WORST-CASE amount that could have been charged (the released reservation). Not a charge.
   estimatedCostUsd Decimal      @map("estimated_cost_usd") @db.Decimal(10, 6)
   durationMs       Int          @map("duration_ms")
+  /// How far the request got: NOT_SENT | REJECTED_BY_PROVIDER | PROVIDER_ERROR | EXECUTION_UNKNOWN | RESPONSE_UNUSABLE.
+  /// NULL = rows from before this classification existed.
+  executionStatus  String?      @map("execution_status") @db.VarChar(24)
+  /// Whether the provider may have billed this attempt: NOT_EXPECTED | UNCERTAIN | LIKELY_CHARGED. NULL = unclassified.
+  billingStatus    String?      @map("billing_status") @db.VarChar(16)
+  /// A human's reconciliation against the provider invoice: NOT_CHARGED_CONFIRMED | CHARGED_CONFIRMED.
+  reconciledStatus String?      @map("reconciled_status") @db.VarChar(24)
+  /// Provider-confirmed charge for this attempt. Informational: it is NOT written to the spend ledger or budget counters.
+  reconciledCostUsd Decimal?    @map("reconciled_cost_usd") @db.Decimal(10, 6)
+  reconciledById   String?      @map("reconciled_by_id")
+  reconciledAt     DateTime?    @map("reconciled_at")
+  reconciledNote   String?      @map("reconciled_note") @db.VarChar(300)
   createdAt        DateTime     @default(now()) @map("created_at")
 
   project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -392,6 +415,7 @@ model RequestAttempt {
   @@index([projectId, createdAt])
   @@index([gatewayKeyId, createdAt])
   @@index([errorClass])
+  @@index([orgId, billingStatus, reconciledStatus])
   @@map("request_attempts")
 }
 
@@ -477,4 +501,44 @@ model ProcessedWebhookEvent {
   processedAt DateTime @default(now()) @map("processed_at")
 
   @@map("processed_webhook_events")
+}
+
+/// DERIVED, disposable summary of the spend ledger, one row per (project, UTC day, provider, model, key, application,
+/// team). It exists only to make wide-window insight queries cheap. `requests` stays the source of truth: this table
+/// can be dropped and rebuilt at any time, is never written by the gateway, and is verified against the ledger by the
+/// reconciliation job. Blocked requests are excluded (they are not spend). Unattributed dimensions are stored as ''
+/// (a primary key cannot contain NULL) and read back as NULL.
+model RequestDailyRollup {
+  orgId           String   @map("org_id")
+  projectId       String   @map("project_id")
+  day             DateTime @db.Date
+  provider        String
+  model           String
+  gatewayKeyId    String   @default("") @map("gateway_key_id")
+  application     String   @default("")
+  team            String   @default("")
+  requests        Int
+  tokensIn        BigInt   @map("tokens_in")
+  tokensOut       BigInt   @map("tokens_out")
+  cachedTokensIn  BigInt   @map("cached_tokens_in")
+  cachedKnownRows Int      @map("cached_known_rows")
+  costUsd         Decimal  @map("cost_usd") @db.Decimal(18, 6)
+  builtAt         DateTime @default(now()) @map("built_at")
+
+  @@id([projectId, day, provider, model, gatewayKeyId, application, team])
+  @@index([orgId, day])
+  @@map("request_daily_rollups")
+}
+
+/// Watermark for the rollup: every UTC day <= completeThrough is materialized and verified against the ledger.
+model RollupState {
+  key               String    @id
+  completeThrough   DateTime? @db.Date @map("complete_through")
+  lastBuildAt       DateTime? @map("last_build_at")
+  lastReconcileAt   DateTime? @map("last_reconcile_at")
+  lastDiscrepancies Int       @default(0) @map("last_discrepancies")
+  lastRepairedDays  Int       @default(0) @map("last_repaired_days")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("rollup_state")
 }

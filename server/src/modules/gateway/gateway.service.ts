@@ -1,4 +1,5 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus, Optional } from '@nestjs/common';
+import { MetricsService } from '@/modules/metrics/metrics.service';
 import { randomUUID } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -15,6 +16,8 @@ import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
 import { PricingService, computeCost, computeMaxCost } from '@/modules/pricing/pricing.service';
 import { scrubSecrets } from '@/common/scrub-secrets';
+import { classifyAttempt } from './attempt-classification';
+import { ESTIMATOR_VERSION, estimateChatTokens } from '@/modules/pricing/token-estimator';
 import { ANOMALY_QUEUE, DETECT_ANOMALY_JOB, DETECT_ANOMALY_JOB_OPTS, AnomalyJob } from '@/modules/anomaly/anomaly.queue';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { OpenAIAdapter } from './adapters/openai.adapter';
@@ -39,7 +42,13 @@ export class GatewayService {
     private readonly groqAdapter: GroqAdapter,
     @InjectQueue(REQUEST_LEDGER_QUEUE) private readonly ledgerQueue: Queue,
     @InjectQueue(ANOMALY_QUEUE) private readonly anomalyQueue: Queue,
+    // Optional so the service stays constructible without the metrics module (tests, scripts)
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
+
+  private count(name: string, labels: Record<string, string | number> = {}, by = 1) {
+    this.metrics?.inc(name, labels, by);
+  }
 
   async processChatCompletion(req: GatewayChatRequest) {
     const startTime = Date.now();
@@ -59,6 +68,8 @@ export class GatewayService {
     const promptTokens = this.pricingService.estimateReservationTokens(provider, req.messages);
     const reservedOutputTokens = this.pricingService.reservedOutputTokens(provider, maxTokens);
     const maxEstimatedCost = computeMaxCost(priceRow, promptTokens, reservedOutputTokens);
+    // Non-sensitive estimator telemetry (numbers only) for accuracy reports; stored on the ledger row if the call succeeds
+    const estimatorSnapshot = { estimatedInputTokens: estimateChatTokens(req.messages), reservedInputTokens: promptTokens, reservedOutputTokens, estimatorVersion: ESTIMATOR_VERSION };
 
     // 1a. Per-key tokens-per-minute: admit (prompt estimate + max output) before the call
     const estimatedTokens = promptTokens + reservedOutputTokens;
@@ -84,12 +95,14 @@ export class GatewayService {
 
     // 1b. Pre-Flight Concurrency-Safe Atomic Budget Capacity Reservation
     //     (project monthly cap and, for key traffic, the key's monthly cap)
+    const reserveT0 = process.hrtime.bigint();
     const budgetGuard = await this.budgetService.reserveCapacity(
       req.projectId,
       reqId,
       maxEstimatedCost,
       req.gatewayKey ? { id: req.gatewayKey.id, budgetMonthly: req.gatewayKey.budgetMonthly } : undefined,
     );
+    this.metrics?.observe('spendguard_reservation_duration_ms', Number(process.hrtime.bigint() - reserveT0) / 1e6);
 
     if (!budgetGuard.canProceed) {
       await releaseTpm();
@@ -100,6 +113,8 @@ export class GatewayService {
 
       const isGovernanceUnavailable = budgetGuard.blockReason?.includes('Governance engine unavailable');
       const errorCode = isGovernanceUnavailable ? 'governance_unavailable' : (budgetGuard.blockCode ?? 'budget_exceeded');
+      this.count('spendguard_gateway_requests_total', { outcome: isGovernanceUnavailable ? 'blocked_governance_unavailable' : 'blocked_budget' });
+      if (isGovernanceUnavailable) this.count('spendguard_redis_failures_total', { op: 'reserve' });
       const httpStatus = isGovernanceUnavailable
         ? HttpStatus.SERVICE_UNAVAILABLE   // 503 for infra failure
         : HttpStatus.TOO_MANY_REQUESTS;    // 429 for budget exceeded
@@ -147,6 +162,7 @@ export class GatewayService {
 
     // 3. Dispatch to Provider Adapter (Safe execution with reservation rollback on failure)
     let adapterResult;
+    const providerT0 = process.hrtime.bigint();
     try {
       if (provider === 'ANTHROPIC') {
         adapterResult = await this.anthropicAdapter.execute(req, decryptedKey);
@@ -158,6 +174,8 @@ export class GatewayService {
         adapterResult = await this.openAIAdapter.execute(req, decryptedKey);
       }
     } catch (upstreamErr) {
+      this.metrics?.observe('spendguard_provider_duration_ms', Number(process.hrtime.bigint() - providerT0) / 1e6, { provider, outcome: 'error' });
+      this.count('spendguard_gateway_requests_total', { outcome: 'upstream_error' });
       // Release this request's hold so failures do not drain the project cap
       await this.budgetService.releaseHold(hold);
       await releaseTpm();
@@ -166,6 +184,7 @@ export class GatewayService {
       throw upstreamErr;
     }
 
+    this.metrics?.observe('spendguard_provider_duration_ms', Number(process.hrtime.bigint() - providerT0) / 1e6, { provider, outcome: 'ok' });
     const latencyMs = Date.now() - startTime;
     // Actual cost from provider-reported usage: cached input at the cached rate, reasoning tokens
     // already inside completionTokens (adapters normalise this).
@@ -184,7 +203,9 @@ export class GatewayService {
     const reservationHeld = hold.amount > 0;
     const overrunUsd = Math.max(0, Number((costEstimate - reservedUsd).toFixed(6)));
     const holdExceeded = overrunUsd > 0;
+    this.count('spendguard_usage_total', { status: adapterResult.usageEstimated === true ? 'estimated' : 'confirmed' });
     if (holdExceeded) {
+      this.count('spendguard_reservation_overruns_total');
       this.logger.warn(
         `RESERVATION OVERRUN request=${reqId} project=${req.projectId} model=${req.model} cost=$${costEstimate.toFixed(6)} reserved=$${reservedUsd.toFixed(6)} overrun=$${overrunUsd.toFixed(6)}; actual cost charged.`,
       );
@@ -194,17 +215,22 @@ export class GatewayService {
     // Marked pending BEFORE settling, so reconciliation can never lower spend
     // below this charge while its ledger row is still being written.
     await this.budgetService.markPendingPersist(req.projectId, reqId, startedAt);
+    const settleT0 = process.hrtime.bigint();
     const settled = await this.budgetService.settleHold(hold, costEstimate);
+    this.metrics?.observe('spendguard_settlement_duration_ms', Number(process.hrtime.bigint() - settleT0) / 1e6);
+    if (settled && !settled.applied) this.count('spendguard_duplicate_settlement_attempts_total');
     // TPM counts what was actually used, not the pre-call estimate
     if (tpm) await this.redisService.adjustTpm(tpm.counterKey, adapterResult.totalTokens - estimatedTokens);
     if (!settled) {
+      this.count('spendguard_redis_failures_total', { op: 'settle' });
       // Redis lost mid-request: the hold expires on its own and the scheduled
       // DB reconciliation restores the true spend counter from the ledger.
       this.logger.error(`Spend settlement failed for request ${reqId} (project ${req.projectId}); reconciliation job will correct it.`);
     }
 
+    this.count('spendguard_gateway_requests_total', { outcome: 'success' });
     // 5. Append-only ledger row — written BEFORE the response is returned
-    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, promptText, budgetGuard.logRequestContent === true, { reservedUsd, holdExceeded, overrunUsd, reservationHeld });
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, promptText, budgetGuard.logRequestContent === true, { reservedUsd, holdExceeded, overrunUsd, reservationHeld, estimator: estimatorSnapshot, price: priceRow });
 
     // 6. Anomaly scoring runs off the request path as a durable BullMQ job. Fire-and-forget: a
     //    queue problem is logged and can never delay, fail or alter this response or the budget.
@@ -263,6 +289,8 @@ export class GatewayService {
         fail_closed_active: true,
         provider_finish_reason: adapterResult.providerFinishReason ?? null,
         usage_estimated: adapterResult.usageEstimated === true,
+        // confirmed = provider-reported usage; estimated = SpendGuard's own estimate was used for at least one count
+        usage_status: adapterResult.usageEstimated === true ? 'estimated' : 'confirmed',
         // What was reserved vs what was charged. The cap is enforced on reservations, so an overrun
         // (cost > reserved) is possible and is reported here instead of being hidden.
         reservation: {
@@ -278,6 +306,7 @@ export class GatewayService {
         'X-SpendGuard-Blocked': 'false',
         'X-SpendGuard-Anomaly-Status': 'pending',
         'X-SpendGuard-Reservation-Overrun': overrunUsd.toFixed(6),
+        'X-SpendGuard-Usage': adapterResult.usageEstimated === true ? 'estimated' : 'confirmed',
       },
     };
   }
@@ -340,6 +369,7 @@ export class GatewayService {
         upstreamCode: cls.upstreamCode ?? null,
         estimatedCostUsd: p.estimatedCostUsd,
         durationMs: Math.max(0, Date.now() - p.startedAt.getTime()),
+        ...classifyAttempt({ errorClass: cls.errorClass, upstreamStatus: cls.upstreamStatus ?? null }),
         createdAt: p.startedAt.toISOString(),
       };
       try {
@@ -407,7 +437,7 @@ export class GatewayService {
     latencyMs: number,
     promptText: string,
     logContent: boolean,
-    reservation: { reservedUsd: number; holdExceeded: boolean; overrunUsd: number; reservationHeld: boolean },
+    reservation: { reservedUsd: number; holdExceeded: boolean; overrunUsd: number; reservationHeld: boolean; estimator: { estimatedInputTokens: number; reservedInputTokens: number; reservedOutputTokens: number; estimatorVersion: string }; price: any },
   ) {
     const data = {
         id: reqId,
@@ -434,6 +464,12 @@ export class GatewayService {
         team: req.attribution?.team ?? null,
         tags: req.attribution?.tags ?? undefined,
         cachedTokensIn: adapterResult.cachedPromptTokens ?? null,
+        // CONFIRMED only when the provider reported both counts; otherwise the figures (and the cost) are estimates
+        usageStatus: adapterResult.usageEstimated === true ? 'ESTIMATED' : 'CONFIRMED',
+        estimatedInputTokens: reservation.estimator.estimatedInputTokens,
+        reservedInputTokens: reservation.estimator.reservedInputTokens,
+        reservedOutputTokens: reservation.estimator.reservedOutputTokens,
+        estimatorVersion: reservation.estimator.estimatorVersion,
         // Reservation accuracy, queryable (also exposed by the audit log and analytics)
         reservedCostUsd: reservation.reservedUsd,
         reservationOverrunUsd: reservation.overrunUsd,
@@ -455,6 +491,14 @@ export class GatewayService {
           holdExceeded: reservation.holdExceeded,
           providerFinishReason: adapterResult.providerFinishReason ?? null,
           attribution: req.attribution?.sources ?? null,
+          // The exact price row this request was reserved AND settled with (see docs/FINANCIAL_RECONCILIATION.md)
+          pricing: {
+            inputPerMillion: reservation.price?.inputPricePerMillion ?? null,
+            outputPerMillion: reservation.price?.outputPricePerMillion ?? null,
+            cachedInputPerMillion: reservation.price?.cachedInputPrice ?? null,
+            rowUpdatedAt: reservation.price?.rowUpdatedAt ? new Date(reservation.price.rowUpdatedAt).toISOString() : null,
+            source: reservation.price?.source ?? null,
+          },
         }),
     };
 
@@ -466,11 +510,21 @@ export class GatewayService {
       // dropped. Queue a retry; reconciliation keeps the charge while it is pending.
       // Log codes only — Prisma messages can echo the row (prompt text).
       this.logger.error(`Ledger write failed for request ${reqId} (${err?.code ?? err?.name}); queued for retry`);
+      this.count('spendguard_ledger_write_failures_total', { stage: 'db' });
       const job: LedgerRowJob = { ...data, createdAt: startedAt.toISOString() };
       try {
         await this.ledgerQueue.add(PERSIST_REQUEST_JOB, job, { ...PERSIST_REQUEST_JOB_OPTS, jobId: reqId });
       } catch (queueErr: any) {
-        this.logger.error(`CRITICAL: could not queue ledger retry for request ${reqId}: ${queueErr?.message}`);
+        this.count('spendguard_ledger_write_failures_total', { stage: 'queue_journal_only' });
+        // Last resort, so a charge is never silently lost: one structured line with the FINANCIAL fields only
+        // (no prompt, response, headers or credentials) from which the ledger row can be rebuilt by hand.
+        this.logger.error(
+          `CRITICAL: could not persist or queue ledger row for request ${reqId} (${queueErr?.message}); LEDGER_JOURNAL ${JSON.stringify({
+            id: reqId, createdAt: startedAt.toISOString(), projectId: req.projectId, gatewayKeyId: req.gatewayKey?.id ?? null, provider, model: req.model,
+            tokensIn: adapterResult.promptTokens, tokensOut: adapterResult.completionTokens, costUsd: costEstimate, usageStatus: data.usageStatus,
+            application: req.attribution?.application ?? null, team: req.attribution?.team ?? null,
+          })}`,
+        );
       }
     }
   }

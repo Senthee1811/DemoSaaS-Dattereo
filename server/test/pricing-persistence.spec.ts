@@ -7,7 +7,9 @@ import { FakeKv } from './helpers/fakes';
 /** A Postgres `model_pricing` stand-in. `updatedAt` is assigned at COMMIT time, like @updatedAt. */
 class FakePricingTable {
   rows = new Map<string, any>();
-  clock = Date.parse('2026-11-24T10:00:00Z');
+  // Relative to the real clock (an hour ahead): rows written "during" a reload must look newer than the reload's own
+  // start time. A hard-coded date made this suite start failing once the real clock passed it.
+  clock = Date.now() + 3_600_000;
   failUpserts = false;
   /** Delay before an upsert's RESPONSE reaches the caller (the commit has already happened). */
   responseDelayMs: (model: string) => number = () => 0;

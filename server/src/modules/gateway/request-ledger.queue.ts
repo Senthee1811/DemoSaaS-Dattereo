@@ -28,6 +28,8 @@ export interface AttemptRowJob {
   upstreamCode: string | null;
   estimatedCostUsd: number;
   durationMs: number;
+  executionStatus?: string;
+  billingStatus?: string;
   createdAt: string;
 }
 

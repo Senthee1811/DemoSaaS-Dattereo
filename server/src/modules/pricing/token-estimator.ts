@@ -32,6 +32,9 @@ const DENSE_RUN_MIN = 20;
 const DENSE_RUN_RE = new RegExp(`[A-Za-z0-9+/=_-]{${DENSE_RUN_MIN},}`, 'g');
 
 /** Chat formats add a few tokens per message (role, delimiters) plus a reply primer. */
+/** Bump when the estimation model or any default margin changes, so accuracy reports never mix generations. */
+export const ESTIMATOR_VERSION = 'v2';
+
 export const TOKENS_PER_MESSAGE = 4;
 export const TOKENS_REPLY_PRIMER = 3;
 

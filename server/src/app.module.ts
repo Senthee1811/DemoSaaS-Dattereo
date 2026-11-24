@@ -21,6 +21,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TeamModule } from './modules/team/team.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.service';
 import { InsightsModule } from './modules/insights/insights.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 
@@ -48,6 +49,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     BillingModule,
     NotificationsModule,
     InsightsModule,
+    MetricsModule,
     HealthModule,
   ],
   providers: [

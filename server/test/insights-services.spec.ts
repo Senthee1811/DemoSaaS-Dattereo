@@ -45,6 +45,12 @@ class FakeData {
     const m = this.membersByDim[dim] ?? { window: [], baseline: [] };
     return from.getTime() >= NOW.getTime() - DAY - 1000 ? m.window : m.baseline;
   }
+  /** Same contract as InsightsDataService.summary: totals + members for several dimensions in one call. */
+  async summary(orgId: string, p: string | undefined, from: Date, to: Date, dims: string[]) {
+    const members: Record<string, MemberTotals[]> = {};
+    for (const d of dims) members[d] = await this.members(orgId, p, from, to, d);
+    return { totals: await this.totals(orgId, p, from), members };
+  }
   async evidenceRequests(orgId: string, _p: string | undefined, _f: Date, _t: Date, o: any = {}) { this.orgsSeen.push(orgId); return o.anomaliesOnly ? [] : this.evidence(o.dimension, o.key); }
   async modelUsage(orgId: string) { this.orgsSeen.push(orgId); return { groups: this.usage, rowsWithCacheData: 0, totalRows: this.usage.reduce((a, g) => a + g.requests, 0) }; }
   async providersWithKeys(orgId: string) { this.orgsSeen.push(orgId); return this.providers; }

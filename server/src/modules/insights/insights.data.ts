@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Bucket, MemberTotals, Totals } from './calc/investigation.calc';
 import { UsageGroup } from './calc/comparison.calc';
+import { RollupService } from './rollup.service';
+import { splitWindow } from './rollup.window';
 
 /**
  * Read-only ledger queries for the intelligence features.
@@ -41,7 +43,20 @@ export interface EvidenceRequest {
 
 @Injectable()
 export class InsightsDataService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Optional + off by default (INSIGHTS_ROLLUPS=on): without it every query reads the ledger exactly as before
+    @Optional() private readonly rollups?: RollupService,
+  ) {}
+
+  /** Whole-day part of a window that the rollup can answer, plus the raw edges. Rollup disabled -> everything is raw. */
+  private async plan(from: Date, to: Date) {
+    return splitWindow(from, to, (await this.rollups?.completeThrough()) ?? null);
+  }
+
+  private rollupScope(orgId: string, projectId: string | undefined, a: Date, b: Date) {
+    return Prisma.sql`org_id = ${orgId} ${projectId ? Prisma.sql`AND project_id = ${projectId}` : Prisma.empty} AND day >= ${a}::date AND day < ${b}::date`;
+  }
 
   /** The project must belong to the org (404 otherwise, indistinguishable from "does not exist"). */
   async assertScope(orgId: string, projectId?: string) {
@@ -60,26 +75,56 @@ export class InsightsDataService {
   }
 
   async totals(orgId: string, projectId: string | undefined, from: Date, to: Date): Promise<Totals> {
-    const a = await this.prisma.request.aggregate({
-      where: this.where(orgId, projectId, from, to),
-      _sum: { tokensIn: true, tokensOut: true, costEstimate: true },
-      _count: { id: true },
-    });
-    return { requests: a._count.id, tokensIn: num(a._sum.tokensIn), tokensOut: num(a._sum.tokensOut), costUsd: num(a._sum.costEstimate) };
+    const plan = await this.plan(from, to);
+    const parts: Totals[] = [];
+    for (const r of plan.raw) {
+      const a = await this.prisma.request.aggregate({
+        where: this.where(orgId, projectId, r.from, r.to),
+        _sum: { tokensIn: true, tokensOut: true, costEstimate: true },
+        _count: { id: true },
+      });
+      parts.push({ requests: a._count.id, tokensIn: num(a._sum.tokensIn), tokensOut: num(a._sum.tokensOut), costUsd: num(a._sum.costEstimate) });
+    }
+    if (plan.rollup) {
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT COALESCE(SUM(requests), 0) AS n, COALESCE(SUM(tokens_in), 0) AS ti, COALESCE(SUM(tokens_out), 0) AS tout, COALESCE(SUM(cost_usd), 0) AS cost
+        FROM request_daily_rollups WHERE ${this.rollupScope(orgId, projectId, plan.rollup.from, plan.rollup.to)}`);
+      parts.push({ requests: num(rows[0]?.n), tokensIn: num(rows[0]?.ti), tokensOut: num(rows[0]?.tout), costUsd: num(rows[0]?.cost) });
+    }
+    return parts.reduce((acc, p) => ({ requests: acc.requests + p.requests, tokensIn: acc.tokensIn + p.tokensIn, tokensOut: acc.tokensOut + p.tokensOut, costUsd: acc.costUsd + p.costUsd }), { requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 });
   }
 
   /** Spend per UTC day for [from, to). Days without ledger rows are absent (the caller zero-fills). */
   async dailySpend(orgId: string, projectId: string | undefined, from: Date, to: Date): Promise<Array<{ date: string; spendUsd: number }>> {
-    const rows = await this.prisma.$queryRaw<Array<{ day: Date; cost: unknown }>>(Prisma.sql`
-      SELECT date_trunc('day', r.created_at) AS day, COALESCE(SUM(r.cost_estimate), 0) AS cost
-      FROM requests r JOIN projects p ON p.id = r.project_id
-      WHERE ${this.sqlScope(orgId, projectId)} AND r.created_at >= ${from} AND r.created_at < ${to}
-      GROUP BY 1 ORDER BY 1`);
-    return rows.map((r) => ({ date: r.day.toISOString().slice(0, 10), spendUsd: num(r.cost) }));
+    const plan = await this.plan(from, to);
+    const byDay = new Map<string, number>();
+    const add = (d: string, v: number) => byDay.set(d, (byDay.get(d) ?? 0) + v);
+    for (const r of plan.raw) {
+      const rows = await this.prisma.$queryRaw<Array<{ day: Date; cost: unknown }>>(Prisma.sql`
+        SELECT date_trunc('day', r.created_at) AS day, COALESCE(SUM(r.cost_estimate), 0) AS cost
+        FROM requests r JOIN projects p ON p.id = r.project_id
+        WHERE ${this.sqlScope(orgId, projectId)} AND r.created_at >= ${r.from} AND r.created_at < ${r.to}
+        GROUP BY 1 ORDER BY 1`);
+      for (const x of rows) add(x.day.toISOString().slice(0, 10), num(x.cost));
+    }
+    if (plan.rollup) {
+      const rows = await this.prisma.$queryRaw<Array<{ day: Date; cost: unknown }>>(Prisma.sql`
+        SELECT day, COALESCE(SUM(cost_usd), 0) AS cost FROM request_daily_rollups
+        WHERE ${this.rollupScope(orgId, projectId, plan.rollup.from, plan.rollup.to)} GROUP BY 1 ORDER BY 1`);
+      for (const x of rows) add(x.day.toISOString().slice(0, 10), num(x.cost));
+    }
+    return [...byDay].sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, spendUsd]) => ({ date, spendUsd }));
   }
 
   /** UTC day of the first ledger row in scope (all time), or null. */
   async firstActivityDate(orgId: string, projectId?: string): Promise<string | null> {
+    // Every day up to the watermark is materialised from the very first ledger day, so the earliest rollup day IS the
+    // earliest activity day. Without a watermark (or when nothing is in the rollup) the ledger answers.
+    if (await this.rollups?.completeThrough()) {
+      const r = await this.prisma.$queryRaw<Array<{ first: Date | null }>>(Prisma.sql`
+        SELECT MIN(day) AS first FROM request_daily_rollups WHERE org_id = ${orgId} ${projectId ? Prisma.sql`AND project_id = ${projectId}` : Prisma.empty}`);
+      if (r[0]?.first) return r[0].first.toISOString().slice(0, 10);
+    }
     const rows = await this.prisma.$queryRaw<Array<{ first: Date | null }>>(Prisma.sql`
       SELECT MIN(r.created_at) AS first FROM requests r JOIN projects p ON p.id = r.project_id
       WHERE ${this.sqlScope(orgId, projectId)}`);
@@ -101,21 +146,108 @@ export class InsightsDataService {
   /** Per-dimension totals with human labels. `key === null` is reported as not attributed, never guessed. */
   async members(orgId: string, projectId: string | undefined, from: Date, to: Date, dimension: Dimension): Promise<MemberTotals[]> {
     const field = FIELD[dimension];
-    const groups = await (this.prisma.request.groupBy as any)({
-      by: [field],
-      where: this.where(orgId, projectId, from, to),
-      _sum: { tokensIn: true, tokensOut: true, costEstimate: true },
-      _count: { id: true },
-    });
-    const labels = await this.labels(orgId, dimension, groups.map((g: any) => g[field]).filter(Boolean));
-    return groups.map((g: any): MemberTotals => ({
-      key: g[field] ?? null,
-      label: g[field] == null ? UNATTRIBUTED[dimension] : labels.get(String(g[field])) ?? String(g[field]),
-      requests: g._count.id,
-      tokensIn: num(g._sum.tokensIn),
-      tokensOut: num(g._sum.tokensOut),
-      costUsd: num(g._sum.costEstimate),
+    const plan = await this.plan(from, to);
+    const merged = new Map<string, { key: string | null; requests: number; tokensIn: number; tokensOut: number; costUsd: number }>();
+    const fold = (key: string | null, v: { requests: number; tokensIn: number; tokensOut: number; costUsd: number }) => {
+      const k = key ?? '\u0000null';
+      const cur = merged.get(k) ?? { key, requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+      cur.requests += v.requests;
+      cur.tokensIn += v.tokensIn;
+      cur.tokensOut += v.tokensOut;
+      cur.costUsd += v.costUsd;
+      merged.set(k, cur);
+    };
+    for (const r of plan.raw) {
+      const groups = await (this.prisma.request.groupBy as any)({
+        by: [field],
+        where: this.where(orgId, projectId, r.from, r.to),
+        _sum: { tokensIn: true, tokensOut: true, costEstimate: true },
+        _count: { id: true },
+      });
+      for (const g of groups) fold(g[field] ?? null, { requests: g._count.id, tokensIn: num(g._sum.tokensIn), tokensOut: num(g._sum.tokensOut), costUsd: num(g._sum.costEstimate) });
+    }
+    if (plan.rollup) {
+      // The column name comes from the whitelist above, never from input
+      const col = Prisma.raw({ projectId: 'project_id', gatewayKeyId: 'gateway_key_id', application: 'application', team: 'team', provider: 'provider', model: 'model' }[field]);
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT ${col} AS k, SUM(requests) AS n, SUM(tokens_in) AS ti, SUM(tokens_out) AS tout, SUM(cost_usd) AS cost
+        FROM request_daily_rollups WHERE ${this.rollupScope(orgId, projectId, plan.rollup.from, plan.rollup.to)} GROUP BY 1`);
+      for (const x of rows) fold(x.k === '' || x.k == null ? null : String(x.k), { requests: num(x.n), tokensIn: num(x.ti), tokensOut: num(x.tout), costUsd: num(x.cost) });
+    }
+    const groups = [...merged.values()];
+    const labels = await this.labels(orgId, dimension, groups.map((g) => g.key).filter((k): k is string => !!k));
+    return groups.map((g): MemberTotals => ({
+      key: g.key,
+      label: g.key == null ? UNATTRIBUTED[dimension] : labels.get(String(g.key)) ?? String(g.key),
+      requests: g.requests,
+      tokensIn: g.tokensIn,
+      tokensOut: g.tokensOut,
+      costUsd: g.costUsd,
     }));
+  }
+
+  /**
+   * Totals AND per-dimension members for one window in a single scan per range (GROUP BY GROUPING SETS), instead of one
+   * aggregate plus one GROUP BY per dimension. Exactly the same numbers as `totals()` + `members()` (tested against them on
+   * real Postgres); GROUPING() tells a real NULL ("unattributed") apart from "not grouped by this column".
+   */
+  async summary(orgId: string, projectId: string | undefined, from: Date, to: Date, dims: Dimension[]): Promise<{ totals: Totals; members: Record<string, MemberTotals[]> }> {
+    const COL: Record<Dimension, string> = { project: 'project_id', key: 'gateway_key_id', application: 'application', team: 'team', provider: 'provider', model: 'model' };
+    const list = [...new Set(dims)];
+    const plan = await this.plan(from, to);
+    type Acc = { key: string | null; requests: number; tokensIn: number; tokensOut: number; costUsd: number };
+    const totals: Totals = { requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+    const acc = new Map<Dimension, Map<string, Acc>>(list.map((d) => [d, new Map()]));
+    const fold = (rows: any[], emptyAsNull: boolean) => {
+      for (const r of rows) {
+        const v = { requests: num(r.n), tokensIn: num(r.ti), tokensOut: num(r.tout), costUsd: num(r.cost) };
+        const grouped = list.filter((d) => Number(r[`g_${d}`]) === 0);
+        if (grouped.length === 0) {
+          totals.requests += v.requests;
+          totals.tokensIn += v.tokensIn;
+          totals.tokensOut += v.tokensOut;
+          totals.costUsd += v.costUsd;
+          continue;
+        }
+        const d = grouped[0];
+        const raw = r[`k_${d}`];
+        const key = raw == null || (emptyAsNull && raw === '') ? null : String(raw);
+        const m = acc.get(d)!;
+        const id = key ?? '\u0000null';
+        const cur = m.get(id) ?? { key, requests: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
+        cur.requests += v.requests;
+        cur.tokensIn += v.tokensIn;
+        cur.tokensOut += v.tokensOut;
+        cur.costUsd += v.costUsd;
+        m.set(id, cur);
+      }
+    };
+    // Column names come from the fixed map above, never from input
+    const sel = (prefix: string, cast: (c: string) => string) =>
+      Prisma.raw(list.map((d) => `GROUPING(${prefix}${COL[d]}) AS g_${d}, ${cast(`${prefix}${COL[d]}`)} AS k_${d}`).join(', '));
+    const sets = (prefix: string) => Prisma.raw(`GROUPING SETS (${[...list.map((d) => `(${prefix}${COL[d]})`), '()'].join(', ')})`);
+    for (const r of plan.raw) {
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT ${sel('r.', (c) => (c.endsWith('provider') ? `${c}::text` : c))}, COUNT(*) AS n, COALESCE(SUM(r.tokens_in),0) AS ti, COALESCE(SUM(r.tokens_out),0) AS tout, COALESCE(SUM(r.cost_estimate),0) AS cost
+        FROM requests r JOIN projects p ON p.id = r.project_id
+        WHERE ${this.sqlScope(orgId, projectId)} AND r.created_at >= ${r.from} AND r.created_at < ${r.to}
+        GROUP BY ${sets('r.')}`);
+      fold(rows, false);
+    }
+    if (plan.rollup) {
+      const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+        SELECT ${sel('', (c) => c)}, COALESCE(SUM(requests),0) AS n, COALESCE(SUM(tokens_in),0) AS ti, COALESCE(SUM(tokens_out),0) AS tout, COALESCE(SUM(cost_usd),0) AS cost
+        FROM request_daily_rollups WHERE ${this.rollupScope(orgId, projectId, plan.rollup.from, plan.rollup.to)}
+        GROUP BY ${sets('')}`);
+      fold(rows, true);
+    }
+    const members: Record<string, MemberTotals[]> = {};
+    for (const d of list) {
+      const groups = [...acc.get(d)!.values()];
+      const labels = await this.labels(orgId, d, groups.map((g) => g.key).filter((k): k is string => !!k));
+      members[d] = groups.map((g) => ({ ...g, label: g.key == null ? UNATTRIBUTED[d] : labels.get(g.key) ?? g.key }));
+    }
+    return { totals, members };
   }
 
   private async labels(orgId: string, dimension: Dimension, ids: string[]): Promise<Map<string, string>> {

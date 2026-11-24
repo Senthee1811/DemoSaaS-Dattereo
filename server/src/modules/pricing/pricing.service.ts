@@ -87,6 +87,11 @@ export class PricingService implements OnModuleInit, OnModuleDestroy {
   private syncTimer: NodeJS.Timeout | null = null;
   private syncTicks = 0;
   private lastSeenVersion: string | null = null;
+  // Observability for stale instances (see getSyncState)
+  private lastRefreshAt: Date | null = null;
+  private lastRefreshOk: boolean | null = null;
+  private lastSyncTickAt: Date | null = null;
+  private consecutiveRedisMisses = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -128,13 +133,37 @@ export class PricingService implements OnModuleInit, OnModuleDestroy {
   /** One sync tick. Public so it can be driven directly in tests. */
   async syncPricingOnce(forceEvery = 12): Promise<'refreshed' | 'unchanged'> {
     this.syncTicks++;
+    this.lastSyncTickAt = new Date();
     const version = await this.redisService.getCache(PRICING_VERSION_KEY); // null when Redis is down or never bumped
+    this.consecutiveRedisMisses = version === null ? this.consecutiveRedisMisses + 1 : 0;
     const changed = version !== null && version !== this.lastSeenVersion;
     const forced = this.syncTicks % forceEvery === 0;
     if (!changed && !forced) return 'unchanged';
-    await this.refreshPricingFromDb();
-    if (version !== null) this.lastSeenVersion = version;
+    const ok = await this.refreshPricingFromDb();
+    // Only remember a version once the reload for it SUCCEEDED; otherwise the next tick must try again instead of
+    // believing this instance is current while it still holds the old prices.
+    if (ok && version !== null) this.lastSeenVersion = version;
     return 'refreshed';
+  }
+
+  /**
+   * What this instance believes about its price cache, for health/monitoring. `stale` is true when no reload has
+   * succeeded for longer than `staleAfterMs` (default: five forced-sync periods, ~5 minutes at defaults), which is the
+   * signal that this instance may be pricing with an older snapshot than its peers.
+   */
+  getSyncState(now = new Date(), staleAfterMs = (Number(process.env.PRICING_STALE_AFTER_MS) || 300_000)) {
+    const sinceRefresh = this.lastRefreshAt ? now.getTime() - this.lastRefreshAt.getTime() : null;
+    const newest = [...this.memoryCache.values()].reduce<number>((m, c) => Math.max(m, c.rowUpdatedAt?.getTime() ?? 0), 0);
+    return {
+      models: this.memoryCache.size,
+      versionSeen: this.lastSeenVersion,
+      newestPriceRowAt: newest ? new Date(newest).toISOString() : null,
+      lastRefreshAt: this.lastRefreshAt?.toISOString() ?? null,
+      lastRefreshOk: this.lastRefreshOk,
+      redisVersionMisses: this.consecutiveRedisMisses,
+      // never refreshed from the database (still on the built-in catalog) also counts as stale once the grace period passes
+      stale: sinceRefresh === null ? this.syncTicks * (Number(process.env.PRICING_SYNC_INTERVAL_MS) || 5000) > staleAfterMs : sinceRefresh > staleAfterMs || this.lastRefreshOk === false,
+    };
   }
 
   /**
@@ -194,7 +223,7 @@ export class PricingService implements OnModuleInit, OnModuleDestroy {
    * Race-safe against a concurrent price write on this instance: an entry that is NEWER than the
    * rows just read (it was written while the query was in flight) is kept instead of being clobbered.
    */
-  async refreshPricingFromDb(): Promise<void> {
+  async refreshPricingFromDb(): Promise<boolean> {
     try {
       const startedAt = new Date();
       const dbPrices = await (this.prisma as any).modelPricing?.findMany({
@@ -215,8 +244,13 @@ export class PricingService implements OnModuleInit, OnModuleDestroy {
         this.memoryCache = next;
         this.logger.log(`Loaded ${dbPrices.length} model pricing entries from database`);
       }
+      this.lastRefreshAt = new Date();
+      this.lastRefreshOk = true;
+      return true;
     } catch (err: any) {
+      this.lastRefreshOk = false;
       this.logger.warn(`Could not sync pricing from DB (keeping current prices): ${err.message}`);
+      return false;
     }
   }
 

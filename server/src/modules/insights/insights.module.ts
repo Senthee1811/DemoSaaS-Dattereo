@@ -10,19 +10,24 @@ import { InsightsDataService } from './insights.data';
 import { InvestigationService } from './investigation.service';
 import { ModelComparisonService } from './model-comparison.service';
 import { RecommendationsService } from './recommendations.service';
+import { RollupService } from './rollup.service';
 
 export const INSIGHTS_QUEUE = 'insights';
 export const GENERATE_ALL_JOB = 'generate-recommendations';
+export const ROLLUP_BUILD_JOB = 'rollup-build';
+export const ROLLUP_RECONCILE_JOB = 'rollup-reconcile';
 
 /** Re-evaluates recommendations for every organization that had traffic recently. Deterministic; no model is called. */
 @Processor(INSIGHTS_QUEUE)
 export class InsightsProcessor extends WorkerHost {
   private readonly logger = new Logger(InsightsProcessor.name);
-  constructor(private readonly prisma: PrismaService, private readonly recommendations: RecommendationsService) {
+  constructor(private readonly prisma: PrismaService, private readonly recommendations: RecommendationsService, private readonly rollups: RollupService) {
     super();
   }
 
   async process(job: Job): Promise<unknown> {
+    if (job.name === ROLLUP_BUILD_JOB) return RollupService.enabled() ? this.rollups.build() : { skipped: 'rollups are off (INSIGHTS_ROLLUPS)' };
+    if (job.name === ROLLUP_RECONCILE_JOB) return RollupService.enabled() ? this.rollups.reconcile() : { skipped: 'rollups are off (INSIGHTS_ROLLUPS)' };
     if (job.name !== GENERATE_ALL_JOB) return;
     const since = new Date(Date.now() - 7 * 86_400_000);
     const orgs = await this.prisma.project.findMany({ where: { requests: { some: { createdAt: { gte: since } } } }, select: { orgId: true }, distinct: ['orgId'] });
@@ -52,8 +57,12 @@ export class InsightsScheduler implements OnApplicationBootstrap {
     const every = Number(process.env.INSIGHTS_INTERVAL_MS) || 6 * 3_600_000;
     try {
       await this.queue.add(GENERATE_ALL_JOB, {}, { repeat: { every }, jobId: GENERATE_ALL_JOB, removeOnComplete: 20, removeOnFail: 50 });
+      if (RollupService.enabled()) {
+        await this.queue.add(ROLLUP_BUILD_JOB, {}, { repeat: { every: Number(process.env.ROLLUP_BUILD_INTERVAL_MS) || 10 * 60_000 }, jobId: ROLLUP_BUILD_JOB, removeOnComplete: 20, removeOnFail: 50 });
+        await this.queue.add(ROLLUP_RECONCILE_JOB, {}, { repeat: { every: Number(process.env.ROLLUP_RECONCILE_INTERVAL_MS) || 24 * 3_600_000 }, jobId: ROLLUP_RECONCILE_JOB, removeOnComplete: 20, removeOnFail: 50 });
+      }
     } catch (err: any) {
-      this.logger.error(`Could not schedule recommendation generation: ${err.message}`);
+      this.logger.error(`Could not schedule insights jobs: ${err.message}`);
     }
   }
 }
@@ -69,7 +78,7 @@ export class InsightsScheduler implements OnApplicationBootstrap {
     }),
   ],
   controllers: [InsightsController],
-  providers: [InsightsDataService, AttributionService, ForecastService, InvestigationService, ModelComparisonService, RecommendationsService, InsightsProcessor, InsightsScheduler],
-  exports: [RecommendationsService],
+  providers: [RollupService, InsightsDataService, AttributionService, ForecastService, InvestigationService, ModelComparisonService, RecommendationsService, InsightsProcessor, InsightsScheduler],
+  exports: [RecommendationsService, RollupService],
 })
 export class InsightsModule {}

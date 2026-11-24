@@ -1,4 +1,5 @@
-import { Controller, Get, Query, Res, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, Query, Res, HttpStatus, BadRequestException } from '@nestjs/common';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
 
 function assertDate(name: string, value?: string) {
   if (value !== undefined && value !== '' && Number.isNaN(Date.parse(value))) {
@@ -53,6 +54,27 @@ export class AuditController {
     });
   }
 
+  @Get('estimator-accuracy')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'How well token estimates predicted real provider usage (counts only; margins are never changed automatically)' })
+  estimatorAccuracy(@CurrentUser() user: AuthenticatedUser, @Query('days') days?: string) {
+    return this.auditService.estimatorAccuracy(user.orgId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('attempts/exposure')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Failed calls the provider may have billed (usage unknown), not yet reconciled. Exposure, not spend.' })
+  attemptExposure(@CurrentUser() user: AuthenticatedUser) {
+    return this.auditService.attemptExposure(user.orgId);
+  }
+
+  @Patch('attempts/:id/reconcile')
+  @Roles('OWNER', 'ADMIN')
+  @ApiOperation({ summary: 'Record whether the provider actually charged a failed attempt (from the provider invoice). Does not change the ledger.' })
+  reconcileAttempt(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() body: { status?: string; costUsd?: number; note?: string }) {
+    return this.auditService.reconcileAttempt(user.orgId, user.id, id, body ?? {});
+  }
+
   @Get('attempts')
   @ApiOperation({ summary: 'List failed gateway calls (provider errors, timeouts, rejected provider keys). No spend, no content.' })
   async getAttempts(
@@ -65,12 +87,16 @@ export class AuditController {
     @Query('endDate') endDate?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('billingStatus') billingStatus?: string,
+    @Query('unreconciled') unreconciled?: string,
   ) {
     assertDate('startDate', startDate);
     assertDate('endDate', endDate);
     const parsedLimit = limit ? parseInt(limit, 10) : 50;
     const parsedOffset = offset ? parseInt(offset, 10) : 0;
     return this.auditService.listAttempts({
+      billingStatus,
+      unreconciledOnly: unreconciled === 'true',
       orgId: user.orgId, // always the caller's organization, never a client-supplied one
       projectId,
       gatewayKeyId,

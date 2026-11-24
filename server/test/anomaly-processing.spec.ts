@@ -22,7 +22,9 @@ afterEach(() => {
 });
 
 const MIN = 60_000;
-const T0 = Date.parse('2026-11-24T10:00:00Z');
+// Starts at the real current time. A hard-coded date made this suite fail once the real clock passed it, because the
+// processor stamps `anomalyEvaluatedAt` with `new Date()` (real time), which only compares correctly with a fake clock that starts "now".
+const T0 = Date.now();
 
 /** Everything wired to in-memory doubles; `clock` drives the DB, Redis and Date.now together. */
 function setup(opts: { recordAlertFails?: () => boolean } = {}) {

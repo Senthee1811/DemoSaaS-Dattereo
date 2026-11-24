@@ -116,7 +116,7 @@ describe('audit log API', () => {
     expect(captured[0]).toMatchObject({ project: { orgId: 'org-a' }, projectId: 'proj-of-org-b' }); // the org filter is ANDed, so org B's project yields nothing
   });
 
-  it('CSV: the first 16 columns are unchanged and in order; 3 columns are appended; a pending row is not exported as "NO" without a status', async () => {
+  it('CSV: the first 16 columns are unchanged and in order; new columns are only ever appended; a pending row is not exported as "NO" without a status', async () => {
     const csv = await new AuditService({
       request: { findMany: jest.fn().mockResolvedValueOnce([row()]).mockResolvedValueOnce([]) },
     } as any).generateCsv('org-a');
@@ -126,8 +126,10 @@ describe('audit log API', () => {
       'Request ID', 'Timestamp (UTC)', 'Project Name', 'User Name', 'User Email', 'AI Provider', 'Model', 'Prompt Tokens', 'Completion Tokens', 'Total Tokens',
       'Cost Estimate (USD)', 'Latency (ms)', 'HTTP Status', 'Is Anomaly', 'Anomaly Reason', 'Is Hard Blocked',
     ]);
-    expect(cols.slice(16)).toEqual(['Anomaly Status', 'Reserved (USD)', 'Reservation Overrun (USD)']);
+    // Appended in Phase 1 (anomaly/reservation) and Phase 2.4 (usage status); earlier positions never move
+    expect(cols.slice(16)).toEqual(['Anomaly Status', 'Reserved (USD)', 'Reservation Overrun (USD)', 'Usage Status']);
     expect(line).toContain('"PENDING"');
+    expect(line.split(',')).toHaveLength(cols.length); // every row has a value (possibly empty) for every column
   });
 });
 

@@ -107,7 +107,7 @@ describe('failed upstream calls are audited in request_attempts', () => {
     }
     // the whole row is short, whitelisted scalars
     expect(Object.keys(h.db.attempts[0]).sort()).toEqual(
-      ['createdAt', 'durationMs', 'errorClass', 'estimatedCostUsd', 'gatewayKeyId', 'httpStatus', 'id', 'model', 'orgId', 'projectId', 'provider', 'upstreamCode', 'upstreamStatus', 'userId'].sort(),
+      ['billingStatus', 'createdAt', 'durationMs', 'errorClass', 'estimatedCostUsd', 'executionStatus', 'gatewayKeyId', 'httpStatus', 'id', 'model', 'orgId', 'projectId', 'provider', 'upstreamCode', 'upstreamStatus', 'userId'].sort(),
     );
   });
 
@@ -257,7 +257,7 @@ describe('reading failed attempts is tenant-scoped', () => {
     const out = await s.listAttempts({ orgId: 'org-a', errorClass: 'upstream_auth_failed' });
     expect(out.attempts).toHaveLength(1);
     expect(Object.keys(out.attempts[0]).sort()).toEqual(
-      ['durationMs', 'errorClass', 'estimatedCostUsd', 'gatewayKeyId', 'httpStatus', 'id', 'model', 'projectId', 'projectName', 'provider', 'timestamp', 'upstreamCode', 'upstreamStatus'].sort(),
+      ['billingStatus', 'durationMs', 'errorClass', 'estimatedCostUsd', 'executionStatus', 'gatewayKeyId', 'httpStatus', 'id', 'model', 'projectId', 'projectName', 'provider', 'reconciledAt', 'reconciledCostUsd', 'reconciledStatus', 'timestamp', 'upstreamCode', 'upstreamStatus'].sort(),
     );
   });
 

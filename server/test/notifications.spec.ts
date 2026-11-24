@@ -455,6 +455,46 @@ describe('in-app inbox', () => {
     expect((await service.inbox('org-a')).unread).toBe(1);
     expect((await service.inbox('org-a', true)).items).toHaveLength(1);
   });
+
+  it('pages newest-first with a bounded size and a cursor; the last page has no cursor', async () => {
+    const { service, db } = setup();
+    for (let i = 0; i < 5; i++) {
+      await service.publish(event({ id: `p${i}`, data: { title: `T${i}`, message: 'm' } }));
+      db.deliveries.at(-1)!.createdAt = new Date(2026, 10, 1, 10, i); // distinct, increasing
+    }
+    const first = await service.inbox('org-a', false, { limit: 2 });
+    expect(first.items.map((i: any) => i.title)).toEqual(['T4', 'T3']);
+    expect(first.nextCursor).toBeTruthy();
+    const second = await service.inbox('org-a', false, { limit: 2, cursor: first.nextCursor! });
+    expect(second.items.map((i: any) => i.title)).toEqual(['T2', 'T1']);
+    const last = await service.inbox('org-a', false, { limit: 2, cursor: second.nextCursor! });
+    expect(last.items.map((i: any) => i.title)).toEqual(['T0']);
+    expect(last.nextCursor).toBeNull();
+    expect(first.unread).toBe(5); // the badge counts everything unread, not just the page
+  });
+  it('clamps the page size and rejects a malformed cursor', async () => {
+    const { service } = setup();
+    await expect(service.inbox('org-a', false, { cursor: 'not-a-date' })).rejects.toThrow(/cursor/);
+    await expect(service.inbox('org-a', false, { limit: 100000 })).resolves.toBeDefined();
+  });
+  it('unreadCount is organization-scoped and counts only in-app rows', async () => {
+    const { service } = setup();
+    await service.createChannel('org-a', 'u1', { type: 'WEBHOOK', name: 'w', config: { url: PUBLIC_URL } });
+    await service.publish(event({ id: 'a1' }));
+    await service.publish(event({ id: 'b1', orgId: 'org-b' }));
+    expect(await service.unreadCount('org-a')).toEqual({ unread: 1 }); // the webhook delivery row is not an inbox item
+    await service.markRead('org-a');
+    expect(await service.unreadCount('org-a')).toEqual({ unread: 0 });
+    expect(await service.unreadCount('org-b')).toEqual({ unread: 1 });
+  });
+  it('mark-all never touches another organization, and marking an id from another organization changes nothing', async () => {
+    const { service } = setup();
+    await service.publish(event({ id: 'a1' }));
+    await service.publish(event({ id: 'b1', orgId: 'org-b' }));
+    const b = await service.inbox('org-b');
+    expect(await service.markRead('org-a', [b.items[0].id])).toEqual({ updated: 0 });
+    expect((await service.unreadCount('org-b')).unread).toBe(1);
+  });
 });
 
 it('DeliveryError carries whether retrying can help', () => {

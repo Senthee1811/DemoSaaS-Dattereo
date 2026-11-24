@@ -309,6 +309,9 @@ model NotificationChannel {
   name            String   @db.VarChar(100)
   encryptedConfig String   @map("encrypted_config")
   configHint      String?  @map("config_hint")
+  /// Peppered HMAC of the normalised destination. Lets us warn about two channels (or a channel and a project Slack
+  /// webhook) that point at the exact same destination, without ever storing or comparing the plaintext.
+  destinationHash String?  @map("destination_hash")
   /// Empty = every event type.
   eventTypes      String[] @default([]) @map("event_types")
   enabled         Boolean  @default(true)
@@ -320,6 +323,7 @@ model NotificationChannel {
   deliveries      NotificationDelivery[]
 
   @@index([orgId, enabled])
+  @@index([orgId, destinationHash])
   @@map("notification_channels")
 }
 
@@ -342,6 +346,9 @@ model NotificationDelivery {
   /// The event as sent (title, message, ids, numbers). Never contains credentials or request content.
   payload       Json
   readAt        DateTime? @map("read_at")
+  /// "<orgId>:<eventId>" for in-app rows only. channel_id is NULL there, and Postgres treats NULLs as distinct in
+  /// the (channel_id, event_id) unique, so this column is what makes in-app creation atomic under concurrency.
+  inAppKey      String?   @unique @map("in_app_key")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   organization  Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -349,6 +356,7 @@ model NotificationDelivery {
 
   @@unique([channelId, eventId])
   @@index([orgId, createdAt])
+  @@index([orgId, channelId, readAt])
   @@index([status, createdAt])
   @@map("notification_deliveries")
 }

@@ -20,7 +20,7 @@ export interface GatewayChatRequest {
     application: string | null;
     team: string | null;
     tags: Record<string, string> | null;
-    sources: { application: 'key' | 'header' | null; team: 'key' | 'header' | null };
+    sources: { application: 'key' | 'header' | 'session' | null; team: 'key' | 'header' | 'session' | null };
   };
   /** Present when the request authenticated with a gateway key: that key's own limits. */
   gatewayKey?: {

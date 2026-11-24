@@ -68,6 +68,7 @@ export default function AppDashboard() {
   const selectedProjectId = projects.some((p) => p.id === rawScopeId) ? rawScopeId : '';
   const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
+  const [inboxUnread, setInboxUnread] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -182,9 +183,17 @@ export default function AppDashboard() {
     [],
   );
 
+  // One cheap counter query (no rows). Skipped while the tab is hidden so a forgotten background tab costs nothing.
+  const fetchInboxUnread = useCallback(() => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return Promise.resolve();
+    return getJson<{ unread?: number }>('/api/v1/notifications/inbox/unread-count')
+      .then((data) => setInboxUnread(typeof data?.unread === 'number' ? data.unread : 0))
+      .catch((err) => console.error('Failed to fetch inbox count:', err));
+  }, []);
+
   const loadAll = useCallback(
-    () => Promise.all([fetchProjects(), fetchKeys(), fetchAnalytics(), fetchUnreadAlerts()]),
-    [fetchProjects, fetchKeys, fetchAnalytics, fetchUnreadAlerts],
+    () => Promise.all([fetchProjects(), fetchKeys(), fetchAnalytics(), fetchUnreadAlerts(), fetchInboxUnread()]),
+    [fetchProjects, fetchKeys, fetchAnalytics, fetchUnreadAlerts, fetchInboxUnread],
   );
 
   // Manual refresh (button / after mutations) shows the spinner
@@ -201,8 +210,18 @@ export default function AppDashboard() {
       fetchAnalytics();
       fetchUnreadAlerts();
     }, 12000);
-    return () => clearInterval(interval);
-  }, [accessToken, loadAll, fetchAnalytics, fetchUnreadAlerts]);
+    // The inbox counter polls on its own, slower cadence (and refreshes when the tab becomes visible again)
+    const inboxInterval = setInterval(fetchInboxUnread, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchInboxUnread();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      clearInterval(inboxInterval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [accessToken, loadAll, fetchAnalytics, fetchUnreadAlerts, fetchInboxUnread]);
 
   return (
     <ScopeProvider scopeId={rawScopeId} onScopeChange={setScopeId} projects={projects}>
@@ -223,10 +242,11 @@ export default function AppDashboard() {
         {/* Global Application Header */}
         <Header
           onOpenPlayground={() => setCurrentTab('playground')}
-          onOpenAlerts={() => setCurrentTab('alerts')}
           onRefreshData={refreshAll}
           isRefreshing={isRefreshing}
-          unreadAlertsCount={unreadAlertsCount}
+          unreadInbox={inboxUnread}
+          onInboxUnreadChange={setInboxUnread}
+          onNavigate={setCurrentTab}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onOpenHelp={() => setIsHelpOpen(true)}
           onOpenSettings={(section) => {

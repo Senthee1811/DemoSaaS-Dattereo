@@ -15,6 +15,12 @@ Dimensions: organization (implicit), project, gateway key, application, team, pr
   (the request is still served) and reported in the `X-SpendGuard-Attribution-Ignored` response header.
 * Values are normalised (trim, lower-case) and restricted to `[a-z0-9._:-]{1,64}`, so a header cannot inject markup or create
   unbounded cardinality (5 extra tags max, key ≤ 32 chars).
+* **Propagation.** Browser → Next proxy (`lib/backend-proxy.ts` forwards only the three attribution headers, plus the
+  "ignored" notice back) → gateway (same validation, key assignment still wins) → ledger → Cost Insights.
+* **Dashboard sessions (Playground)** have no gateway key, so the server attributes them: application
+  `dashboard-playground` (source `session`, stored in the row metadata) unless the user sends a valid
+  `X-SpendGuard-Application`/`-Team`. The default applies to dashboard-session requests only, never to gateway keys, and
+  never to team. The organization always comes from the verified token.
 * Extending to a future SDK: send the same headers, or add a new tag key; no schema change is needed for tags.
 * Cached input tokens are now stored per request (`cached_tokens_in`; `NULL` = not recorded, never backfilled with guesses).
 
@@ -86,6 +92,20 @@ it fans out to the in-app inbox plus every enabled organization channel that wan
   API shows a non-sensitive hint only. The signing secret is shown once at creation (or rotation).
 * The existing per-project Slack webhook path is unchanged. Budget alerts are *also* published as events; configuring the same
   Slack destination in both places will notify twice.
+
+### Duplicate delivery and the in-app inbox
+* **Event vs delivery:** an event has a stable id (`alert:<alert id>`, `rec:<id>:<fingerprint>`); a delivery is one
+  (event, destination). Re-publishing an event creates nothing new (unique `(channel_id, event_id)`; in-app rows use the
+  unique `in_app_key` because Postgres treats NULL `channel_id` values as distinct). One event still reaches every distinct destination.
+* **Duplicate destinations are warned about, never dropped.** Each channel stores a peppered hash of its normalised
+  destination; two channels with the identical destination, or an organization Slack channel identical to a project's Slack
+  alert webhook, get a warning (on creation, in the channel list, and when saving the project webhook). Only *identical* URLs
+  are recognised: two different Slack webhook URLs for the same Slack channel cannot be told apart, so no automatic
+  suppression exists. Existing project webhooks are not migrated automatically; add an organization channel, then remove
+  the project webhook.
+* **Inbox:** header bell with an unread badge fed by one cheap count query (every 60 s while the tab is visible, plus on
+  focus); the list is fetched only when the panel opens, 20 per page with a cursor. Items link to Alerts or Cost Insights,
+  or say the project no longer exists. Mark one / mark all as read.
 
 ## 7. Security review (what was checked)
 * **Tenancy:** every insight/notification query is scoped by `projects.org_id` / `org_id` taken from the authenticated token,

@@ -2,7 +2,6 @@
 
 import {
   Building2,
-  Bell,
   RefreshCw,
   FlaskConical,
   Menu,
@@ -11,15 +10,18 @@ import {
 import { useStoredUser } from '@/lib/client-storage';
 import { useScope } from '@/lib/scope';
 import { Tip } from '@/components/ui/tooltip';
+import { NotificationInbox } from '@/components/notifications/NotificationInbox';
+import type { NavTab } from '@/components/Sidebar';
 import { AccountMenu } from './AccountMenu';
 import type { SettingsTab } from '@/components/settings/SettingsView';
 
 interface HeaderProps {
   onOpenPlayground: () => void;
-  onOpenAlerts: () => void;
   onRefreshData: () => void;
   isRefreshing: boolean;
-  unreadAlertsCount: number;
+  unreadInbox: number;
+  onInboxUnreadChange: (n: number) => void;
+  onNavigate: (tab: NavTab) => void;
   onToggleMobileMenu?: () => void;
   onOpenHelp?: () => void;
   onOpenSettings: (section: SettingsTab) => void;
@@ -39,10 +41,11 @@ function initialsOf(name: string): string {
 
 export function Header({
   onOpenPlayground,
-  onOpenAlerts,
   onRefreshData,
   isRefreshing,
-  unreadAlertsCount,
+  unreadInbox,
+  onInboxUnreadChange,
+  onNavigate,
   onToggleMobileMenu,
   onOpenHelp,
   onOpenSettings,
@@ -130,22 +133,8 @@ export function Header({
           </Tip>
         )}
 
-        {/* Notifications Icon */}
-        <Tip label="Notifications">
-          <button
-            type="button"
-            onClick={onOpenAlerts}
-            className="relative p-2 text-fg-secondary hover:text-fg hover:bg-surface-muted rounded-full border border-line transition-colors"
-            aria-label={unreadAlertsCount > 0 ? `Notifications, ${unreadAlertsCount} unread` : 'Notifications'}
-          >
-            <Bell className="w-4 h-4" />
-            {unreadAlertsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white text-micro font-bold flex items-center justify-center">
-                {unreadAlertsCount}
-              </span>
-            )}
-          </button>
-        </Tip>
+        {/* In-app notification inbox (unread badge + panel) */}
+        <NotificationInbox unread={unreadInbox} onUnreadChange={onInboxUnreadChange} onNavigate={onNavigate} />
 
         {/* Account menu: profile, settings, security, theme, sign out */}
         <AccountMenu

@@ -19,12 +19,15 @@ export const TAG_KEY_RE = /^[a-z][a-z0-9_.-]{0,31}$/;
 export const MAX_CUSTOM_TAGS = 5;
 const RESERVED_TAG_KEYS = new Set(['application', 'team']);
 
+/** 'session' = a server-side default for dashboard-session traffic (never client-supplied, never for gateway keys). */
+export type AttributionSource = 'key' | 'header' | 'session' | null;
+
 export interface Attribution {
   application: string | null;
   team: string | null;
   tags: Record<string, string> | null;
   /** Where each dimension came from, for audit. null = not attributed. */
-  sources: { application: 'key' | 'header' | null; team: 'key' | 'header' | null };
+  sources: { application: AttributionSource; team: AttributionSource };
   /** Human-readable reasons something supplied was not used (surfaced in a response header). */
   ignored: string[];
 }
@@ -37,24 +40,29 @@ export function resolveAttribution(input: {
   headerApplication?: unknown;
   headerTeam?: unknown;
   headerTags?: unknown;
+  /**
+   * Server-decided application for requests made with a dashboard session (e.g. the Playground), applied only when
+   * nothing else names one. It is a statement about where the request really came from, not a guess.
+   */
+  sessionDefaultApplication?: string | null;
 }): Attribution {
   const ignored: string[] = [];
 
-  const pick = (dimension: 'application' | 'team', keyValue: string | null | undefined, headerRaw: unknown): { value: string | null; source: 'key' | 'header' | null } => {
+  const pick = (dimension: 'application' | 'team', keyValue: string | null | undefined, headerRaw: unknown, sessionDefault?: string | null): { value: string | null; source: AttributionSource } => {
     const header = normalise(Array.isArray(headerRaw) ? headerRaw[0] : headerRaw);
     if (keyValue) {
       if (header && header !== keyValue) ignored.push(`${dimension} header ignored: the gateway key is assigned to "${keyValue}"`);
       return { value: keyValue, source: 'key' };
     }
-    if (!header) return { value: null, source: null };
+    if (!header) return sessionDefault ? { value: sessionDefault, source: 'session' } : { value: null, source: null };
     if (!TAG_VALUE_RE.test(header)) {
       ignored.push(`${dimension} header ignored: use lowercase letters, digits and . _ : - (max 64 characters)`);
-      return { value: null, source: null };
+      return sessionDefault ? { value: sessionDefault, source: 'session' } : { value: null, source: null };
     }
     return { value: header, source: 'header' };
   };
 
-  const app = pick('application', normalise(input.keyApplication), input.headerApplication);
+  const app = pick('application', normalise(input.keyApplication), input.headerApplication, input.sessionDefaultApplication);
   const team = pick('team', normalise(input.keyTeam), input.headerTeam);
 
   let tags: Record<string, string> | null = null;

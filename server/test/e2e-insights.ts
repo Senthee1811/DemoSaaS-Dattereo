@@ -222,6 +222,18 @@ async function run() {
   const plainRow = await prisma.request.findFirst({ where: { projectId: proj.id, id: `req_${String(plain.body.id).replace('chatcmpl-req_', '')}` } });
   check('with no key assignment and no headers the row stays UNATTRIBUTED (nothing guessed)', plain.status === 200 && plainRow?.application === null && plainRow?.team === null, plainRow && { a: plainRow.application, t: plainRow.team });
 
+  // Playground / dashboard session: attributed by server policy, headers re-validated, tenant unchanged
+  const pg = await api('POST', '/v1/chat/completions', { token: alice.token, headers: { 'X-SpendGuard-Project-Id': proj.id }, body: { projectId: proj.id, model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 20 } });
+  const pgRow = await prisma.request.findFirst({ where: { projectId: proj.id, id: `req_${String(pg.body.id).replace('chatcmpl-req_', '')}` } });
+  check('a dashboard-session (Playground) call is attributed to "dashboard-playground" by server policy', pg.status === 200 && pgRow?.application === 'dashboard-playground' && pgRow?.team === null, pgRow && { a: pgRow.application, t: pgRow.team });
+  const pg2 = await api('POST', '/v1/chat/completions', { token: alice.token, headers: { 'X-SpendGuard-Project-Id': proj.id, 'X-SpendGuard-Application': 'Pricing-Page', 'X-SpendGuard-Team': 'Growth' }, body: { projectId: proj.id, model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 20 } });
+  const pg2Row = await prisma.request.findFirst({ where: { projectId: proj.id, id: `req_${String(pg2.body.id).replace('chatcmpl-req_', '')}` } });
+  check('forwarded headers on a session call are honoured after the same validation', pg2.status === 200 && pg2Row?.application === 'pricing-page' && pg2Row?.team === 'growth', pg2Row && { a: pg2Row.application, t: pg2Row.team });
+  const pgBob = await api('POST', '/v1/chat/completions', { token: bob.token, headers: { 'X-SpendGuard-Project-Id': proj.id, 'X-SpendGuard-Application': 'steal' }, body: { projectId: proj.id, model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'hi' }], max_tokens: 20 } });
+  check('another organization session cannot book spend (or attribution) to this project: 404', pgBob.status === 404 && (await prisma.request.count({ where: { projectId: proj.id, application: 'steal' } })) === 0, pgBob.status);
+  const pgView = await api('GET', `/api/v1/insights/attribution?dimension=application&projectId=${proj.id}`, { token: alice.token });
+  check('Cost Insights lists the playground and the header-named application, not as unattributed', ['dashboard-playground', 'pricing-page'].every((k) => pgView.body.rows.some((r: any) => r.key === k)), pgView.body.rows?.map((r: any) => r.key));
+
   // ── Notifications + recommendations ──────────────────────────────────────
   console.log('\n▶ Notification channels (signed webhook, retry, history)');
   const rx = await startReceiver();

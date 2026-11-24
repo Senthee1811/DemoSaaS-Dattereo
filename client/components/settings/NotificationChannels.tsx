@@ -16,6 +16,8 @@ interface Channel {
   destination: string | null;
   eventTypes: string[];
   enabled: boolean;
+  /** Duplicate-destination warnings computed by the server (identical destination, or a project Slack webhook). */
+  warnings?: string[];
   stats: { sent: number; failed: number; pending: number };
 }
 interface Delivery {
@@ -61,7 +63,9 @@ function ChannelManager() {
   const [destination, setDestination] = useState('');
   const [events, setEvents] = useState<string[]>(['budget.alert', 'recommendation.created']);
   const [busy, setBusy] = useState(false);
-  const [secret, setSecret] = useState<{ channel: string; value: string } | null>(null);
+  const [secret, setSecret] = useState<{ channel: string; value: string; note?: string } | null>(null);
+  const [createWarnings, setCreateWarnings] = useState<string[]>([]);
+  const [revoking, setRevoking] = useState<Channel | null>(null);
   const [removing, setRemoving] = useState<Channel | null>(null);
 
   const reloadAll = () => {
@@ -82,6 +86,7 @@ function ChannelManager() {
       const config = type === 'EMAIL' ? { recipients: destination.split(/[\s,;]+/).filter(Boolean) } : { url: destination.trim() };
       const out = await call('/api/v1/notifications/channels', 'POST', { type, name: name.trim(), config, eventTypes: events });
       if (out.signingSecret) setSecret({ channel: out.name, value: out.signingSecret });
+      setCreateWarnings(Array.isArray(out.warnings) ? out.warnings : []);
       toast.success('Channel added', 'Send a test to confirm it works.');
       setName('');
       setDestination('');
@@ -90,6 +95,23 @@ function ChannelManager() {
       toast.error('Channel not added', err instanceof Error ? err.message : undefined);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const rotate = async (c: Channel, immediate: boolean) => {
+    const o = await call(`/api/v1/notifications/channels/${c.id}/rotate-secret`, 'POST', { immediate });
+    const until = typeof o.previousSecretValidUntil === 'string' ? formatDateTime(o.previousSecretValidUntil) : null;
+    setSecret({ channel: c.name, value: o.signingSecret, note: until ? `The previous secret keeps verifying until ${until}, so you can deploy the new one without downtime.` : 'The previous secret no longer verifies.' });
+  };
+
+  const sendTest = async (c: Channel) => {
+    try {
+      const o = await call(`/api/v1/notifications/channels/${c.id}/test`, 'POST');
+      if (o.queued === false) toast.error('Test not sent', 'This channel is paused. Resume it first.');
+      else toast.success('Test queued', 'Check the delivery history below for the result.');
+      reloadAll();
+    } catch (err) {
+      toast.error('Test not sent', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -116,7 +138,15 @@ function ChannelManager() {
         <InlineAlert variant="warning" title={`Signing secret for “${secret.channel}”: copy it now`}>
           <p>It is shown only once. Use it to verify the <code className="font-mono">X-SpendGuard-Signature</code> header (HMAC-SHA256 of <code className="font-mono">timestamp.body</code>).</p>
           <p className="mt-1 font-mono break-all select-all" data-testid="signing-secret">{secret.value}</p>
+          {secret.note && <p className="mt-1" data-testid="rotation-note">{secret.note}</p>}
           <button type="button" className="mt-2 underline font-semibold" onClick={() => setSecret(null)}>I have stored it</button>
+        </InlineAlert>
+      )}
+
+      {createWarnings.length > 0 && (
+        <InlineAlert variant="warning" title="This channel may duplicate another one">
+          <ul className="list-disc pl-4" data-testid="create-warnings">{createWarnings.map((w) => <li key={w}>{w}</li>)}</ul>
+          <button type="button" className="mt-2 underline font-semibold" onClick={() => setCreateWarnings([])}>Dismiss</button>
         </InlineAlert>
       )}
 
@@ -132,12 +162,18 @@ function ChannelManager() {
                   <p className="text-caption text-fg-muted truncate">
                     {c.destination} · {c.eventTypes.length ? c.eventTypes.map((t) => EVENT_LABEL[t] ?? t).join(', ') : 'all events'} · {c.stats.sent} sent{c.stats.failed ? `, ${c.stats.failed} failed` : ''}
                   </p>
+                  {Array.isArray(c.warnings) && c.warnings.map((w) => (
+                    <p key={w} className="mt-1 text-caption text-warning" data-testid="channel-warning">⚠ {w}</p>
+                  ))}
                 </div>
                 {!c.enabled && <Badge tone="neutral">Paused</Badge>}
-                <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => act(() => call(`/api/v1/notifications/channels/${c.id}/test`, 'POST'), 'Test queued: check the history')}><Send className="w-3 h-3 inline mr-1" aria-hidden />Test</button>
+                <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => void sendTest(c)}><Send className="w-3 h-3 inline mr-1" aria-hidden />Test</button>
                 <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => act(() => call(`/api/v1/notifications/channels/${c.id}`, 'PATCH', { enabled: !c.enabled }), c.enabled ? 'Paused' : 'Resumed')}>{c.enabled ? 'Pause' : 'Resume'}</button>
                 {c.type === 'WEBHOOK' && (
-                  <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => act(async () => { const o = await call(`/api/v1/notifications/channels/${c.id}/rotate-secret`, 'POST'); setSecret({ channel: c.name, value: o.signingSecret }); }, 'Secret rotated')}>Rotate secret</button>
+                  <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => act(() => rotate(c, false), 'Secret rotated')}>Rotate secret</button>
+                )}
+                {c.type === 'WEBHOOK' && (
+                  <button type="button" className="px-2.5 py-1 rounded-full border border-line text-label font-semibold" onClick={() => setRevoking(c)}>Revoke &amp; rotate</button>
                 )}
                 <button type="button" className="px-2.5 py-1 rounded-full border border-critical-border text-critical text-label font-semibold" onClick={() => setRemoving(c)}>Remove</button>
               </li>
@@ -201,6 +237,24 @@ function ChannelManager() {
           <p className="text-label text-fg-muted">Nothing has been sent yet.</p>
         )}
       </div>
+
+      <ConfirmDialog
+        open={revoking !== null}
+        tone="danger"
+        title="Revoke the current secret now?"
+        description={revoking ? `“${revoking.name}” gets a new signing secret and the old one stops verifying immediately.` : ''}
+        consequences={['Your receiver rejects deliveries until you deploy the new secret.', 'Deliveries already retrying are signed with the new secret.']}
+        reversible="Not reversible. Use plain “Rotate secret” for a 24-hour overlap instead."
+        confirmLabel="Revoke and rotate"
+        onConfirm={async () => {
+          if (revoking) {
+            await rotate(revoking, true);
+            toast.success('Secret rotated', 'The previous secret was revoked.');
+            reloadAll();
+          }
+        }}
+        onClose={() => setRevoking(null)}
+      />
 
       <ConfirmDialog
         open={removing !== null}

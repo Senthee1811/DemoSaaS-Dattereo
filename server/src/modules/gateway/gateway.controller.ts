@@ -56,6 +56,9 @@ function parseJsonArray(value: string | null): string[] {
   }
 }
 
+/** Application name recorded for requests authenticated with a dashboard session instead of a gateway key. */
+export const PLAYGROUND_APPLICATION = 'dashboard-playground';
+
 /**
  * Authentication for the gateway is handled here (not by the global JWT guard)
  * because it accepts two credential types:
@@ -130,6 +133,7 @@ export class GatewayController {
     let actingUserId: string | undefined;
     let gatewayKeyLimits: GatewayChatRequest['gatewayKey'];
     let keyAssignment: { application: string | null; team: string | null } = { application: null, team: null };
+    let sessionDefaultApplication: string | null = null;
 
     if (rawKey.startsWith('sg_')) {
       // ---- 1. SpendGuard virtual gateway key ----
@@ -216,6 +220,9 @@ export class GatewayController {
       resolvedProjectId = project.id;
       resolvedOrgId = user.orgId;
       actingUserId = user.id;
+      // Dashboard-session traffic (the Playground) is attributed by SERVER policy, not by anything the browser claims.
+      // The user has no key assignment, so without this their test spend would be indistinguishable from real traffic.
+      sessionDefaultApplication = PLAYGROUND_APPLICATION;
     }
 
     // Reject unpriced models before any budget hold or upstream call: an unknown
@@ -234,6 +241,7 @@ export class GatewayController {
       headerApplication: req.headers['x-spendguard-application'],
       headerTeam: req.headers['x-spendguard-team'],
       headerTags: req.headers['x-spendguard-tags'],
+      sessionDefaultApplication,
     });
 
     const result = await this.gatewayService.processChatCompletion({

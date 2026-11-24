@@ -83,8 +83,14 @@ export class NotificationsController {
 
   @Get('inbox')
   @ApiOperation({ summary: 'In-app notifications for the organization' })
-  inbox(@CurrentUser() user: AuthenticatedUser, @Query('unread') unread?: string) {
-    return this.service.inbox(user.orgId, unread === 'true');
+  inbox(@CurrentUser() user: AuthenticatedUser, @Query('unread') unread?: string, @Query('limit') limit?: string, @Query('cursor') cursor?: string) {
+    return this.service.inbox(user.orgId, unread === 'true', { limit: int(limit, 20, 1, 50), cursor });
+  }
+
+  @Get('inbox/unread-count')
+  @ApiOperation({ summary: 'Unread in-app notification count for the header badge' })
+  unreadCount(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.unreadCount(user.orgId);
   }
 
   @Post('inbox/read')

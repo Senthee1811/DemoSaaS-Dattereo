@@ -474,15 +474,39 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Atomically claims `key` for `ttlSeconds` (SET NX EX): true if this caller got it, false if
    * someone already holds it, null if Redis is unavailable. Used to suppress duplicate alerts.
    */
-  async acquireOnce(key: string, ttlSeconds: number): Promise<boolean | null> {
+  async acquireOnce(key: string, ttlSeconds: number, value = '1'): Promise<boolean | null> {
     const client = this.getClient();
     if (!client) return null;
     try {
-      const res = await client.set(key, '1', 'EX', Math.max(1, Math.floor(ttlSeconds)), 'NX');
+      const res = await client.set(key, value, 'EX', Math.max(1, Math.floor(ttlSeconds)), 'NX');
       return res === 'OK';
     } catch (err: any) {
       this.logger.warn(`Redis acquireOnce failed for ${key}: ${err.message}`);
       return null;
+    }
+  }
+
+  /** Increments a counter and returns the new value; null if Redis is unavailable (best effort callers ignore it). */
+  async incrCache(key: string): Promise<number | null> {
+    const client = this.getClient();
+    if (!client) return null;
+    try {
+      return await client.incr(key);
+    } catch (err: any) {
+      this.logger.warn(`Redis incrCache failed for ${key}: ${err.message}`);
+      return null;
+    }
+  }
+
+  /** Sets a new TTL on an existing key (used to extend a claim lease). False if the key is gone or Redis is down. */
+  async expireCache(key: string, ttlSeconds: number): Promise<boolean> {
+    const client = this.getClient();
+    if (!client) return false;
+    try {
+      return (await client.expire(key, Math.max(1, Math.floor(ttlSeconds)))) === 1;
+    } catch (err: any) {
+      this.logger.warn(`Redis expireCache failed for ${key}: ${err.message}`);
+      return false;
     }
   }
 

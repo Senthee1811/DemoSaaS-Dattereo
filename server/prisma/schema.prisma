@@ -44,6 +44,9 @@ model Organization {
   users         User[]
   projects      Project[]
   subscription  Subscription?
+  recommendations       Recommendation[]
+  notificationChannels  NotificationChannel[]
+  notificationDeliveries NotificationDelivery[]
 
   @@map("organizations")
 }
@@ -127,6 +130,8 @@ model Project {
   requests               Request[]
   budgetAlerts           BudgetAlert[]
   alertConfig            AlertConfig?
+  requestAttempts        RequestAttempt[]
+  recommendations        Recommendation[]
 
   @@unique([orgId, slug])
   @@index([orgId])
@@ -180,6 +185,10 @@ model GatewayApiKey {
   expiresAt        DateTime? @map("expires_at")
   rateLimitRpm     Int       @default(1200) @map("rate_limit_rpm")
   rateLimitTpm     Int?      @default(100000) @map("rate_limit_tpm")
+  /// Attribution assigned by the key's creator (an org admin). When set it is AUTHORITATIVE for requests made
+  /// with this key: a client header can never re-attribute spend to another application/team.
+  application      String?   @db.VarChar(64)
+  team             String?   @db.VarChar(64)
   isActive         Boolean   @default(true) @map("is_active")
   lastUsedAt       DateTime? @map("last_used_at")
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -212,6 +221,24 @@ model Request {
   promptPreview   String?      @map("prompt_preview")
   responsePreview String?      @map("response_preview")
   metadataJson    String?      @map("metadata_json")
+  /// Worst-case amount held for this request (USD). Compare with costEstimate to see reservation accuracy.
+  reservedCostUsd Decimal?     @map("reserved_cost_usd") @db.Decimal(10, 6)
+  /// max(0, costEstimate - reservedCostUsd): spend that the reservation did NOT cover.
+  reservationOverrunUsd Decimal @default(0) @map("reservation_overrun_usd") @db.Decimal(10, 6)
+  /// Spike evaluation is asynchronous. PENDING (not evaluated yet) | CLEAR | ANOMALY (confirmed)
+  /// | FAILED (evaluation could not complete) | SKIPPED (blocked request, never evaluated).
+  /// isAnomaly is true only for ANOMALY.
+  anomalyStatus   String       @default("PENDING") @map("anomaly_status")
+  anomalyEvaluatedAt DateTime? @map("anomaly_evaluated_at")
+  /// Attribution. NULL means "not attributed" and is reported as such, never guessed. Source: the gateway key's
+  /// assigned value, else a validated client header (X-SpendGuard-Application / -Team / -Tags).
+  application     String?      @db.VarChar(64)
+  team            String?      @db.VarChar(64)
+  /// Extra client-supplied tags (max 5, validated key/value shapes). Extensible without schema changes.
+  tags            Json?
+  /// Input tokens served from the provider's prompt cache (a subset of tokensIn). NULL = not recorded (rows from
+  /// before this column existed); the model comparison treats NULL as 0 and says how many rows lacked it.
+  cachedTokensIn  Int?         @map("cached_tokens_in")
   createdAt       DateTime     @default(now()) @map("created_at")
 
   project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -224,7 +251,140 @@ model Request {
   @@index([gatewayKeyId, createdAt])
   @@index([model])
   @@index([createdAt])
+  @@index([anomalyStatus, createdAt])
+  @@index([projectId, application, createdAt])
+  @@index([projectId, team, createdAt])
   @@map("requests")
+}
+
+/// An evidence-based finding about spend. Generated deterministically from the ledger (no model is involved);
+/// `evidence` holds the numbers and ledger request ids it was computed from, `method` how.
+/// Statuses: OPEN -> ACKNOWLEDGED | APPROVED_FOR_EVALUATION | DISMISSED; RESOLVED when the condition no longer holds.
+/// APPROVED_FOR_EVALUATION records a human decision only: SpendGuard never changes a customer's model configuration.
+model Recommendation {
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  projectId        String?   @map("project_id")
+  type             String
+  /// Stable identity of the finding (type + scope + period bucket): regeneration updates it instead of duplicating it.
+  fingerprint      String
+  status           String    @default("OPEN")
+  severity         String
+  title            String
+  summary          String
+  evidence         Json
+  method           String
+  impactLowUsd     Decimal?  @map("impact_low_usd") @db.Decimal(14, 4)
+  impactHighUsd    Decimal?  @map("impact_high_usd") @db.Decimal(14, 4)
+  /// What the impact figures cover, e.g. "per month" or "over the last 7 days".
+  impactBasis      String?   @map("impact_basis")
+  confidence       String
+  action           String
+  requiresApproval Boolean   @default(false) @map("requires_approval")
+  firstSeenAt      DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+  decidedById      String?   @map("decided_by_id")
+  decidedAt        DateTime? @map("decided_at")
+  decisionNote     String?   @map("decision_note") @db.VarChar(500)
+  dismissedUntil   DateTime? @map("dismissed_until")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project          Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, fingerprint])
+  @@index([orgId, status])
+  @@index([projectId])
+  @@map("recommendations")
+}
+
+/// An organization-level destination for notifications. The destination details (URL, secret, recipients) are
+/// encrypted at rest and never returned by the API; `configHint` is a non-sensitive description (host / masked address).
+model NotificationChannel {
+  id              String   @id @default(uuid())
+  orgId           String   @map("org_id")
+  /// SLACK | WEBHOOK | EMAIL (in-app delivery is built in and needs no channel)
+  type            String
+  name            String   @db.VarChar(100)
+  encryptedConfig String   @map("encrypted_config")
+  configHint      String?  @map("config_hint")
+  /// Empty = every event type.
+  eventTypes      String[] @default([]) @map("event_types")
+  enabled         Boolean  @default(true)
+  createdById     String?  @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  deliveries      NotificationDelivery[]
+
+  @@index([orgId, enabled])
+  @@map("notification_channels")
+}
+
+/// One attempt-history record per (event, destination). Written BEFORE delivery is attempted, so every outcome
+/// (SENT / FAILED) is visible and a lost queue job can be recovered from here.
+model NotificationDelivery {
+  id            String    @id @default(uuid())
+  orgId         String    @map("org_id")
+  /// NULL for the built-in in-app inbox.
+  channelId     String?   @map("channel_id")
+  channelType   String    @map("channel_type")
+  eventId       String    @map("event_id")
+  eventType     String    @map("event_type")
+  /// QUEUED | RETRYING | SENT | FAILED
+  status        String    @default("QUEUED")
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error") @db.VarChar(300)
+  lastAttemptAt DateTime? @map("last_attempt_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  /// The event as sent (title, message, ids, numbers). Never contains credentials or request content.
+  payload       Json
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  organization  Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  channel       NotificationChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@unique([channelId, eventId])
+  @@index([orgId, createdAt])
+  @@index([status, createdAt])
+  @@map("notification_deliveries")
+}
+
+/// A gateway call that FAILED before producing a billable result (provider error, timeout, bad key).
+/// Separate from `requests` on purpose: `requests` is the spend ledger and sums to the bill; this table
+/// never carries spend. estimatedCostUsd is the worst-case reservation that was RELEASED, not money spent.
+/// No prompts, no provider credentials, no headers and no raw provider bodies are stored here.
+model RequestAttempt {
+  id               String       @id // same id space as requests.id (req_<uuid>)
+  orgId            String       @map("org_id")
+  projectId        String       @map("project_id")
+  gatewayKeyId     String?      @map("gateway_key_id")
+  userId           String?      @map("user_id")
+  provider         ProviderType
+  model            String
+  /// SpendGuard classification, e.g. upstream_auth_failed, upstream_rate_limited, upstream_timeout,
+  /// upstream_network_error, upstream_server_error, upstream_invalid_request, missing_provider_key.
+  errorClass       String       @map("error_class")
+  /// Status returned to the caller.
+  httpStatus       Int          @map("http_status")
+  /// Status the provider returned, when there was one.
+  upstreamStatus   Int?         @map("upstream_status")
+  /// Provider's own short error code (scrubbed, truncated), e.g. rate_limit_exceeded.
+  upstreamCode     String?      @map("upstream_code")
+  estimatedCostUsd Decimal      @map("estimated_cost_usd") @db.Decimal(10, 6)
+  durationMs       Int          @map("duration_ms")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([gatewayKeyId, createdAt])
+  @@index([errorClass])
+  @@map("request_attempts")
 }
 
 model BudgetAlert {

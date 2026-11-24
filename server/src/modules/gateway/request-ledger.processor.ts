@@ -3,12 +3,13 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BudgetService } from '@/modules/budget/budget.service';
-import { REQUEST_LEDGER_QUEUE, LedgerRowJob } from './request-ledger.queue';
+import { REQUEST_LEDGER_QUEUE, PERSIST_ATTEMPT_JOB, AttemptRowJob, LedgerRowJob } from './request-ledger.queue';
 
 /**
- * Retries request rows whose insert failed after the provider call succeeded.
- * The charge is already settled in Redis; until the row lands, reconciliation
- * treats the request as pending and will not lower spend below it.
+ * Retries rows whose insert failed on the request path:
+ *  - request rows (the charge is already settled in Redis; until the row lands, reconciliation
+ *    treats the request as pending and will not lower spend below it), and
+ *  - failed-call audit rows (`persist-attempt`; they carry no spend).
  */
 @Processor(REQUEST_LEDGER_QUEUE)
 export class RequestLedgerProcessor extends WorkerHost {
@@ -21,7 +22,24 @@ export class RequestLedgerProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<LedgerRowJob>): Promise<void> {
+  async process(job: Job<LedgerRowJob | AttemptRowJob>): Promise<void> {
+    if (job.name === PERSIST_ATTEMPT_JOB) return this.persistAttempt(job as Job<AttemptRowJob>);
+    return this.persistRequest(job as Job<LedgerRowJob>);
+  }
+
+  private async persistAttempt(job: Job<AttemptRowJob>): Promise<void> {
+    const row = job.data;
+    try {
+      await this.prisma.requestAttempt.create({ data: { ...(row as any), createdAt: new Date(row.createdAt) } });
+    } catch (err: any) {
+      if (err?.code === 'P2002') return; // the original insert actually committed
+      this.logger.error(`Attempt retry ${job.attemptsMade + 1} failed for ${row.id} (${err?.code ?? err?.name})`);
+      throw err;
+    }
+    this.logger.log(`Failed-call audit row persisted on retry for ${row.id}`);
+  }
+
+  private async persistRequest(job: Job<LedgerRowJob>): Promise<void> {
     const row = job.data;
     const createdAt = new Date(row.createdAt);
     try {

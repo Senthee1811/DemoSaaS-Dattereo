@@ -53,6 +53,36 @@ export class AuditController {
     });
   }
 
+  @Get('attempts')
+  @ApiOperation({ summary: 'List failed gateway calls (provider errors, timeouts, rejected provider keys). No spend, no content.' })
+  async getAttempts(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('projectId') projectId?: string,
+    @Query('gatewayKeyId') gatewayKeyId?: string,
+    @Query('errorClass') errorClass?: string,
+    @Query('provider') provider?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    assertDate('startDate', startDate);
+    assertDate('endDate', endDate);
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const parsedOffset = offset ? parseInt(offset, 10) : 0;
+    return this.auditService.listAttempts({
+      orgId: user.orgId, // always the caller's organization, never a client-supplied one
+      projectId,
+      gatewayKeyId,
+      errorClass,
+      provider,
+      startDate,
+      endDate,
+      limit: Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 50,
+      offset: Number.isFinite(parsedOffset) ? Math.max(parsedOffset, 0) : 0,
+    });
+  }
+
   @Get('export')
   @ApiOperation({ summary: 'Export audit logs as RFC-compliant CSV' })
   async exportCsv(

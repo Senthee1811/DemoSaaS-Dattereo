@@ -1,0 +1,5 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture): a blocked prompt returns promptFeedback.blockReason and no candidates (generateContent reference, 2026-11-24).",
+  "promptFeedback": { "blockReason": "SAFETY" },
+  "usageMetadata": { "promptTokenCount": 12, "totalTokenCount": 12 }
+}

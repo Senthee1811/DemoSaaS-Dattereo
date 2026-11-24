@@ -31,7 +31,7 @@ export class AnalyticsService {
     const firstDayOfMonth = utcMonthStart(now);
 
     // 1. Spend Summary
-    const [monthAgg, anomalyCount, blockedCount, totalProjects] = await Promise.all([
+    const [monthAgg, anomalyCount, blockedCount, totalProjects, anomalyPendingCount, overrunAgg] = await Promise.all([
       this.prisma.request.aggregate({
         where: { ...where, createdAt: { gte: firstDayOfMonth }, isBlocked: false },
         _sum: { costEstimate: true, totalTokens: true },
@@ -47,6 +47,16 @@ export class AnalyticsService {
       this.prisma.project.findMany({
         where: projectId ? { id: projectId, orgId } : { orgId },
         select: { id: true, name: true, budgetMonthly: true, isBlocked: true },
+      }),
+      // Requests whose spike evaluation has not finished (or could not): NOT counted as clean
+      this.prisma.request.count({
+        where: { ...where, createdAt: { gte: firstDayOfMonth }, isBlocked: false, anomalyStatus: { in: ['PENDING', 'FAILED'] } },
+      }),
+      // Spend the reservation did not cover (cost above what was reserved), this month
+      this.prisma.request.aggregate({
+        where: { ...where, createdAt: { gte: firstDayOfMonth }, isBlocked: false, reservationOverrunUsd: { gt: 0 } },
+        _sum: { reservationOverrunUsd: true },
+        _count: { id: true },
       }),
     ]);
 
@@ -153,6 +163,10 @@ export class AnalyticsService {
         avgLatency,
         anomalyCount,
         blockedCount,
+        // Additive fields. anomalyCount = CONFIRMED anomalies only; these requests are not evaluated yet:
+        anomalyPendingCount,
+        reservationOverrunCount: overrunAgg._count.id || 0,
+        reservationOverrunUsd: Number(Number(overrunAgg._sum.reservationOverrunUsd || 0).toFixed(6)),
       },
       dailySpend,
       modelBreakdown,
@@ -170,8 +184,12 @@ export class AnalyticsService {
         cost_estimate: Number(r.costEstimate),
         latency_ms: r.latencyMs,
         status_code: r.statusCode,
+        // true only for a CONFIRMED anomaly; read anomaly_status to tell "clear" from "not evaluated yet"
         is_anomaly: r.isAnomaly,
+        anomaly_status: r.anomalyStatus,
         anomaly_reason: r.anomalyReason,
+        reserved_cost: r.reservedCostUsd != null ? Number(r.reservedCostUsd) : null,
+        reservation_overrun: Number(r.reservationOverrunUsd ?? 0),
         is_blocked: r.isBlocked,
         created_at: r.createdAt,
       })),

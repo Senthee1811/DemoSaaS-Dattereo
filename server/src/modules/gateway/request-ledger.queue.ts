@@ -10,5 +10,26 @@ export const PERSIST_REQUEST_JOB_OPTS = {
   removeOnFail: false,
 };
 
+/** Retry job for a failed-call audit row (same queue, same retry policy as ledger rows). */
+export const PERSIST_ATTEMPT_JOB = 'persist-attempt';
+
+/** Serializable `request_attempts` row: `createdAt` travels as an ISO string. */
+export interface AttemptRowJob {
+  id: string;
+  orgId: string;
+  projectId: string;
+  gatewayKeyId: string | null;
+  userId: string | null;
+  provider: string;
+  model: string;
+  errorClass: string;
+  httpStatus: number;
+  upstreamStatus: number | null;
+  upstreamCode: string | null;
+  estimatedCostUsd: number;
+  durationMs: number;
+  createdAt: string;
+}
+
 /** Serializable request row: `createdAt` travels as an ISO string. */
 export type LedgerRowJob = Record<string, unknown> & { id: string; projectId: string; createdAt: string };

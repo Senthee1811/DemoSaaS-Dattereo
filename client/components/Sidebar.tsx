@@ -18,12 +18,14 @@ import {
   CircleHelp,
   Compass,
   Settings2,
+  Lightbulb,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Tip } from '@/components/ui/tooltip';
 
 export type NavTab = 
   | 'overview' 
+  | 'insights'
   | 'projects' 
   | 'keys' 
   | 'playground' 
@@ -71,6 +73,7 @@ export function Sidebar({
       title: 'WORKSPACE',
       items: [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'insights', label: 'Cost Insights', icon: Lightbulb },
         { id: 'projects', label: 'Projects & Budgets', icon: FolderKanban },
         { id: 'playground', label: 'Test Bench', icon: FlaskConical, badge: 'Live' },
       ],

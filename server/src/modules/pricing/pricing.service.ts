@@ -1,9 +1,19 @@
-import { Injectable, Logger, OnModuleInit, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PRICING_CATALOG, ModelPricingConfig, ProviderName } from './pricing.catalog';
+import { estimateReservationPromptTokens, estimateTextTokens, outputReserveTokens } from './token-estimator';
 
 export { PRICING_CATALOG, ModelPricingConfig, ProviderName };
+
+/** Redis counter bumped on every successful price write; instances poll it to refresh their cache quickly. */
+export const PRICING_VERSION_KEY = 'spendguard:pricing:version';
+
+const PROVIDERS: ProviderName[] = ['OPENAI', 'ANTHROPIC', 'GEMINI', 'GROQ'];
+
+function pricingError(code: string, message: string, status: HttpStatus): HttpException {
+  return new HttpException({ error: { message, type: 'pricing_error', code } }, status);
+}
 
 export function modelNotPricedError(model: string): HttpException {
   return new HttpException(
@@ -59,10 +69,24 @@ export function computeCost(config: ModelPricingConfig, tokensIn: number, tokens
   return Number((inCost + outCost).toFixed(6));
 }
 
+/**
+ * Worst-case USD for one request against ONE price row: the input estimate plus every output token
+ * the request is allowed to produce. Pure, so the gateway can size the hold from the SAME snapshot it
+ * settles with. Assumes NO caching (a cached read is cheaper, so the hold can only be too high).
+ */
+export function computeMaxCost(config: ModelPricingConfig, promptTokens: number, maxOutputTokens: number): number {
+  const inputCost = (Math.max(0, promptTokens) / 1_000_000) * config.inputPricePerMillion;
+  const outputCost = (Math.max(0, maxOutputTokens) / 1_000_000) * config.outputPricePerMillion;
+  return Number((inputCost + outputCost).toFixed(6));
+}
+
 @Injectable()
-export class PricingService implements OnModuleInit {
+export class PricingService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PricingService.name);
   private memoryCache: Map<string, ModelPricingConfig> = new Map();
+  private syncTimer: NodeJS.Timeout | null = null;
+  private syncTicks = 0;
+  private lastSeenVersion: string | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -77,6 +101,40 @@ export class PricingService implements OnModuleInit {
   async onModuleInit() {
     await this.seedMissingCatalogRows();
     await this.refreshPricingFromDb();
+    this.startSync();
+  }
+
+  onModuleDestroy() {
+    if (this.syncTimer) clearInterval(this.syncTimer);
+    this.syncTimer = null;
+  }
+
+  // ── Cross-instance consistency ───────────────────────────────────────────
+  // Prices live in Postgres; each instance caches them. A price write bumps a Redis version counter
+  // and every instance polls it (default every 5 s) and reloads from Postgres when it changed. If
+  // Redis is down or the bump was lost, a full reload still happens about once a minute. So after
+  // a write, instances converge within ~5 s normally and ~60 s in the worst case. A request already
+  // in flight keeps the price snapshot it started with.
+
+  private startSync() {
+    if (this.syncTimer || process.env.PRICING_SYNC_DISABLED === 'true') return;
+    const everyMs = Number(process.env.PRICING_SYNC_INTERVAL_MS) || 5000;
+    this.syncTimer = setInterval(() => {
+      this.syncPricingOnce().catch((err) => this.logger.warn(`Pricing sync failed: ${err?.message}`));
+    }, everyMs);
+    this.syncTimer.unref();
+  }
+
+  /** One sync tick. Public so it can be driven directly in tests. */
+  async syncPricingOnce(forceEvery = 12): Promise<'refreshed' | 'unchanged'> {
+    this.syncTicks++;
+    const version = await this.redisService.getCache(PRICING_VERSION_KEY); // null when Redis is down or never bumped
+    const changed = version !== null && version !== this.lastSeenVersion;
+    const forced = this.syncTicks % forceEvery === 0;
+    if (!changed && !forced) return 'unchanged';
+    await this.refreshPricingFromDb();
+    if (version !== null) this.lastSeenVersion = version;
+    return 'refreshed';
   }
 
   /**
@@ -118,28 +176,47 @@ export class PricingService implements OnModuleInit {
       providerStatus: item.providerStatus ?? null,
       providerCheckedAt: item.providerCheckedAt ?? null,
       retiresAt: item.retiresAt ?? null,
+      rowUpdatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
     };
   }
 
+  /** True when `incoming` was written no later than what is cached (so it must not replace it). */
+  private isStale(incoming: ModelPricingConfig, cached: ModelPricingConfig | undefined): boolean {
+    return !!(cached?.rowUpdatedAt && incoming.rowUpdatedAt && incoming.rowUpdatedAt.getTime() < cached.rowUpdatedAt.getTime());
+  }
+
   /**
-   * Replaces the in-memory price cache with the active rows of `model_pricing`.
+   * Reloads the in-memory price cache from the active rows of `model_pricing`.
    * The table wins: models deactivated or removed there stop being priced here too.
-   * If the table is empty/unreachable the built-in catalog stays as the fallback.
+   * If the table is empty/unreachable the cache is left exactly as it was (the built-in catalog is the
+   * fallback only at boot), so a failed reload can never remove valid prices.
+   *
+   * Race-safe against a concurrent price write on this instance: an entry that is NEWER than the
+   * rows just read (it was written while the query was in flight) is kept instead of being clobbered.
    */
   async refreshPricingFromDb(): Promise<void> {
     try {
+      const startedAt = new Date();
       const dbPrices = await (this.prisma as any).modelPricing?.findMany({
         where: { isActive: true },
       });
 
       if (dbPrices && dbPrices.length > 0) {
         const next = new Map<string, ModelPricingConfig>();
-        for (const item of dbPrices) next.set(item.model, this.rowToConfig(item));
+        for (const item of dbPrices) {
+          const incoming = this.rowToConfig(item);
+          const cached = this.memoryCache.get(item.model);
+          next.set(item.model, this.isStale(incoming, cached) ? (cached as ModelPricingConfig) : incoming);
+        }
+        // A row written after this query began is not in `dbPrices`: do not drop it
+        for (const [model, cached] of this.memoryCache) {
+          if (!next.has(model) && cached.rowUpdatedAt && cached.rowUpdatedAt.getTime() >= startedAt.getTime()) next.set(model, cached);
+        }
         this.memoryCache = next;
         this.logger.log(`Loaded ${dbPrices.length} model pricing entries from database`);
       }
     } catch (err: any) {
-      this.logger.warn(`Could not sync pricing from DB (using built-in catalog): ${err.message}`);
+      this.logger.warn(`Could not sync pricing from DB (keeping current prices): ${err.message}`);
     }
   }
 
@@ -195,11 +272,24 @@ export class PricingService implements OnModuleInit {
   }
 
   /**
-   * Estimates token count based on string length (heuristic ~4 chars per token)
+   * Conservative token estimate for text (see token-estimator.ts for the measurements behind it).
+   * Also the fallback when a provider returns no usage block, where leaning high is the safe side.
    */
   estimateTokens(text: string): number {
-    if (!text) return 0;
-    return Math.max(1, Math.ceil(text.length / 4));
+    return estimateTextTokens(text);
+  }
+
+  /**
+   * Prompt tokens used to SIZE a reservation: class-aware estimate x the provider's margin.
+   * Not billing: settlement uses provider-reported usage.
+   */
+  estimateReservationTokens(provider: ProviderName, messages: Array<{ content: string }>): number {
+    return estimateReservationPromptTokens(provider, messages);
+  }
+
+  /** Output tokens to reserve for a request: max_tokens plus any configured provider-specific reserve. */
+  reservedOutputTokens(provider: ProviderName, maxTokens: number): number {
+    return maxTokens + outputReserveTokens(provider);
   }
 
   /**
@@ -207,10 +297,7 @@ export class PricingService implements OnModuleInit {
    * Assumes completion may generate up to maxTokens.
    */
   estimateMaxCost(model: string, promptTokens: number, maxTokens = 1000): number {
-    const config = this.requirePrice(model);
-    const inputCost = (promptTokens / 1_000_000) * config.inputPricePerMillion;
-    const maxOutputCost = (maxTokens / 1_000_000) * config.outputPricePerMillion;
-    return Number((inputCost + maxOutputCost).toFixed(6));
+    return computeMaxCost(this.requirePrice(model), promptTokens, maxTokens);
   }
 
   /** Snapshot of the in-memory price cache (mirrors the active DB rows). */
@@ -271,24 +358,71 @@ export class PricingService implements OnModuleInit {
     };
   }
 
+  /** Validates an admin price write. Returns a clean DTO or throws 400. */
+  private validatePriceInput(dto: any) {
+    const bad = (msg: string) => pricingError('invalid_price', msg, HttpStatus.BAD_REQUEST);
+    if (!dto || typeof dto !== 'object') throw bad('A pricing body is required.');
+    if (typeof dto.model !== 'string' || !dto.model.trim() || dto.model.length > 200) throw bad('model must be a non-empty string of at most 200 characters.');
+    if (!PROVIDERS.includes(dto.provider)) throw bad(`provider must be one of ${PROVIDERS.join(', ')}.`);
+    // Decimal(10,4) in the table: finite, non-negative, below 10^6 per million tokens
+    const rate = (v: unknown, name: string, required: boolean) => {
+      if (v === undefined || v === null) {
+        if (required) throw bad(`${name} is required.`);
+        return undefined;
+      }
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v >= 1_000_000) throw bad(`${name} must be a finite number between 0 and 999999 (USD per million tokens).`);
+      return Number(v.toFixed(4));
+    };
+    const input = rate(dto.inputPricePerMillion, 'inputPricePerMillion', true) as number;
+    const output = rate(dto.outputPricePerMillion, 'outputPricePerMillion', true) as number;
+    const cached = rate(dto.cachedInputPrice, 'cachedInputPrice', false);
+    if (cached !== undefined && cached > input) throw bad('cachedInputPrice cannot be higher than inputPricePerMillion.');
+    if (dto.contextWindow !== undefined && (!Number.isInteger(dto.contextWindow) || dto.contextWindow <= 0)) throw bad('contextWindow must be a positive integer.');
+    if (dto.displayName !== undefined && (typeof dto.displayName !== 'string' || dto.displayName.length > 200)) throw bad('displayName must be a string of at most 200 characters.');
+    return {
+      model: dto.model.trim(),
+      provider: dto.provider as ProviderName,
+      inputPricePerMillion: input,
+      outputPricePerMillion: output,
+      cachedInputPrice: cached,
+      displayName: dto.displayName as string | undefined,
+      contextWindow: dto.contextWindow as number | undefined,
+    };
+  }
+
   /**
-   * Upsert a model pricing entry in DB and refresh cache (FR4: live configurable rates)
+   * Upsert a model price (FR4: live configurable rates).
+   *
+   * The database is the source of truth and is written FIRST. If that write fails nothing changes:
+   * the call throws 503 `pricing_persist_failed`, the previous price stays active in memory, and no
+   * success is reported. (It used to swallow the error, update only this instance's memory and
+   * return the input as if it had been saved: the other instances kept the old price and a restart
+   * silently reverted it.)
+   *
+   * On success the cache is set from the row the database returned, only if it is not older than
+   * what is cached (two concurrent writes cannot leave memory disagreeing with the table), and the
+   * version counter is bumped so the other instances reload within seconds.
    */
-  async upsertModelPrice(dto: {
+  async upsertModelPrice(input: {
     model: string;
     provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
     inputPricePerMillion: number;
     outputPricePerMillion: number;
+    cachedInputPrice?: number;
     displayName?: string;
     contextWindow?: number;
   }) {
+    const dto = this.validatePriceInput(input);
+
+    let row: any;
     try {
-      const result = await (this.prisma as any).modelPricing?.upsert({
+      row = await (this.prisma as any).modelPricing.upsert({
         where: { model: dto.model },
         update: {
           provider: dto.provider,
           inputPricePerMillion: dto.inputPricePerMillion,
           outputPricePerMillion: dto.outputPricePerMillion,
+          ...(dto.cachedInputPrice !== undefined ? { cachedInputPrice: dto.cachedInputPrice } : {}),
           displayName: dto.displayName,
           contextWindow: dto.contextWindow,
           isActive: true,
@@ -300,39 +434,38 @@ export class PricingService implements OnModuleInit {
           provider: dto.provider,
           inputPricePerMillion: dto.inputPricePerMillion,
           outputPricePerMillion: dto.outputPricePerMillion,
+          cachedInputPrice: dto.cachedInputPrice,
           displayName: dto.displayName,
           contextWindow: dto.contextWindow,
           isActive: true,
         },
       });
-
-      // Cache what the table now holds (including its cachedInputPrice, which an edit of the
-      // input/output rates does not touch). Rebuilding the entry from the DTO alone dropped the
-      // cached rate, so cached tokens were billed at the full input price until the next refresh.
-      this.memoryCache.set(
-        dto.model,
-        result
-          ? this.rowToConfig(result)
-          : {
-              provider: dto.provider,
-              inputPricePerMillion: dto.inputPricePerMillion,
-              outputPricePerMillion: dto.outputPricePerMillion,
-              displayName: dto.displayName,
-              contextWindow: dto.contextWindow,
-            },
-      );
-
-      return result;
     } catch (err: any) {
-      // If DB update fails, still update in-memory
-      this.memoryCache.set(dto.model, {
-        provider: dto.provider,
-        inputPricePerMillion: dto.inputPricePerMillion,
-        outputPricePerMillion: dto.outputPricePerMillion,
-        displayName: dto.displayName,
-        contextWindow: dto.contextWindow,
-      });
-      return { ...dto };
+      this.logger.error(`Price update for ${dto.model} was NOT saved: ${err?.code ?? err?.name}`);
+      throw pricingError(
+        'pricing_persist_failed',
+        `The price for ${dto.model} could not be saved, so it was NOT changed. The previous price remains in effect.`,
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
+    if (!row) {
+      throw pricingError('pricing_persist_failed', `The price for ${dto.model} could not be saved, so it was NOT changed.`, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    const incoming = this.rowToConfig(row);
+    if (!this.isStale(incoming, this.memoryCache.get(dto.model))) {
+      const next = new Map(this.memoryCache);
+      next.set(dto.model, incoming);
+      this.memoryCache = next;
+    }
+
+    // Tell the other instances. Best effort: if Redis is down they still reload on the periodic full sync.
+    try {
+      await this.redisService.incrCache(PRICING_VERSION_KEY);
+    } catch (err: any) {
+      // The price is already committed: a failed notification must not report the write as failed
+      this.logger.warn(`Could not publish the pricing version (other instances reload within ~60s): ${err?.message}`);
+    }
+    return row;
   }
 }

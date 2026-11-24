@@ -1,13 +1,29 @@
 import { AdapterExecutionResult, GatewayChatRequest } from './provider.adapter.interface';
 import { usageInt } from './provider-http';
+import { finishFromOpenAiCompatible } from './finish-reason';
 
-/** Request body for OpenAI-style /chat/completions (OpenAI, Groq). System messages stay in `messages`. */
-export function buildOpenAiCompatibleBody(req: GatewayChatRequest) {
+/**
+ * Request body for OpenAI-style /chat/completions (OpenAI, Groq).
+ *
+ * The output limit is sent as `max_completion_tokens`: OpenAI's reference marks `max_tokens` deprecated
+ * ("not compatible with o-series models") and defines max_completion_tokens as the bound on visible
+ * output AND reasoning tokens, which is exactly what the budget hold assumes. Groq's reference also
+ * deprecates max_tokens in its favour. For OpenAI-compatible endpoints that only know the old name
+ * (some proxies, Azure variants) set OPENAI_MAX_TOKENS_PARAM=max_tokens.
+ *
+ * `system` is OpenAI's older instruction role; its docs say o1 and newer should use `developer`.
+ * Set OPENAI_SYSTEM_ROLE=developer to send that instead. Default stays `system` (works on the models
+ * and compatible endpoints verified so far).
+ */
+export function buildOpenAiCompatibleBody(req: GatewayChatRequest, opts: { forOpenAi?: boolean } = {}) {
+  const limit = req.maxTokens ?? 1000;
+  const param = opts.forOpenAi && process.env.OPENAI_MAX_TOKENS_PARAM === 'max_tokens' ? 'max_tokens' : 'max_completion_tokens';
+  const systemRole = opts.forOpenAi && process.env.OPENAI_SYSTEM_ROLE === 'developer' ? 'developer' : undefined;
   return {
     model: req.model,
-    messages: req.messages,
+    messages: systemRole ? req.messages.map((m) => (m.role === 'system' ? { ...m, role: systemRole } : m)) : req.messages,
     temperature: req.temperature ?? 0.7,
-    max_tokens: req.maxTokens ?? 1000,
+    [param]: limit,
   };
 }
 
@@ -46,5 +62,6 @@ export function parseOpenAiCompatibleResponse(
     cachedPromptTokens: cached !== undefined ? Math.min(cached, promptTokens) : undefined,
     reasoningTokens: reasoning !== undefined ? Math.min(reasoning, completionTokens) : undefined,
     usageEstimated: reportedPrompt === undefined || reportedCompletion === undefined,
+    ...finishFromOpenAiCompatible(data?.choices?.[0]?.finish_reason),
   };
 }

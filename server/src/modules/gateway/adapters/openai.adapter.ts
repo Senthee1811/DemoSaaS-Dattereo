@@ -22,7 +22,7 @@ export class OpenAIAdapter implements ProviderAdapter {
       providerLabel: 'OpenAI',
       url: `${baseUrl}/chat/completions`,
       headers: { Authorization: `Bearer ${effectiveKey}` },
-      body: buildOpenAiCompatibleBody(req),
+      body: buildOpenAiCompatibleBody(req, { forOpenAi: true }),
       apiKey: effectiveKey,
     });
 

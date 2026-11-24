@@ -6,12 +6,15 @@ import {
   REQUEST_LEDGER_QUEUE,
   PERSIST_REQUEST_JOB,
   PERSIST_REQUEST_JOB_OPTS,
+  PERSIST_ATTEMPT_JOB,
+  AttemptRowJob,
   LedgerRowJob,
 } from './request-ledger.queue';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
-import { PricingService, computeCost } from '@/modules/pricing/pricing.service';
+import { PricingService, computeCost, computeMaxCost } from '@/modules/pricing/pricing.service';
+import { scrubSecrets } from '@/common/scrub-secrets';
 import { ANOMALY_QUEUE, DETECT_ANOMALY_JOB, DETECT_ANOMALY_JOB_OPTS, AnomalyJob } from '@/modules/anomaly/anomaly.queue';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { OpenAIAdapter } from './adapters/openai.adapter';
@@ -45,16 +48,20 @@ export class GatewayService {
     const reqId = `req_${randomUUID()}`;
     const provider = this.pricingService.resolveProvider(req.model);
     const promptText = req.messages.map(m => m.content).join(' ');
-    const promptTokens = this.pricingService.estimateTokens(promptText);
     const maxTokens = req.maxTokens ?? 1000;
     // Snapshot the price row once (throws 400 model_not_priced for an unknown model, before any
     // hold). The reservation and the settlement below use this same row, so an admin editing or
     // deactivating the model mid-request cannot make settlement fail or use a different rate.
     const priceRow = this.pricingService.requireModelPrice(req.model);
-    const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
+    // Hold sizing: a class-aware, provider-scaled prompt estimate (chars/4 under-counted JSON, CJK,
+    // emoji and base64 by 2-3x) plus every output token the request may produce. This is a
+    // reservation, not billing: settlement below uses the provider-reported usage.
+    const promptTokens = this.pricingService.estimateReservationTokens(provider, req.messages);
+    const reservedOutputTokens = this.pricingService.reservedOutputTokens(provider, maxTokens);
+    const maxEstimatedCost = computeMaxCost(priceRow, promptTokens, reservedOutputTokens);
 
-    // 1a. Per-key tokens-per-minute: admit (prompt estimate + max_tokens) before the call
-    const estimatedTokens = promptTokens + maxTokens;
+    // 1a. Per-key tokens-per-minute: admit (prompt estimate + max output) before the call
+    const estimatedTokens = promptTokens + reservedOutputTokens;
     let tpm: { counterKey: string } | null = null;
     if (req.gatewayKey?.rateLimitTpm) {
       const admitted = await this.redisService.reserveTpm(req.gatewayKey.id, estimatedTokens, req.gatewayKey.rateLimitTpm);
@@ -154,6 +161,8 @@ export class GatewayService {
       // Release this request's hold so failures do not drain the project cap
       await this.budgetService.releaseHold(hold);
       await releaseTpm();
+      // Audit the failed call in its own table: no spend, no prompt, no credentials (see recordFailedAttempt)
+      await this.recordFailedAttempt({ reqId, startedAt, req, provider, estimatedCostUsd: maxEstimatedCost, err: upstreamErr });
       throw upstreamErr;
     }
 
@@ -164,14 +173,20 @@ export class GatewayService {
       cachedTokens: adapterResult.cachedPromptTokens,
       cacheWriteTokens: adapterResult.cacheWriteTokens,
     });
-    // Reservation vs reality. Output is bounded by max_tokens at every provider, so actual cost
-    // should fit the hold; if it does not (a provider ignored the limit, or the prompt estimate
-    // was low), settlement still charges the ACTUAL cost and the overrun is made visible.
-    const reservedUsd = hold.amount;
-    const holdExceeded = reservedUsd > 0 && costEstimate > reservedUsd + 1e-9;
+    // Reservation vs reality. Output is bounded by max_tokens (OpenAI/Groq: max_completion_tokens,
+    // which includes reasoning; Anthropic: max_tokens includes thinking), so actual cost should fit
+    // the reservation. If it does not (input under-estimated, or a provider exceeded its limit),
+    // settlement still charges the ACTUAL cost, never the hold, and the overrun is stored on the
+    // ledger row and returned to the caller. So the cap is enforced against RESERVATIONS: spend can
+    // exceed it by the overruns of requests that were in flight (docs/BUDGET_ENFORCEMENT_AND_PROVIDER_CONTRACTS.md).
+    // Measured against what was ASKED to be reserved, so soft-overage mode (nothing held) still counts.
+    const reservedUsd = maxEstimatedCost;
+    const reservationHeld = hold.amount > 0;
+    const overrunUsd = Math.max(0, Number((costEstimate - reservedUsd).toFixed(6)));
+    const holdExceeded = overrunUsd > 0;
     if (holdExceeded) {
       this.logger.warn(
-        `Request ${reqId} cost $${costEstimate.toFixed(6)} exceeded its hold $${reservedUsd.toFixed(6)} (model ${req.model}); actual cost charged.`,
+        `RESERVATION OVERRUN request=${reqId} project=${req.projectId} model=${req.model} cost=$${costEstimate.toFixed(6)} reserved=$${reservedUsd.toFixed(6)} overrun=$${overrunUsd.toFixed(6)}; actual cost charged.`,
       );
     }
 
@@ -189,7 +204,7 @@ export class GatewayService {
     }
 
     // 5. Append-only ledger row — written BEFORE the response is returned
-    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, promptText, budgetGuard.logRequestContent === true, { reservedUsd, holdExceeded });
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, promptText, budgetGuard.logRequestContent === true, { reservedUsd, holdExceeded, overrunUsd, reservationHeld });
 
     // 6. Anomaly scoring runs off the request path as a durable BullMQ job. Fire-and-forget: a
     //    queue problem is logged and can never delay, fail or alter this response or the budget.
@@ -223,7 +238,9 @@ export class GatewayService {
             role: 'assistant',
             content: adapterResult.responseText,
           },
-          finish_reason: 'stop',
+          // The provider's real stop reason in the OpenAI vocabulary ('length' = cut off by max_tokens,
+          // tokens still billed). Raw value in governance.provider_finish_reason.
+          finish_reason: adapterResult.finishReason ?? 'stop',
         },
       ],
       usage: {
@@ -234,20 +251,112 @@ export class GatewayService {
       governance: {
         cost_estimate_usd: costEstimate,
         latency_ms: latencyMs,
-        // Spike scoring is asynchronous now, so it is unknown when the response is sent. The
-        // fields stay for client compatibility; the result lands on the ledger row and alerts.
-        is_anomaly: false,
+        // Spike scoring is asynchronous, so at response time the answer is UNKNOWN, not "no".
+        // `is_anomaly` therefore stays in the payload (clients that read it keep working) but is
+        // null = not evaluated yet; `false` would claim a clean result that does not exist yet.
+        // The outcome (clear | anomaly | failed) is on the ledger row / audit log as `anomaly_status`.
+        is_anomaly: null,
         anomaly_reason: null,
+        anomaly: { status: 'pending' as const, evaluated_at: null, reason: null },
         project_id: req.projectId,
         budget_remaining_usd: Number(budgetRemaining.toFixed(2)),
         fail_closed_active: true,
+        provider_finish_reason: adapterResult.providerFinishReason ?? null,
+        usage_estimated: adapterResult.usageEstimated === true,
+        // What was reserved vs what was charged. The cap is enforced on reservations, so an overrun
+        // (cost > reserved) is possible and is reported here instead of being hidden.
+        reservation: {
+          reserved_usd: reservedUsd,
+          actual_usd: costEstimate,
+          overrun_usd: overrunUsd,
+          held: reservationHeld,
+        },
       },
       headers: {
         'X-SpendGuard-Cost': costEstimate.toFixed(6),
         'X-SpendGuard-Latency': String(latencyMs),
         'X-SpendGuard-Blocked': 'false',
+        'X-SpendGuard-Anomaly-Status': 'pending',
+        'X-SpendGuard-Reservation-Overrun': overrunUsd.toFixed(6),
       },
     };
+  }
+
+  /** Maps a thrown error to the fields stored on a request attempt. Only short, whitelisted values. */
+  private classifyFailure(err: unknown): { errorClass: string; httpStatus: number; upstreamStatus?: number; upstreamCode?: string } {
+    const safeToken = (v: unknown, max: number) => (typeof v === 'string' && /^[A-Za-z0-9_.:-]+$/.test(v) ? v.slice(0, max) : undefined);
+    if (err instanceof HttpException) {
+      const e: any = (err.getResponse() as any)?.error ?? {};
+      return {
+        errorClass: safeToken(e.code, 64) ?? safeToken(e.type, 64) ?? `http_${err.getStatus()}`,
+        httpStatus: err.getStatus(),
+        upstreamStatus: Number.isInteger(e.upstream_status) ? e.upstream_status : undefined,
+        upstreamCode: typeof e.upstream_code === 'string' ? scrubSecrets(e.upstream_code).slice(0, 80) : undefined,
+      };
+    }
+    return { errorClass: 'internal_error', httpStatus: 500 };
+  }
+
+  /**
+   * Writes one `request_attempts` row for a call that failed before producing a billable result.
+   *
+   *  - It is NOT the spend ledger: `estimatedCostUsd` is the worst-case reservation that was just
+   *    released. No spend is recorded for a failure (provider errors carry no confirmed usage).
+   *  - Stored: ids, provider/model, error class and status, durations. Never stored: prompts or
+   *    responses, provider or SpendGuard credentials, request headers, raw provider bodies.
+   *  - Durable like the ledger: if the insert fails it is queued for retry on the same BullMQ queue.
+   *  - Never throws: auditing must not change the error the caller receives.
+   */
+  private async recordFailedAttempt(p: {
+    reqId: string;
+    startedAt: Date;
+    req: GatewayChatRequest;
+    provider: string;
+    estimatedCostUsd: number;
+    err: unknown;
+  }): Promise<void> {
+    try {
+      const cls = this.classifyFailure(p.err);
+      let orgId = p.req.orgId;
+      if (!orgId) {
+        const proj = await this.prisma.project.findUnique({ where: { id: p.req.projectId }, select: { orgId: true } });
+        orgId = proj?.orgId;
+      }
+      if (!orgId) {
+        this.logger.error(`Failed attempt ${p.reqId} not recorded: project ${p.req.projectId} has no organization`);
+        return;
+      }
+      const row: AttemptRowJob = {
+        id: p.reqId,
+        orgId,
+        projectId: p.req.projectId,
+        gatewayKeyId: p.req.gatewayKey?.id ?? null,
+        userId: p.req.userId ?? null,
+        provider: p.provider,
+        model: p.req.model,
+        errorClass: cls.errorClass,
+        httpStatus: cls.httpStatus,
+        upstreamStatus: cls.upstreamStatus ?? null,
+        upstreamCode: cls.upstreamCode ?? null,
+        estimatedCostUsd: p.estimatedCostUsd,
+        durationMs: Math.max(0, Date.now() - p.startedAt.getTime()),
+        createdAt: p.startedAt.toISOString(),
+      };
+      try {
+        await this.prisma.requestAttempt.create({ data: { ...(row as any), createdAt: p.startedAt } });
+      } catch (dbErr: any) {
+        if (dbErr?.code === 'P2002') return; // already recorded (a retry)
+        this.logger.error(`Attempt write failed for ${p.reqId} (${dbErr?.code ?? dbErr?.name}); queued for retry`);
+        try {
+          await this.ledgerQueue.add(PERSIST_ATTEMPT_JOB, row, { ...PERSIST_REQUEST_JOB_OPTS, jobId: `attempt-${p.reqId}` });
+        } catch (queueErr: any) {
+          // Last resort: one structured, secret-free line so the event is still recoverable from logs
+          this.logger.error(`CRITICAL: could not queue attempt retry: ${JSON.stringify({ ...row })}`);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Could not record failed attempt ${p.reqId}: ${err?.message}`);
+    }
   }
 
   private enqueueAnomalyCheck(job: AnomalyJob): void {
@@ -278,6 +387,8 @@ export class GatewayService {
         statusCode: 429,
         isAnomaly: false,
         anomalyReason: budgetGuard.blockReason || 'Hard-block limit active',
+        // A blocked request is never scored for spikes
+        anomalyStatus: 'SKIPPED',
         isBlocked: true,
         // Blocked attempts never store prompt text
         promptPreview: null,
@@ -296,7 +407,7 @@ export class GatewayService {
     latencyMs: number,
     promptText: string,
     logContent: boolean,
-    reservation: { reservedUsd: number; holdExceeded: boolean },
+    reservation: { reservedUsd: number; holdExceeded: boolean; overrunUsd: number; reservationHeld: boolean },
   ) {
     const data = {
         id: reqId,
@@ -313,9 +424,19 @@ export class GatewayService {
         costEstimate,
         latencyMs,
         statusCode: 200,
-        // Set later by the anomaly worker when the request turns out to be a spike
+        // Spike evaluation is asynchronous: the row starts PENDING and the anomaly worker (or the
+        // recovery sweep) moves it to CLEAR / ANOMALY / FAILED. isAnomaly is true only for a confirmed ANOMALY.
         isAnomaly: false,
         anomalyReason: null,
+        anomalyStatus: 'PENDING',
+        // Attribution: only what the key assigned or the client validly declared; NULL otherwise (never guessed)
+        application: req.attribution?.application ?? null,
+        team: req.attribution?.team ?? null,
+        tags: req.attribution?.tags ?? undefined,
+        cachedTokensIn: adapterResult.cachedPromptTokens ?? null,
+        // Reservation accuracy, queryable (also exposed by the audit log and analytics)
+        reservedCostUsd: reservation.reservedUsd,
+        reservationOverrunUsd: reservation.overrunUsd,
         isBlocked: false,
         // Prompt/response text is stored only when the project opted in
         promptPreview: logContent ? promptText.slice(0, 300) : null,
@@ -330,7 +451,10 @@ export class GatewayService {
           reasoningTokens: adapterResult.reasoningTokens ?? null,
           usageEstimated: adapterResult.usageEstimated === true,
           reservedUsd: reservation.reservedUsd,
+          reservationHeld: reservation.reservationHeld,
           holdExceeded: reservation.holdExceeded,
+          providerFinishReason: adapterResult.providerFinishReason ?? null,
+          attribution: req.attribution?.sources ?? null,
         }),
     };
 

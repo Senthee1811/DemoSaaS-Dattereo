@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -92,6 +93,19 @@ export class CreateKeyDto {
   @IsOptional()
   @IsISO8601({ strict: true })
   expiresAt?: string;
+
+  /** Attribution for everything this key spends. Authoritative: a client header can not override it. */
+  @IsOptional()
+  @Trim()
+  @IsString()
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/, { message: 'application: letters, digits and . _ : - only (max 64 characters)' })
+  application?: string;
+
+  @IsOptional()
+  @Trim()
+  @IsString()
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/, { message: 'team: letters, digits and . _ : - only (max 64 characters)' })
+  team?: string;
 }
 
 export class TestProviderKeyDto {

@@ -296,7 +296,7 @@ describe('Anthropic response and usage', () => {
 
   it('no usage block → estimates, flagged as estimated', () => {
     const r = parseAnthropicResponse({ content: [{ type: 'text', text: 'abcd' }] }, estimate, 9);
-    expect(r).toMatchObject({ promptTokens: 9, completionTokens: 1, usageEstimated: true });
+    expect(r).toMatchObject({ promptTokens: 9, completionTokens: estimate('abcd'), usageEstimated: true });
   });
 });
 

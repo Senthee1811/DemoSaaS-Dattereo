@@ -105,11 +105,72 @@ export class AuditService {
         costEstimate: Number(l.costEstimate),
         latencyMs: l.latencyMs,
         statusCode: l.statusCode,
+        // isAnomaly is true only for a CONFIRMED anomaly; anomalyStatus distinguishes
+        // PENDING / CLEAR / ANOMALY / FAILED / SKIPPED
         isAnomaly: l.isAnomaly,
+        anomalyStatus: l.anomalyStatus,
         anomalyReason: l.anomalyReason,
+        reservedCost: l.reservedCostUsd != null ? Number(l.reservedCostUsd) : null,
+        reservationOverrun: Number(l.reservationOverrunUsd ?? 0),
         isBlocked: l.isBlocked,
         ...(canSeeContent(l) ? { promptPreview: l.promptPreview, responsePreview: l.responsePreview } : {}),
         timestamp: l.createdAt,
+      })),
+      total,
+    };
+  }
+
+  /**
+   * Failed gateway calls (provider errors, timeouts, bad provider keys) for the caller's organization.
+   * Never includes spend: `estimatedCostUsd` is the worst-case reservation that was released.
+   * Tenant scope is the row's own `orgId`, so another organization's attempts are unreachable by id.
+   */
+  async listAttempts(params: {
+    orgId: string;
+    projectId?: string;
+    gatewayKeyId?: string;
+    errorClass?: string;
+    provider?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const where: any = { orgId: params.orgId };
+    if (params.projectId) where.projectId = params.projectId;
+    if (params.gatewayKeyId) where.gatewayKeyId = params.gatewayKeyId;
+    if (params.errorClass) where.errorClass = params.errorClass;
+    if (params.provider) where.provider = params.provider.toUpperCase();
+    if (params.startDate || params.endDate) {
+      where.createdAt = {};
+      if (params.startDate) where.createdAt.gte = new Date(params.startDate);
+      if (params.endDate) where.createdAt.lte = new Date(params.endDate);
+    }
+    const [rows, total] = await Promise.all([
+      this.prisma.requestAttempt.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: params.limit || 50,
+        skip: params.offset || 0,
+        include: { project: { select: { name: true } } },
+      }),
+      this.prisma.requestAttempt.count({ where }),
+    ]);
+    return {
+      attempts: rows.map((a) => ({
+        id: a.id,
+        projectId: a.projectId,
+        projectName: a.project?.name,
+        gatewayKeyId: a.gatewayKeyId,
+        provider: a.provider,
+        model: a.model,
+        errorClass: a.errorClass,
+        httpStatus: a.httpStatus,
+        upstreamStatus: a.upstreamStatus,
+        upstreamCode: a.upstreamCode,
+        estimatedCostUsd: Number(a.estimatedCostUsd),
+        durationMs: a.durationMs,
+        timestamp: a.createdAt,
       })),
       total,
     };
@@ -141,6 +202,10 @@ export class AuditService {
       'Is Anomaly',
       'Anomaly Reason',
       'Is Hard Blocked',
+      // Appended (existing column positions are unchanged): "Is Anomaly" is YES only for a confirmed anomaly
+      'Anomaly Status',
+      'Reserved (USD)',
+      'Reservation Overrun (USD)',
     ];
 
     const escapeCsv = (val: any) => {
@@ -192,6 +257,9 @@ export class AuditService {
             r.isAnomaly ? 'YES' : 'NO',
             escapeCsv(r.anomalyReason || ''),
             r.isBlocked ? 'YES' : 'NO',
+            escapeCsv(r.anomalyStatus),
+            r.reservedCostUsd != null ? Number(r.reservedCostUsd).toFixed(6) : '',
+            Number(r.reservationOverrunUsd ?? 0).toFixed(6),
           ].join(','),
         );
       }

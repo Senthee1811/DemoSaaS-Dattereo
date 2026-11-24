@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sidebar, NavTab } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { OverviewView } from '@/components/dashboard/OverviewView';
+import { InsightsView } from '@/components/insights/InsightsView';
 import { ProjectsView } from '@/components/projects/ProjectsView';
 import { KeyVaultView } from '@/components/keys/KeyVaultView';
 import { PlaygroundView } from '@/components/playground/PlaygroundView';
@@ -250,6 +251,8 @@ export default function AppDashboard() {
                 onNavigateToKeys={() => setCurrentTab('keys')}
               />
             )}
+
+            {currentTab === 'insights' && <InsightsView />}
 
             {currentTab === 'projects' && (
               <ProjectsView

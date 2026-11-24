@@ -1,0 +1,17 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture). Shape from the OpenAI Chat Completions reference as read 2026-11-24: usage.prompt_tokens_details.cached_tokens (subset of prompt_tokens), usage.completion_tokens_details.reasoning_tokens (subset of completion_tokens), finish_reason in {stop,length,tool_calls,content_filter,function_call}. Token values are illustrative.",
+  "id": "chatcmpl-fixture-1",
+  "object": "chat.completion",
+  "created": 1790000000,
+  "model": "gpt-4o",
+  "choices": [
+    { "index": 0, "message": { "role": "assistant", "content": "Rome is the capital of Italy." }, "finish_reason": "stop" }
+  ],
+  "usage": {
+    "prompt_tokens": 2006,
+    "completion_tokens": 300,
+    "total_tokens": 2306,
+    "prompt_tokens_details": { "cached_tokens": 1920, "audio_tokens": 0 },
+    "completion_tokens_details": { "reasoning_tokens": 256, "audio_tokens": 0, "accepted_prediction_tokens": 0, "rejected_prediction_tokens": 0 }
+  }
+}

@@ -85,7 +85,9 @@ describe('8.1 Groq adapter: only the tenant key, never the platform key', () => 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, any];
     expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
     expect(init.headers.Authorization).toBe('Bearer gsk_tenant_key');
-    expect(JSON.parse(init.body)).toMatchObject({ model: 'openai/gpt-oss-120b', max_tokens: 50 });
+    // max_tokens is deprecated at Groq; max_completion_tokens is the documented limit (see docs/BUDGET_ENFORCEMENT_AND_PROVIDER_CONTRACTS.md)
+    expect(JSON.parse(init.body)).toMatchObject({ model: 'openai/gpt-oss-120b', max_completion_tokens: 50 });
+    expect(JSON.parse(init.body)).not.toHaveProperty('max_tokens');
     expect(out).toMatchObject({ responseText: 'hi from groq', promptTokens: 12, completionTokens: 5, totalTokens: 17, isSimulated: false });
   });
 

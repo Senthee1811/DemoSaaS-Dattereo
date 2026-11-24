@@ -21,6 +21,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { TeamModule } from './modules/team/team.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './health/health.module';
+import { InsightsModule } from './modules/insights/insights.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { HealthModule } from './health/health.module';
     AnalyticsModule,
     TeamModule,
     BillingModule,
+    NotificationsModule,
+    InsightsModule,
     HealthModule,
   ],
   providers: [

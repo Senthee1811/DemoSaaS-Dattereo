@@ -1,0 +1,14 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture). Shape from the Gemini generateContent reference and thinking guide as read 2026-11-24: usageMetadata.promptTokenCount INCLUDES cachedContentTokenCount; thoughtsTokenCount is reported separately and is BILLED AS OUTPUT; totalTokenCount = prompt + candidates + thoughts. Whether candidatesTokenCount excludes thoughts is inferred from totalTokenCount listing them separately (the reference does not say so explicitly). Token values are illustrative.",
+  "candidates": [
+    { "content": { "role": "model", "parts": [ { "text": "Rome." } ] }, "finishReason": "STOP", "index": 0 }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 5000,
+    "cachedContentTokenCount": 4000,
+    "candidatesTokenCount": 3,
+    "thoughtsTokenCount": 312,
+    "totalTokenCount": 5315
+  },
+  "modelVersion": "gemini-3.8-flash"
+}

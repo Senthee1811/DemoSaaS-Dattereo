@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { AnomalyService } from './anomaly.service';
 import { AnomalyProcessor } from './anomaly.processor';
+import { AnomalySweepScheduler } from './anomaly-sweep.scheduler';
 import { ANOMALY_QUEUE } from './anomaly.queue';
 
 @Global()
@@ -20,7 +21,7 @@ import { ANOMALY_QUEUE } from './anomaly.queue';
       }),
     }),
   ],
-  providers: [AnomalyService, AnomalyProcessor],
+  providers: [AnomalyService, AnomalyProcessor, AnomalySweepScheduler],
   exports: [AnomalyService],
 })
 export class AnomalyModule {}

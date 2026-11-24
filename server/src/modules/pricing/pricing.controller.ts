@@ -45,6 +45,7 @@ export class PricingController {
       provider: 'OPENAI' | 'ANTHROPIC' | 'GEMINI' | 'GROQ';
       inputPricePerMillion: number;
       outputPricePerMillion: number;
+      cachedInputPrice?: number;
       displayName?: string;
       contextWindow?: number;
     },

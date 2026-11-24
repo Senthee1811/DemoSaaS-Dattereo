@@ -47,6 +47,11 @@ export class EmailService {
     });
   }
 
+  /** A notification email (budget alerts, recommendations). Same never-throws contract as the others; false = not sent. */
+  async sendNotification(to: string, subject: string, body: { html: string; text: string }): Promise<boolean> {
+    return this.send(to, subject, '(notification)', body);
+  }
+
   private async send(
     to: string,
     subject: string,

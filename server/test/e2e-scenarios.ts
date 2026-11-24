@@ -690,21 +690,34 @@ async function phase1(A: string) {
   // ── P1-4. Per-request budget holds ───────────────────────────────────────
   console.log('\n▶ Phase 1 · budget holds: per request, cannot leak');
   {
-    // (a) 30 parallel requests, each exactly $0.007 worst case AND actual
-    //     (gpt-4o: 1200 prompt tokens ≈ 4800 chars + max_tokens 400; mock bills 1200/400).
-    const proj = await newProject(A, 'Concurrency', 0.05);
+    // (a) 30 parallel requests against a cap that fits exactly 7 reservations.
+    //     The mock bills 1200 prompt / 400 completion tokens (= $0.007 on gpt-4o). The reservation is the
+    //     gateway's own worst-case estimate, which it REPORTS, so the cap is sized from a probe instead of
+    //     hard-coding an estimator's arithmetic. Prose (not 'xxxx...') is used: a long unbroken
+    //     alphanumeric run is deliberately treated as high-entropy (base64/hex) and reserved much higher.
+    const prose = 'lorem ipsum dolor sit amet '.repeat(160); // ~4300 chars, estimated above the mock's 1200 tokens
+    const body = { model: 'gpt-4o', messages: [{ role: 'user', content: prose }], max_tokens: 400 };
+    const probeProj = await newProject(A, 'Concurrency Probe', 10);
+    await addProviderKey(A, probeProj.id);
+    const probeKey = await newGatewayKey(A, probeProj.id);
+    const probe = await api('POST', '/v1/chat/completions', { token: probeKey.secret, body });
+    const reserved: number = probe.body?.governance?.reservation?.reserved_usd;
+    const actual: number = probe.body?.governance?.cost_estimate_usd;
+    check('probe: the reservation covers the actual cost (no overrun) and is reported', probe.status === 200 && reserved >= actual && probe.body.governance.reservation.overrun_usd === 0, probe.body?.governance);
+
+    const cap = Number((reserved * 7.5).toFixed(4)); // room for exactly 7 reservations, not 8
+    const proj = await newProject(A, 'Concurrency', cap);
     await addProviderKey(A, proj.id);
     const key = await newGatewayKey(A, proj.id);
-    const body = { model: 'gpt-4o', messages: [{ role: 'user', content: 'x'.repeat(4800) }], max_tokens: 400 };
     const results = await Promise.all(
       Array.from({ length: 30 }, () => api('POST', '/v1/chat/completions', { token: key.secret, body })),
     );
     const ok = results.filter((r) => r.status === 200).length;
     const budget429 = results.filter((r) => r.status === 429 && r.body.error?.code === 'budget_exceeded').length;
-    check('30 parallel $0.007 requests on a $0.05 cap → exactly 7 succeed', ok === 7 && budget429 === 23, { ok, budget429, statuses: results.map((r) => r.status) });
+    check(`30 parallel requests on a cap of 7.5 reservations ($${cap}) → exactly 7 succeed`, ok === 7 && budget429 === 23, { ok, budget429, statuses: results.map((r) => r.status) });
     await new Promise((res) => setTimeout(res, 800));
     const listed = (await api('GET', '/api/v1/projects', { token: A })).body.projects.find((p: any) => p.id === proj.id);
-    check('concurrent spend stays ≤ cap', Number(listed?.currentMonthlySpend) <= 0.05 + 1e-9, listed?.currentMonthlySpend);
+    check('concurrent spend stays ≤ cap', Number(listed?.currentMonthlySpend) <= cap + 1e-9, { spend: listed?.currentMonthlySpend, cap });
   }
 
   // (b) and (c) drive the real Lua scripts against the suite's Redis.

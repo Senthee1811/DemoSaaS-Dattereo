@@ -18,6 +18,7 @@ import { RedisService } from '@/modules/redis/redis.service';
 import { AuthService } from '@/modules/auth/auth.service';
 import { Public } from '@/modules/auth/decorators/public.decorator';
 import { ChatMessage, GatewayChatRequest } from './adapters/provider.adapter.interface';
+import { resolveAttribution } from './attribution';
 
 // An interface (not a class) on purpose: the global ValidationPipe runs with
 // `whitelist: true`, which strips every property of an undecorated DTO class.
@@ -125,13 +126,17 @@ export class GatewayController {
     }
 
     let resolvedProjectId: string;
+    let resolvedOrgId: string | undefined;
     let actingUserId: string | undefined;
     let gatewayKeyLimits: GatewayChatRequest['gatewayKey'];
+    let keyAssignment: { application: string | null; team: string | null } = { application: null, team: null };
 
     if (rawKey.startsWith('sg_')) {
       // ---- 1. SpendGuard virtual gateway key ----
       const gwKey = await this.prisma.gatewayApiKey.findUnique({
         where: { hashedSecret: this.encryptionService.hashToken(rawKey) },
+        // The owning org travels with the request so failed-call audit rows need no extra lookup
+        include: { project: { select: { orgId: true } } },
       });
 
       if (!gwKey) throw authError('Invalid SpendGuard Gateway API key.');
@@ -173,6 +178,8 @@ export class GatewayController {
 
       // The key — not any client-supplied header/body field — decides the project
       resolvedProjectId = gwKey.projectId;
+      resolvedOrgId = (gwKey as any).project?.orgId;
+      keyAssignment = { application: (gwKey as any).application ?? null, team: (gwKey as any).team ?? null };
       gatewayKeyLimits = {
         id: gwKey.id,
         budgetMonthly: gwKey.budgetMonthly != null ? Number(gwKey.budgetMonthly) : null,
@@ -207,6 +214,7 @@ export class GatewayController {
       }
 
       resolvedProjectId = project.id;
+      resolvedOrgId = user.orgId;
       actingUserId = user.id;
     }
 
@@ -219,8 +227,18 @@ export class GatewayController {
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const clientSdk = (req.headers['user-agent'] as string) || 'spendguard-sdk';
 
+    // Attribution: the key's assignment is authoritative; headers only fill what the key leaves unset
+    const attribution = resolveAttribution({
+      keyApplication: keyAssignment.application,
+      keyTeam: keyAssignment.team,
+      headerApplication: req.headers['x-spendguard-application'],
+      headerTeam: req.headers['x-spendguard-team'],
+      headerTags: req.headers['x-spendguard-tags'],
+    });
+
     const result = await this.gatewayService.processChatCompletion({
       projectId: resolvedProjectId,
+      orgId: resolvedOrgId,
       // userId is only trusted from an authenticated session, never from the body
       userId: actingUserId,
       model: body.model,
@@ -231,7 +249,9 @@ export class GatewayController {
       clientIp,
       clientSdk,
       gatewayKey: gatewayKeyLimits,
+      attribution,
     });
+    if (attribution.ignored.length) res.setHeader('X-SpendGuard-Attribution-Ignored', attribution.ignored.join('; ').slice(0, 500));
 
     const { headers, ...payload } = result;
     for (const [k, v] of Object.entries(headers)) {

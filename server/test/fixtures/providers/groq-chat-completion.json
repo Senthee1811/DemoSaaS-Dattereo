@@ -1,0 +1,17 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture). Groq docs as read 2026-11-24: its chat completions example shows usage with queue_time/prompt_time/completion_time and finish_reason 'stop'; its OpenAI-compat page lists unsupported fields (logprobs, logit_bias, top_logprobs, messages[].name). Groq's chat reference does not document prompt_tokens_details.cached_tokens; its prompt-caching page does (subset of prompt_tokens, 50% discount). Values illustrative.",
+  "id": "chatcmpl-fixture-groq",
+  "object": "chat.completion",
+  "model": "openai/gpt-oss-120b",
+  "choices": [ { "index": 0, "message": { "role": "assistant", "content": "Rome." }, "finish_reason": "stop" } ],
+  "usage": {
+    "queue_time": 0.05,
+    "prompt_tokens": 4641,
+    "prompt_time": 0.01,
+    "completion_tokens": 20,
+    "completion_time": 0.04,
+    "total_tokens": 4661,
+    "total_time": 0.05,
+    "prompt_tokens_details": { "cached_tokens": 4608 }
+  }
+}

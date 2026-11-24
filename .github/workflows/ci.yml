@@ -122,6 +122,12 @@ jobs:
           GROQ_API_KEY: gsk_platform_should_never_be_used
           # Leaves the per-email auth limit as the one under test
           AUTH_IP_RPM: '30'
+          # Fast anomaly recovery sweep so the reliability suite can observe a lost evaluation being recovered
+          ANOMALY_SWEEP_INTERVAL_MS: '3000'
+          ANOMALY_SWEEP_MIN_AGE_MS: '1000'
+          # The insights suite receives signed webhooks on a local port; production keeps both of these OFF
+          NOTIFICATION_ALLOW_HTTP: 'true'
+          NOTIFICATION_ALLOW_PRIVATE_NETWORKS: 'true'
         run: |
           nohup node dist/src/main.js > ../backend.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://localhost:4000/health && exit 0; sleep 1; done
@@ -135,6 +141,20 @@ jobs:
           E2E_REDIS_HOST: localhost
           E2E_REDIS_PORT: '6379'
         run: npm run test:e2e
+
+      - name: E2E reliability (failed-call audit, anomaly worker, sweep recovery)
+        working-directory: server
+        env:
+          E2E_BASE_URL: http://localhost:4000
+          E2E_MOCK_URL: http://localhost:4555
+        run: npm run test:e2e:reliability
+
+      - name: E2E financial intelligence (attribution, forecast, investigation, recommendations, signed webhooks)
+        working-directory: server
+        env:
+          E2E_BASE_URL: http://localhost:4000
+          E2E_MOCK_URL: http://localhost:4555
+        run: npm run test:e2e:insights
 
       - name: Redis outage recovery
         working-directory: server

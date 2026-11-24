@@ -14,6 +14,11 @@ export interface ModelPricingConfig {
   providerStatus?: string | null;
   providerCheckedAt?: Date | null;
   retiresAt?: Date | null;
+  /**
+   * `updated_at` of the table row this entry was built from. Instances compare it so an older
+   * write can never overwrite a newer one in memory. Absent for built-in catalog entries.
+   */
+  rowUpdatedAt?: Date;
 }
 
 /**

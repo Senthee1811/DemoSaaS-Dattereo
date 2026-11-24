@@ -3,6 +3,7 @@ import { ProviderAdapter, GatewayChatRequest, AdapterExecutionResult } from './p
 import { PricingService } from '@/modules/pricing/pricing.service';
 import { resolveProviderKey } from './provider-key.util';
 import { postProviderJson, usageInt, invalidMessagesError } from './provider-http';
+import { finishFromGemini } from './finish-reason';
 
 /**
  * Gemini generateContent body.
@@ -75,6 +76,7 @@ export function parseGeminiResponse(
     cachedPromptTokens: cached !== undefined ? Math.min(cached, promptTokens) : undefined,
     reasoningTokens: thoughts,
     usageEstimated: !u || prompt === undefined,
+    ...finishFromGemini(data?.candidates?.[0]?.finishReason, !!data?.promptFeedback?.blockReason && !data?.candidates?.length),
   };
 }
 

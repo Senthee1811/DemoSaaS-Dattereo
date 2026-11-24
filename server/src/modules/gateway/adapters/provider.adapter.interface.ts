@@ -5,6 +5,8 @@ export interface ChatMessage {
 
 export interface GatewayChatRequest {
   projectId: string;
+  /** Organization that owns the project (for audit rows). Resolved from the project when absent. */
+  orgId?: string;
   userId?: string;
   model: string;
   messages: ChatMessage[];
@@ -13,6 +15,13 @@ export interface GatewayChatRequest {
   stream?: boolean;
   clientIp?: string;
   clientSdk?: string;
+  /** Spend attribution resolved by the controller (key-assigned values win over client headers). */
+  attribution?: {
+    application: string | null;
+    team: string | null;
+    tags: Record<string, string> | null;
+    sources: { application: 'key' | 'header' | null; team: 'key' | 'header' | null };
+  };
   /** Present when the request authenticated with a gateway key: that key's own limits. */
   gatewayKey?: {
     id: string;
@@ -40,6 +49,10 @@ export interface AdapterExecutionResult {
   reasoningTokens?: number;
   /** True when the provider returned no usage block and token counts are SpendGuard estimates. */
   usageEstimated?: boolean;
+  /** Stop reason in the OpenAI vocabulary (stop | length | tool_calls | content_filter). */
+  finishReason?: 'stop' | 'length' | 'tool_calls' | 'content_filter';
+  /** The provider's own stop reason, verbatim. */
+  providerFinishReason?: string | null;
 }
 
 export interface ProviderAdapter {

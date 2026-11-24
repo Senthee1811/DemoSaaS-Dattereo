@@ -3,6 +3,7 @@ import { ProviderAdapter, GatewayChatRequest, AdapterExecutionResult, ChatMessag
 import { PricingService } from '@/modules/pricing/pricing.service';
 import { resolveProviderKey } from './provider-key.util';
 import { postProviderJson, usageInt, invalidMessagesError } from './provider-http';
+import { finishFromAnthropic } from './finish-reason';
 
 /**
  * Anthropic's Messages API has no "system" role inside `messages`: instructions go in the
@@ -77,6 +78,7 @@ export function parseAnthropicResponse(
     cachedPromptTokens: cacheRead > 0 ? cacheRead : undefined,
     cacheWriteTokens: write5m + write1h > 0 ? { fiveMinute: write5m, oneHour: write1h } : undefined,
     usageEstimated: input === undefined || output === undefined,
+    ...finishFromAnthropic(data?.stop_reason),
   };
 }
 

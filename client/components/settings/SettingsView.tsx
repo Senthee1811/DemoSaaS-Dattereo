@@ -24,6 +24,7 @@ import { SlackAlertSettings } from './SlackAlertSettings';
 import { useEscapeToClose, InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { SecurityWorkspace } from './security/SecurityWorkspace';
+import { NotificationChannels } from './NotificationChannels';
 import { Tip } from '@/components/ui/tooltip';
 
 interface AccountStatus {
@@ -357,20 +358,16 @@ export function SettingsView({ initialTab = 'account', onStartTour, onNavigateTo
             </h2>
             <p className="text-xs text-fg-secondary">
               Budget warnings, hard blocks and cost spikes always appear in the in-app Alerts feed.
-              Add a Slack webhook to also post them to a channel.
+              Add a per-project Slack webhook below, or organization channels for Slack, email and signed webhooks.
             </p>
           </div>
 
           <div className="space-y-3 max-w-xl">
             <SlackAlertSettings />
+          </div>
 
-            <div className="p-4 rounded-field bg-surface-subtle border border-line-strong flex items-center justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-fg">Email Dispatch</p>
-                <p className="text-label text-fg-muted">Email budget warnings and hard-block notifications</p>
-              </div>
-              <span className="text-label text-fg-muted font-semibold">Not configured — coming soon</span>
-            </div>
+          <div className="pt-5 border-t border-line">
+            <NotificationChannels />
           </div>
         </div>
       )}

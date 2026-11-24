@@ -23,6 +23,8 @@ export interface GenerateGatewayKeyDto {
   allowedModels?: string[];
   budgetMonthly?: number;
   expiresAt?: string;
+  application?: string;
+  team?: string;
 }
 
 @Injectable()
@@ -74,6 +76,8 @@ export class KeysService {
         allowedProviders: gk.allowedProviders ? JSON.parse(gk.allowedProviders) : null,
         allowedModels: gk.allowedModels ? JSON.parse(gk.allowedModels) : null,
         budgetMonthly: gk.budgetMonthly ? Number(gk.budgetMonthly) : null,
+        application: gk.application,
+        team: gk.team,
         expiresAt: gk.expiresAt,
         rateLimitRpm: gk.rateLimitRpm,
         rateLimitTpm: gk.rateLimitTpm,
@@ -142,6 +146,8 @@ export class KeysService {
         allowedModels: dto.allowedModels ? JSON.stringify(dto.allowedModels) : null,
         budgetMonthly: dto.budgetMonthly ? dto.budgetMonthly : null,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        application: dto.application ? dto.application.trim().toLowerCase() : null,
+        team: dto.team ? dto.team.trim().toLowerCase() : null,
         rateLimitRpm: dto.rateLimitRpm || 1200,
         rateLimitTpm: dto.rateLimitTpm || 100000,
         isActive: true,

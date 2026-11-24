@@ -1,0 +1,20 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture). Shape from the Claude Messages API, prompt-caching and handling-stop-reasons pages as read 2026-11-24: content[] may start with a thinking block; usage.input_tokens EXCLUDES cache reads/writes; total input = input_tokens + cache_read_input_tokens + cache_creation_input_tokens; output_tokens includes thinking; stop_reason in {end_turn,max_tokens,stop_sequence,tool_use,pause_turn,refusal,model_context_window_exceeded}. Token values are illustrative.",
+  "id": "msg_fixture_1",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    { "type": "thinking", "thinking": "The user asks for the capital of Italy.", "signature": "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLsky..." },
+    { "type": "text", "text": "Rome." }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 50,
+    "cache_creation_input_tokens": 2000,
+    "cache_read_input_tokens": 100000,
+    "cache_creation": { "ephemeral_5m_input_tokens": 1500, "ephemeral_1h_input_tokens": 500 },
+    "output_tokens": 120
+  }
+}

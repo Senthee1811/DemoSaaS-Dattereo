@@ -1,0 +1,8 @@
+{
+  "_provenance": "Documentation-derived fixture (NOT a live capture): finish_reason 'length' means the max token limit was reached (OpenAI reference, 2026-11-24). The truncated answer is still billed.",
+  "id": "chatcmpl-fixture-2",
+  "object": "chat.completion",
+  "model": "gpt-4o",
+  "choices": [ { "index": 0, "message": { "role": "assistant", "content": "The history of the Roman Empire begins with" }, "finish_reason": "length" } ],
+  "usage": { "prompt_tokens": 40, "completion_tokens": 8, "total_tokens": 48 }
+}

@@ -118,9 +118,10 @@ describe('5. Ledger row is written before the response', () => {
     };
     const adapter = { execute: jest.fn(async () => ({ responseText: 'hi', promptTokens: 1200, completionTokens: 400, totalTokens: 1600, isSimulated: false })) };
     const queue = { add: jest.fn(async () => ({})) };
-    const anomaly = { detectSpike: () => ({ isAnomaly: false, score: 0 }) };
+    // Anomaly scoring is a separate durable queue now (it used to be a synchronous service call)
+    const anomalyQueue = { add: jest.fn(async () => ({})) };
     const encryption = { decryptApiKey: () => 'sk-tenant' };
-    const svc = new GatewayService(prisma, {}, budget, pricing, anomaly, encryption, adapter, adapter, adapter, adapter, queue);
+    const svc = new GatewayService(prisma, {}, budget, pricing, encryption, adapter, adapter, adapter, adapter, queue, anomalyQueue);
     return { svc, budget, queue };
   }
   const request = { projectId: 'p1', model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'secret prompt' }], maxTokens: 50 };

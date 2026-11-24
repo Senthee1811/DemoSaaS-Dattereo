@@ -11,8 +11,8 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { RedisService } from '@/modules/redis/redis.service';
 import { BudgetService } from '@/modules/budget/budget.service';
-import { PricingService } from '@/modules/pricing/pricing.service';
-import { AnomalyService } from '@/modules/anomaly/anomaly.service';
+import { PricingService, computeCost } from '@/modules/pricing/pricing.service';
+import { ANOMALY_QUEUE, DETECT_ANOMALY_JOB, DETECT_ANOMALY_JOB_OPTS, AnomalyJob } from '@/modules/anomaly/anomaly.queue';
 import { EncryptionService } from '@/modules/encryption/encryption.service';
 import { OpenAIAdapter } from './adapters/openai.adapter';
 import { AnthropicAdapter } from './adapters/anthropic.adapter';
@@ -29,13 +29,13 @@ export class GatewayService {
     private readonly redisService: RedisService,
     private readonly budgetService: BudgetService,
     private readonly pricingService: PricingService,
-    private readonly anomalyService: AnomalyService,
     private readonly encryptionService: EncryptionService,
     private readonly openAIAdapter: OpenAIAdapter,
     private readonly anthropicAdapter: AnthropicAdapter,
     private readonly geminiAdapter: GeminiAdapter,
     private readonly groqAdapter: GroqAdapter,
     @InjectQueue(REQUEST_LEDGER_QUEUE) private readonly ledgerQueue: Queue,
+    @InjectQueue(ANOMALY_QUEUE) private readonly anomalyQueue: Queue,
   ) {}
 
   async processChatCompletion(req: GatewayChatRequest) {
@@ -47,6 +47,10 @@ export class GatewayService {
     const promptText = req.messages.map(m => m.content).join(' ');
     const promptTokens = this.pricingService.estimateTokens(promptText);
     const maxTokens = req.maxTokens ?? 1000;
+    // Snapshot the price row once (throws 400 model_not_priced for an unknown model, before any
+    // hold). The reservation and the settlement below use this same row, so an admin editing or
+    // deactivating the model mid-request cannot make settlement fail or use a different rate.
+    const priceRow = this.pricingService.requireModelPrice(req.model);
     const maxEstimatedCost = this.pricingService.estimateMaxCost(req.model, promptTokens, maxTokens);
 
     // 1a. Per-key tokens-per-minute: admit (prompt estimate + max_tokens) before the call
@@ -154,11 +158,22 @@ export class GatewayService {
     }
 
     const latencyMs = Date.now() - startTime;
-    const costEstimate = this.pricingService.calculateCost(
-      req.model,
-      adapterResult.promptTokens,
-      adapterResult.completionTokens,
-    );
+    // Actual cost from provider-reported usage: cached input at the cached rate, reasoning tokens
+    // already inside completionTokens (adapters normalise this).
+    const costEstimate = computeCost(priceRow, adapterResult.promptTokens, adapterResult.completionTokens, {
+      cachedTokens: adapterResult.cachedPromptTokens,
+      cacheWriteTokens: adapterResult.cacheWriteTokens,
+    });
+    // Reservation vs reality. Output is bounded by max_tokens at every provider, so actual cost
+    // should fit the hold; if it does not (a provider ignored the limit, or the prompt estimate
+    // was low), settlement still charges the ACTUAL cost and the overrun is made visible.
+    const reservedUsd = hold.amount;
+    const holdExceeded = reservedUsd > 0 && costEstimate > reservedUsd + 1e-9;
+    if (holdExceeded) {
+      this.logger.warn(
+        `Request ${reqId} cost $${costEstimate.toFixed(6)} exceeded its hold $${reservedUsd.toFixed(6)} (model ${req.model}); actual cost charged.`,
+      );
+    }
 
     // 4. Reconcile atomic reservation with verified actual usage
     // Marked pending BEFORE settling, so reconciliation can never lower spend
@@ -173,35 +188,19 @@ export class GatewayService {
       this.logger.error(`Spend settlement failed for request ${reqId} (project ${req.projectId}); reconciliation job will correct it.`);
     }
 
-    // 5. Anomaly Spike Detection
-    const recentRequests = await this.prisma.request.findMany({
-      where: { projectId: req.projectId, isBlocked: false },
-      orderBy: { createdAt: 'desc' },
-      take: 40,
-      select: { costEstimate: true, totalTokens: true },
-    });
+    // 5. Append-only ledger row — written BEFORE the response is returned
+    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, promptText, budgetGuard.logRequestContent === true, { reservedUsd, holdExceeded });
 
-    const anomalyResult = this.anomalyService.detectSpike(
+    // 6. Anomaly scoring runs off the request path as a durable BullMQ job. Fire-and-forget: a
+    //    queue problem is logged and can never delay, fail or alter this response or the budget.
+    this.enqueueAnomalyCheck({
+      requestId: reqId,
+      projectId: req.projectId,
+      model: req.model,
       costEstimate,
-      adapterResult.totalTokens,
-      recentRequests.map(r => ({
-        costEstimate: Number(r.costEstimate),
-        totalTokens: r.totalTokens,
-      })),
-    );
-
-    if (anomalyResult.isAnomaly) {
-      await this.budgetService.recordAlert({
-        projectId: req.projectId,
-        thresholdType: 'ANOMALY_DETECTED',
-        thresholdValue: costEstimate,
-        title: `⚡ Spend Spike Detected: ${req.model}`,
-        message: anomalyResult.reason || `Abnormal token volume on ${req.model}`,
-      });
-    }
-
-    // 6. Append-only ledger row — written BEFORE the response is returned
-    await this.logSuccessfulRequest(reqId, startedAt, req, provider, adapterResult, costEstimate, latencyMs, anomalyResult, promptText, budgetGuard.logRequestContent === true);
+      totalTokens: adapterResult.totalTokens,
+      createdAt: startedAt.toISOString(),
+    });
 
     // 7. Post-Request Threshold Check (80% soft warning)
     const updatedSpend = budgetGuard.currentMonthlySpend + costEstimate;
@@ -235,8 +234,10 @@ export class GatewayService {
       governance: {
         cost_estimate_usd: costEstimate,
         latency_ms: latencyMs,
-        is_anomaly: anomalyResult.isAnomaly,
-        anomaly_reason: anomalyResult.reason,
+        // Spike scoring is asynchronous now, so it is unknown when the response is sent. The
+        // fields stay for client compatibility; the result lands on the ledger row and alerts.
+        is_anomaly: false,
+        anomaly_reason: null,
         project_id: req.projectId,
         budget_remaining_usd: Number(budgetRemaining.toFixed(2)),
         fail_closed_active: true,
@@ -247,6 +248,17 @@ export class GatewayService {
         'X-SpendGuard-Blocked': 'false',
       },
     };
+  }
+
+  private enqueueAnomalyCheck(job: AnomalyJob): void {
+    try {
+      // jobId = request id: one request can never be queued (or alerted on) twice
+      this.anomalyQueue
+        .add(DETECT_ANOMALY_JOB, job, { ...DETECT_ANOMALY_JOB_OPTS, jobId: job.requestId })
+        .catch((err: any) => this.logger.warn(`Could not queue anomaly check for ${job.requestId}: ${err?.message}`));
+    } catch (err: any) {
+      this.logger.warn(`Could not queue anomaly check for ${job.requestId}: ${err?.message}`);
+    }
   }
 
   private async logBlockedRequest(reqId: string, req: GatewayChatRequest, provider: string, budgetGuard: any) {
@@ -282,9 +294,9 @@ export class GatewayService {
     adapterResult: any,
     costEstimate: number,
     latencyMs: number,
-    anomalyResult: any,
     promptText: string,
     logContent: boolean,
+    reservation: { reservedUsd: number; holdExceeded: boolean },
   ) {
     const data = {
         id: reqId,
@@ -301,8 +313,9 @@ export class GatewayService {
         costEstimate,
         latencyMs,
         statusCode: 200,
-        isAnomaly: anomalyResult.isAnomaly,
-        anomalyReason: anomalyResult.reason || null,
+        // Set later by the anomaly worker when the request turns out to be a spike
+        isAnomaly: false,
+        anomalyReason: null,
         isBlocked: false,
         // Prompt/response text is stored only when the project opted in
         promptPreview: logContent ? promptText.slice(0, 300) : null,
@@ -311,6 +324,13 @@ export class GatewayService {
           clientIp: req.clientIp || '127.0.0.1',
           clientSdk: req.clientSdk || 'spendguard-nestjs-gateway/v2.0',
           isSimulated: adapterResult.isSimulated,
+          // How the cost was derived, so it can be audited later
+          cachedTokensIn: adapterResult.cachedPromptTokens ?? 0,
+          cacheWriteTokens: adapterResult.cacheWriteTokens ?? null,
+          reasoningTokens: adapterResult.reasoningTokens ?? null,
+          usageEstimated: adapterResult.usageEstimated === true,
+          reservedUsd: reservation.reservedUsd,
+          holdExceeded: reservation.holdExceeded,
         }),
     };
 

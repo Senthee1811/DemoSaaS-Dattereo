@@ -99,13 +99,19 @@ describe('8.1 Groq adapter: only the tenant key, never the platform key', () => 
 });
 
 describe('8.3 Groq limits are Groq\'s own: an upstream 429 passes through as a 429', () => {
-  it('429 from Groq → HttpException 429 with Groq\'s payload (so the gateway releases the hold)', async () => {
+  it('429 from Groq → HttpException 429 in the normalized upstream format, keeping Groq\'s own code (so the gateway releases the hold)', async () => {
     global.fetch = jest.fn(async () =>
       new Response(JSON.stringify({ error: { message: 'Rate limit reached for model on tokens per minute (TPM)', type: 'tokens', code: 'rate_limit_exceeded' } }), { status: 429 }),
     ) as any;
     const e = await errorOf(() => adapter.execute(req(), 'gsk_tenant_key'));
     expect(e.getStatus()).toBe(429);
-    expect((e.getResponse() as any).error.code).toBe('rate_limit_exceeded');
+    // SpendGuard's code says whose limit it was; Groq's own code is kept as upstream_code
+    expect((e.getResponse() as any).error).toMatchObject({
+      type: 'upstream_provider_error',
+      code: 'upstream_rate_limited',
+      upstream_provider: 'Groq',
+      upstream_code: 'rate_limit_exceeded',
+    });
   });
 
   it('a network failure is a 504, not a crash', async () => {

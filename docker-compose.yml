@@ -1,6 +1,7 @@
+
 services:
   # ----------------------------------------------------------------------------
-  # PostgreSQL 16 Relational Database (Persistent Multi-Tenant Store & Ledger)
+  # PostgreSQL 16 Relational Database
   # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -21,7 +22,7 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # Redis 7 In-Memory Store (Atomic Lua Budgets, Cache, Rate Limits)
+  # Redis 7 In-Memory Store
   # ----------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
@@ -39,7 +40,7 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # NestJS 10 Core Platform (AI Gateway, Budget Engine, Billing & Anomaly)
+  # NestJS Backend
   # ----------------------------------------------------------------------------
   backend:
     build:
@@ -47,50 +48,62 @@ services:
       dockerfile: Dockerfile
     container_name: spendguard-backend
     restart: unless-stopped
+
+    # Load backend secrets and configuration from server/.env
+    env_file:
+      - ./server/.env
+
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+
     environment:
       NODE_ENV: production
       PORT: 4000
       HOST: 0.0.0.0
+
       DATABASE_URL: postgresql://${POSTGRES_USER:-spendguard}:${POSTGRES_PASSWORD:-spendguard_secure_password}@postgres:5432/${POSTGRES_DB:-spendguard}?schema=public
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # No defaults on purpose: production refuses to boot with weak/published secrets.
-      # Copy .env.example to .env at the repo root and fill these in.
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env (see .env.example)}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env (see .env.example)}
+
       JWT_ACCESS_EXPIRATION: 15m
       JWT_REFRESH_EXPIRATION: 7d
-      ENCRYPTION_MASTER_KEY: ${ENCRYPTION_MASTER_KEY:?Set ENCRYPTION_MASTER_KEY in .env (see .env.example)}
+
       APP_URL: ${APP_URL:-http://localhost:3000}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      # The frontend container proxies to the backend over the compose network (one hop)
+
+      # Frontend BFF proxy configuration
       TRUST_PROXY: ${TRUST_PROXY:-}
       PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+
       GATEWAY_FAIL_CLOSED_ON_ERROR: "true"
       GATEWAY_PROXY_TIMEOUT_MS: "60000"
+
+      # Optional integrations
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+
     ports:
       - "4000:4000"
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/api/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
   # ----------------------------------------------------------------------------
-  # Next.js 16 Client & BFF Layer (Landing, Dashboard, Onboarding, Billing UI)
+  # Next.js 16 Frontend & BFF Layer
   # ----------------------------------------------------------------------------
   frontend:
     build:
@@ -98,22 +111,29 @@ services:
       dockerfile: Dockerfile
     container_name: spendguard-frontend
     restart: unless-stopped
+
     depends_on:
       backend:
         condition: service_healthy
+
     environment:
       NODE_ENV: production
       PORT: 3000
       API_URL: http://backend:4000
+
     ports:
       - "3000:3000"
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
+# ----------------------------------------------------------------------------
+# Persistent Volumes
+# ----------------------------------------------------------------------------
 volumes:
   postgres_data:
     driver: local

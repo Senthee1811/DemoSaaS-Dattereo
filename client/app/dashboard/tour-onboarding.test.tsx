@@ -2,7 +2,8 @@
  * 7.4 regression: finishing the product tour must never send a user whose workspace is
  * already set up back to /onboarding.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest';
+import { preloadAllViews } from '@/components/dashboard/lazy-views';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { destinationAfterTour, hasCompletedOnboarding, ONBOARDING_COMPLETED, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 
@@ -14,7 +15,8 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 // Charts are irrelevant here and need a real layout engine
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
+// next/dynamic runs for real (workspaces are lazy chunks). Only the chart library is stubbed: recharts needs real layout.
+vi.mock('@/components/dashboard/OverviewCharts', () => ({ OverviewCharts: () => null }));
 
 import DashboardPage from './page';
 
@@ -49,6 +51,7 @@ function mockApi(projects: unknown[]) {
 
 async function runTourToTheEnd() {
   fireEvent.click(await screen.findByRole('button', { name: /Restart Product Tour/i }));
+  await screen.findByRole('button', { name: /^Next$/ }); // the tour is a separate chunk, loaded on first use
   // Click Next until the last step's "Finish tour" button appears, then finish
   for (let i = 0; i < 20; i++) {
     const finish = screen.queryByRole('button', { name: /Finish tour/i });
@@ -60,6 +63,11 @@ async function runTourToTheEnd() {
   }
   throw new Error('tour never reached its last step');
 }
+
+// The workspaces are separate chunks: compile them once up front (see preloadAllViews)
+beforeAll(async () => {
+  await preloadAllViews();
+}, 60_000);
 
 beforeEach(() => {
   localStorage.setItem('spendguard_token', 'test-token');

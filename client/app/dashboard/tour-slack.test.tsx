@@ -1,5 +1,6 @@
 /** 7.10: the tour shows Settings → Notifications and sends a REAL test alert (POST /api/v1/alerts). */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest';
+import { preloadAllViews } from '@/components/dashboard/lazy-views';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Providers } from '@/app/providers';
 
@@ -8,7 +9,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
+// next/dynamic runs for real (workspaces are lazy chunks). Only the chart library is stubbed: recharts needs real layout.
+vi.mock('@/components/dashboard/OverviewCharts', () => ({ OverviewCharts: () => null }));
 
 import DashboardPage from './page';
 
@@ -42,11 +44,17 @@ async function openSlackStep() {
   );
   await waitFor(() => expect(screen.getAllByText('Support Bot').length).toBeGreaterThan(0));
   fireEvent.click(screen.getByRole('button', { name: /Restart Product Tour/i }));
+  await screen.findByRole('button', { name: /^Next$/ }); // the tour is a separate chunk, loaded on first use
   for (let i = 0; i < 12 && !screen.queryByText('7. Slack Alerts'); i++) {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /^Next$/ })));
   }
   expect(screen.getByText('7. Slack Alerts')).toBeInTheDocument();
 }
+
+// The workspaces are separate chunks: compile them once up front (see preloadAllViews)
+beforeAll(async () => {
+  await preloadAllViews();
+}, 60_000);
 
 beforeEach(() => {
   requests.length = 0;

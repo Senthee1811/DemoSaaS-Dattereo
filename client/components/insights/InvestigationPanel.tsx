@@ -9,7 +9,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { DRIVER_LABEL, InvestigationResponse, SUFFICIENCY_LABEL, signedUsd, usd } from '@/lib/insights';
-import { CARD, q, Segmented } from './shared';
+import { CARD, Freshness, q, Segmented } from './shared';
 
 const WINDOWS = [
   { id: 24, label: 'Last 24 hours' },
@@ -21,11 +21,12 @@ const DIM_LABEL: Record<string, string> = { model: 'Models', key: 'Gateway keys'
 /** Why did spend change? Each statement lists the ledger request ids it was computed from. */
 export function InvestigationPanel({ projectId }: { projectId: string }) {
   const [hours, setHours] = useState(24);
-  const { data, error, loading } = useApi<InvestigationResponse>(`/api/v1/insights/investigation?${q(projectId, `hours=${hours}`)}`);
+  const { data, error, loading, fetchedAt, isStale } = useApi<InvestigationResponse>(`/api/v1/insights/investigation?${q(projectId, `hours=${hours}`)}`, { cacheMs: 60_000 });
 
   return (
     <div className="space-y-4">
       <Segmented label="Window to investigate" value={hours} options={WINDOWS} onChange={setHours} />
+      <Freshness fetchedAt={fetchedAt} isStale={isStale} />
       {error && <InlineAlert variant="error" title="Could not run the investigation">{error}</InlineAlert>}
       {!data && loading && <CardSkeleton />}
 

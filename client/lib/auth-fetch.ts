@@ -1,6 +1,7 @@
 'use client';
 
 import { notifyStorageChange } from './client-storage';
+import { clearApiCache } from './api-cache';
 
 /**
  * Browser-side fetch wrapper for authenticated SpendGuard API calls.
@@ -43,6 +44,7 @@ export function saveSession(data: { accessToken?: string; refreshToken?: string;
 }
 
 export function clearSession() {
+  clearApiCache(); // cached financial data must not outlive the session (or leak to the next user of this tab)
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);

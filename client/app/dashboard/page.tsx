@@ -1,26 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar, NavTab } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { OverviewView } from '@/components/dashboard/OverviewView';
-import { InsightsView } from '@/components/insights/InsightsView';
-import { ProjectsView } from '@/components/projects/ProjectsView';
-import { KeyVaultView } from '@/components/keys/KeyVaultView';
-import { PlaygroundView } from '@/components/playground/PlaygroundView';
-import { AuditView } from '@/components/audit/AuditView';
-import { AlertsView } from '@/components/alerts/AlertsView';
-import { SdkView } from '@/components/sdk/SdkView';
-import { TeamView } from '@/components/team/TeamView';
-import { BillingView } from '@/components/billing/BillingView';
-import { SettingsView, type SettingsTab } from '@/components/settings/SettingsView';
+import type { SettingsTab } from '@/components/settings/SettingsView';
+import {
+  AlertsView, AuditView, BillingView, HelpCenterModal, InsightsView, KeyVaultView, PlaygroundView, ProductTour, ProjectsView, SdkView, SettingsView, TeamView, WelcomeModal,
+  prefetchWorkspacesWhenIdle, readyOrTimeout, viewState,
+} from '@/components/dashboard/lazy-views';
+import { LazyBoundary } from '@/components/ui/LazyBoundary';
 import { destinationAfterTour, ONBOARDING_STATE_KEY } from '@/lib/onboarding';
 import { ScopeProvider, resolveScopeProject } from '@/lib/scope';
-import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
-import { ProductTour } from '@/components/tour/ProductTour';
-import { HelpCenterModal } from '@/components/help/HelpCenterModal';
 import { authFetch, readApiError } from '@/lib/auth-fetch';
+import { createLatest } from '@/lib/latest';
 import { useErrorDialog, useToast } from '@/components/ui/feedback';
 import { useHydrated, useLocalStorageValue, useSessionStorageValue, useStoredUser } from '@/lib/client-storage';
 import type { DashboardAnalytics } from '@/lib/types';
@@ -36,6 +30,18 @@ async function getJson<T>(url: string): Promise<T> {
 
 const SCOPE_STORAGE_KEY = 'spendguard_scope';
 
+/** True from the first time `flag` is true onward. Lets an overlay's code load when first opened, then stay mounted so its exit animation still plays. */
+function useEverTrue(flag: boolean): boolean {
+  const [seen, setSeen] = useState(flag);
+  if (flag && !seen) setSeen(true);
+  return seen || flag;
+}
+
+const TAB_NAME: Record<NavTab, string> = {
+  overview: 'Overview', insights: 'Cost Insights', projects: 'Projects', keys: 'The key vault', playground: 'The test bench', audit: 'The audit ledger',
+  alerts: 'Alerts', sdk: 'The SDK guide', team: 'Team', billing: 'Billing', settings: 'Settings',
+};
+
 function readStoredScope(): string {
   try {
     return typeof window === 'undefined' ? '' : (window.sessionStorage.getItem(SCOPE_STORAGE_KEY) ?? '');
@@ -47,6 +53,24 @@ function readStoredScope(): string {
 export default function AppDashboard() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<NavTab>('overview');
+  // Tab changes go through `navigate`: it waits (briefly) for a lazy workspace's code BEFORE switching, so the common case never
+  // suspends (no skeleton flash, no React fallback throttle). A slow download switches after NAVIGATE_WAIT_MS and shows the skeleton.
+  const [pendingTab, setPendingTab] = useState<NavTab | null>(null);
+  const latestNav = useRef(createLatest());
+  const navigate = useCallback((tab: NavTab) => {
+    const isCurrent = latestNav.current.begin(); // a newer click supersedes an older one that is still waiting
+    if (viewState(tab) === 'ready') {
+      setPendingTab(null);
+      setCurrentTab(tab);
+      return;
+    }
+    setPendingTab(tab);
+    void readyOrTimeout(tab).then(() => {
+      if (!isCurrent()) return;
+      setPendingTab(null);
+      setCurrentTab(tab);
+    });
+  }, []);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
   const toast = useToast();
   const showError = useErrorDialog();
@@ -66,7 +90,11 @@ export default function AppDashboard() {
   }, []);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const selectedProjectId = projects.some((p) => p.id === rawScopeId) ? rawScopeId : '';
-  const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null);
+  // Analytics are stored WITH the scope they were fetched for. Figures for another scope are never shown under this scope's name:
+  // while a switch is loading the Overview shows its skeleton, not the previous project's numbers.
+  const [analytics, setAnalytics] = useState<{ scope: string; data: DashboardAnalytics } | null>(null);
+  const latestAnalytics = useRef(createLatest());
+  const analyticsData = analytics && analytics.scope === selectedProjectId ? analytics.data : null;
   const [unreadAlertsCount, setUnreadAlertsCount] = useState<number>(0);
   const [inboxUnread, setInboxUnread] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -94,6 +122,10 @@ export default function AppDashboard() {
   const onboardingState = useLocalStorageValue(ONBOARDING_STATE_KEY);
   const isWelcomeOpen =
     !welcomeDismissed && (justRegistered || (onboardingState === 'ACCOUNT_READY' && !tourCompleted));
+  // Overlays are separate chunks: their code is requested the first time they are needed
+  const welcomeMounted = useEverTrue(isWelcomeOpen);
+  const tourMounted = useEverTrue(isTourActive);
+  const helpMounted = useEverTrue(isHelpOpen);
 
   const dismissWelcome = () => {
     setWelcomeDismissed(true);
@@ -135,6 +167,13 @@ export default function AppDashboard() {
     }
   };
 
+  // Once the first screen is complete, fetch the other workspaces' code in the background (idle, one at a time)
+  const firstScreenReady = projectsLoaded && analytics !== null;
+  useEffect(() => {
+    if (!firstScreenReady || process.env.NEXT_PUBLIC_DISABLE_IDLE_PREFETCH === '1') return; // the flag exists for A/B measurement
+    return prefetchWorkspacesWhenIdle();
+  }, [firstScreenReady]);
+
   // Unauthenticated visitors go to login
   useEffect(() => {
     if (hydrated && !accessToken) router.push('/login');
@@ -166,12 +205,17 @@ export default function AppDashboard() {
   );
 
   const fetchAnalytics = useCallback(
-    () =>
-      getJson<DashboardAnalytics>(
+    () => {
+      const scope = selectedProjectId;
+      const isCurrent = latestAnalytics.current.begin(); // an older, slower response is ignored
+      return getJson<DashboardAnalytics>(
         selectedProjectId ? `/api/v1/analytics?projectId=${encodeURIComponent(selectedProjectId)}` : '/api/v1/analytics',
       )
-        .then(setAnalyticsData)
-        .catch((err) => console.error('Failed to fetch analytics:', err)),
+        .then((data) => {
+          if (isCurrent()) setAnalytics({ scope, data });
+        })
+        .catch((err) => console.error('Failed to fetch analytics:', err));
+    },
     [selectedProjectId],
   );
 
@@ -206,14 +250,20 @@ export default function AppDashboard() {
   useEffect(() => {
     if (!accessToken) return;
     loadAll();
+    // Live figures refresh every 12 s, but only while the tab is visible: a forgotten background tab makes no requests
     const interval = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       fetchAnalytics();
       fetchUnreadAlerts();
     }, 12000);
     // The inbox counter polls on its own, slower cadence (and refreshes when the tab becomes visible again)
     const inboxInterval = setInterval(fetchInboxUnread, 60000);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchInboxUnread();
+      if (document.visibilityState !== 'visible') return;
+      // coming back to the tab: catch up at once instead of showing minutes-old figures until the next tick
+      fetchInboxUnread();
+      fetchAnalytics();
+      fetchUnreadAlerts();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -229,7 +279,8 @@ export default function AppDashboard() {
       {/* Navigation Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={navigate}
+        pendingTab={pendingTab}
         unreadAlertsCount={unreadAlertsCount}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
@@ -241,17 +292,17 @@ export default function AppDashboard() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Global Application Header */}
         <Header
-          onOpenPlayground={() => setCurrentTab('playground')}
+          onOpenPlayground={() => navigate('playground')}
           onRefreshData={refreshAll}
           isRefreshing={isRefreshing}
           unreadInbox={inboxUnread}
           onInboxUnreadChange={setInboxUnread}
-          onNavigate={setCurrentTab}
+          onNavigate={navigate}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           onOpenHelp={() => setIsHelpOpen(true)}
           onOpenSettings={(section) => {
             setSettingsSection(section);
-            setCurrentTab('settings');
+            navigate('settings');
           }}
         />
 
@@ -259,16 +310,18 @@ export default function AppDashboard() {
         <main className="flex-1 overflow-y-auto px-6 py-6 bg-surface-subtle scroll-smooth">
           <div className="max-w-7xl mx-auto">
             <PageTransition tabKey={currentTab}>
+            {/* One boundary per workspace (keyed by tab, so switching tabs clears a failure); never nested */}
+            <LazyBoundary key={currentTab} name={TAB_NAME[currentTab]}>
             {currentTab === 'overview' && (
               <OverviewView
                 analyticsData={analyticsData}
                 projectsCount={projects.length}
                 hasProviderKeys={hasProviderKeys}
                 hasGatewayKeys={hasGatewayKeys}
-                onNavigateToProjects={() => setCurrentTab('projects')}
-                onNavigateToPlayground={() => setCurrentTab('playground')}
-                onNavigateToAudit={() => setCurrentTab('audit')}
-                onNavigateToKeys={() => setCurrentTab('keys')}
+                onNavigateToProjects={() => navigate('projects')}
+                onNavigateToPlayground={() => navigate('playground')}
+                onNavigateToAudit={() => navigate('audit')}
+                onNavigateToKeys={() => navigate('keys')}
               />
             )}
 
@@ -314,51 +367,64 @@ export default function AppDashboard() {
                 key={settingsSection}
                 initialTab={settingsSection}
                 onStartTour={() => setIsTourActive(true)}
-                onNavigateToTeam={() => setCurrentTab('team')}
+                onNavigateToTeam={() => navigate('team')}
               />
             )}
+            </LazyBoundary>
             </PageTransition>
           </div>
         </main>
       </div>
 
       {/* Post-Signup Welcome Modal */}
-      <WelcomeModal
-        isOpen={isWelcomeOpen}
-        onClose={dismissWelcome}
-        onStartOnboarding={() => router.push('/onboarding')}
-        onStartTour={() => {
-          dismissWelcome();
-          setIsTourActive(true);
-        }}
-        userName={userName}
-        orgName={orgName}
-      />
+      {welcomeMounted && (
+        <LazyBoundary name="The welcome guide" variant="overlay">
+          <WelcomeModal
+            isOpen={isWelcomeOpen}
+            onClose={dismissWelcome}
+            onStartOnboarding={() => router.push('/onboarding')}
+            onStartTour={() => {
+              dismissWelcome();
+              setIsTourActive(true);
+            }}
+            userName={userName}
+            orgName={orgName}
+          />
+        </LazyBoundary>
+      )}
 
       {/* Interactive product tour */}
-      <ProductTour
-        isActive={isTourActive}
-        onClose={() => setIsTourActive(false)}
-        onNavigateTab={(tab, section) => {
-          if (section) setSettingsSection(section);
-          setCurrentTab(tab);
-        }}
-        onSendTestAlert={sendTourTestAlert}
-        onFinished={() => {
-          // Same completion check as the setup wizard: a set-up org stays on the console
-          if (destinationAfterTour({ onboardingState, projectCount: projects.length, projectsLoaded }) === 'onboarding') {
-            router.push('/onboarding');
-          }
-        }}
-      />
+      {tourMounted && (
+        <LazyBoundary name="The product tour" variant="overlay">
+          <ProductTour
+            isActive={isTourActive}
+            onClose={() => setIsTourActive(false)}
+            onNavigateTab={(tab, section) => {
+              if (section) setSettingsSection(section);
+              navigate(tab);
+            }}
+            onSendTestAlert={sendTourTestAlert}
+            onFinished={() => {
+              // Same completion check as the setup wizard: a set-up org stays on the console
+              if (destinationAfterTour({ onboardingState, projectCount: projects.length, projectsLoaded }) === 'onboarding') {
+                router.push('/onboarding');
+              }
+            }}
+          />
+        </LazyBoundary>
+      )}
 
       {/* In-Product Knowledge Base & Help Center */}
-      <HelpCenterModal
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-        onRestartTour={() => setIsTourActive(true)}
-        onNavigateToSdk={() => setCurrentTab('sdk')}
-      />
+      {helpMounted && (
+        <LazyBoundary name="The help center" variant="overlay">
+          <HelpCenterModal
+            isOpen={isHelpOpen}
+            onClose={() => setIsHelpOpen(false)}
+            onRestartTour={() => setIsTourActive(true)}
+            onNavigateToSdk={() => navigate('sdk')}
+          />
+        </LazyBoundary>
+      )}
     </div>
     </ScopeProvider>
   );

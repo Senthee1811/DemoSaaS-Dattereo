@@ -6,7 +6,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { ModelComparison, ModelComparisonResponse, signedUsd, usd, usdRange } from '@/lib/insights';
-import { CARD, q } from './shared';
+import { CARD, Freshness, q } from './shared';
 
 const range = (low: number, high: number) => usdRange(low, high, ' – ');
 const signedRange = (low: number, high: number) => (Math.abs(low - high) < 0.005 ? signedUsd(low) : `${signedUsd(low)} to ${signedUsd(high)}`);
@@ -27,7 +27,7 @@ function Checks({ checks }: { checks: ModelComparison['checks'] }) {
 
 /** Historical traffic re-priced on other models. Cost only; the disclaimer is always visible. */
 export function ModelComparisonPanel({ projectId }: { projectId: string }) {
-  const { data, error, loading } = useApi<ModelComparisonResponse>(`/api/v1/insights/model-comparison?${q(projectId, 'days=30')}`);
+  const { data, error, loading, fetchedAt, isStale } = useApi<ModelComparisonResponse>(`/api/v1/insights/model-comparison?${q(projectId, 'days=30')}`, { cacheMs: 60_000 });
 
   return (
     <section className="space-y-4" aria-label="Model cost comparison">
@@ -39,6 +39,7 @@ export function ModelComparisonPanel({ projectId }: { projectId: string }) {
         {data?.disclaimer ?? 'A cheaper model is not claimed to be equivalent. Output quality, latency and behaviour are not measured, and any change needs your own evaluation and approval.'}
       </InlineAlert>
 
+      <Freshness fetchedAt={fetchedAt} isStale={isStale} />
       {error && <InlineAlert variant="error" title="Could not load the comparison">{error}</InlineAlert>}
       {!data && loading && <CardSkeleton />}
       {data && data.sources.length === 0 && <p className="text-label text-fg-secondary">No usage in the last 30 days to compare.</p>}

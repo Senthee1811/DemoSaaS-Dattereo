@@ -24,3 +24,18 @@ export function Segmented<T extends string | number>({ value, options, onChange,
     </div>
   );
 }
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+/**
+ * Says how old the figures on screen are. Financial numbers must never look more current than they are: when a panel is
+ * showing a cached copy it says so (and that a refresh is running); otherwise it shows when the data was fetched.
+ */
+export function Freshness({ fetchedAt, isStale }: { fetchedAt: number | null; isStale: boolean }) {
+  if (!fetchedAt) return null;
+  return (
+    <p className="text-caption text-fg-muted" role="status" aria-live="polite" data-testid="freshness" data-stale={isStale}>
+      {isStale ? `Showing a saved copy from ${clock(fetchedAt)} while the latest loads…` : `Updated ${clock(fetchedAt)}`}
+    </p>
+  );
+}

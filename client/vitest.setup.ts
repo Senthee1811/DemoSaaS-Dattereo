@@ -1,8 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { clearApiCache } from '@/lib/api-cache';
 
-afterEach(() => cleanup());
+// The API cache is module state: never let one test's responses leak into the next
+afterEach(() => {
+  cleanup();
+  clearApiCache();
+});
 
 // jsdom has no matchMedia (used by the theme hook). Default: light, no listeners fire.
 if (typeof window !== 'undefined' && !window.matchMedia) {

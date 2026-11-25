@@ -8,7 +8,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { AttributionResponse, Dimension, DIMENSIONS, pct, usd } from '@/lib/insights';
-import { CARD, q, Segmented } from './shared';
+import { CARD, Freshness, q, Segmented } from './shared';
 
 const RANGES = [
   { id: 7, label: '7 days' },
@@ -20,7 +20,7 @@ const RANGES = [
 export function SpendBreakdownPanel({ projectId }: { projectId: string }) {
   const [dimension, setDimension] = useState<Dimension>('model');
   const [days, setDays] = useState(30);
-  const { data, error, loading } = useApi<AttributionResponse>(`/api/v1/insights/attribution?${q(projectId, `dimension=${dimension}&days=${days}`)}`);
+  const { data, error, loading, fetchedAt, isStale } = useApi<AttributionResponse>(`/api/v1/insights/attribution?${q(projectId, `dimension=${dimension}&days=${days}`)}`, { cacheMs: 60_000 });
   const [showHow, setShowHow] = useState(false);
 
   return (
@@ -30,6 +30,7 @@ export function SpendBreakdownPanel({ projectId }: { projectId: string }) {
         <Segmented label="Time range" value={days} options={RANGES} onChange={setDays} />
       </div>
 
+      <Freshness fetchedAt={fetchedAt} isStale={isStale} />
       {error && <InlineAlert variant="error" title="Could not load spend">{error}</InlineAlert>}
       {!data && loading && <CardSkeleton />}
 

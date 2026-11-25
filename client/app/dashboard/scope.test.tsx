@@ -5,7 +5,8 @@
  * project, or a local picker) instead of reading the shared scope. So they are tested together,
  * against the real dashboard, with the OTHER project listed first: the old code picked it.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest';
+import { preloadAllViews } from '@/components/dashboard/lazy-views';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({
@@ -13,7 +14,8 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
+// next/dynamic runs for real (workspaces are lazy chunks). Only the chart library is stubbed: recharts needs real layout.
+vi.mock('@/components/dashboard/OverviewCharts', () => ({ OverviewCharts: () => null }));
 
 import { Providers } from '@/app/providers';
 import DashboardPage from './page';
@@ -76,6 +78,8 @@ const lastGet = (fragment: string) => callsTo(fragment, 'GET').at(-1);
 async function goTo(label: RegExp) {
   const nav = screen.getByRole('navigation');
   await act(async () => fireEvent.click(within(nav).getByRole('button', { name: label })));
+  // Workspaces are separate chunks: wait until the real view has replaced its loading skeleton
+  await waitFor(() => expect(screen.queryByTestId('view-skeleton')).toBeNull());
 }
 
 // "Notifications" is also the header bell's name, so look inside the page content only
@@ -95,6 +99,11 @@ async function openDashboardAndSetScope(name: string) {
   const option = within(select).getByRole('option', { name });
   await act(async () => fireEvent.change(select, { target: { value: (option as HTMLOptionElement).value } }));
 }
+
+// The workspaces are separate chunks: compile them once up front (see preloadAllViews)
+beforeAll(async () => {
+  await preloadAllViews();
+}, 60_000);
 
 beforeEach(() => {
   requests.length = 0;

@@ -1,2 +1,6 @@
 .vercel
 .env*
+
+# perf harness session (contains throwaway tokens)
+/scripts/perf/.session.json
+/scripts/perf/results/

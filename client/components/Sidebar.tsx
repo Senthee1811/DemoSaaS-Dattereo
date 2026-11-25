@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Tip } from '@/components/ui/tooltip';
+import { prefetchOverlay, prefetchTab } from '@/components/dashboard/lazy-views';
 
 export type NavTab = 
   | 'overview' 
@@ -39,6 +40,8 @@ export type NavTab =
 interface SidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
+  /** A workspace whose code is still downloading after a click (the previous one stays on screen meanwhile). */
+  pendingTab?: NavTab | null;
   unreadAlertsCount: number;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
@@ -60,6 +63,7 @@ interface NavSection {
 export function Sidebar({ 
   currentTab, 
   onSelectTab, 
+  pendingTab,
   unreadAlertsCount, 
   isOpenMobile = false, 
   onCloseMobile,
@@ -172,6 +176,11 @@ export function Sidebar({
                     <button
                       key={item.id}
                       type="button"
+                      aria-busy={pendingTab === item.id || undefined}
+                      // Start downloading this workspace's code as soon as the user shows intent (pointer, keyboard focus, touch)
+                      onPointerEnter={() => prefetchTab(item.id)}
+                      onFocus={() => prefetchTab(item.id)}
+                      onTouchStart={() => prefetchTab(item.id)}
                       onClick={() => {
                         onSelectTab(item.id);
                         onCloseMobile?.();
@@ -214,6 +223,8 @@ export function Sidebar({
             </span>
             <button
               type="button"
+              onPointerEnter={() => prefetchOverlay('help')}
+              onFocus={() => prefetchOverlay('help')}
               onClick={() => {
                 onOpenHelp?.();
                 onCloseMobile?.();
@@ -225,6 +236,8 @@ export function Sidebar({
             </button>
             <button
               type="button"
+              onPointerEnter={() => prefetchOverlay('tour')}
+              onFocus={() => prefetchOverlay('tour')}
               onClick={() => {
                 onStartTour?.();
                 onCloseMobile?.();

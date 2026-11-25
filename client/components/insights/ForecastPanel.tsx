@@ -2,43 +2,23 @@
 
 import React from 'react';
 import { CalendarClock } from 'lucide-react';
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
 import { useApi } from '@/lib/use-api';
-import { useChartTheme } from '@/lib/chart-theme';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { CardSkeleton, ChartAreaSkeleton } from '@/components/ui/LoadingSkeleton';
 import { InlineAlert } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { BUDGET_STATUS, ForecastResponse, SUFFICIENCY_LABEL, usd } from '@/lib/insights';
-import { CARD, q } from './shared';
+import { CARD, Freshness, q } from './shared';
+import { LazyBoundary } from '@/components/ui/LazyBoundary';
 
-interface Point {
-  date: string;
-  actual?: number;
-  predicted?: number;
-  band?: [number, number];
-}
+// Charting library: fetched only when a forecast chart is about to be drawn. The placeholder reserves the chart's exact height (h-64).
+const ForecastChart = dynamic(() => import('./ForecastChart'), { loading: () => <ChartAreaSkeleton height="h-64" /> });
 
-/** Actual spend (solid) and the forecast (dashed, with its range) are separate series and separate numbers. */
-export function chartPoints(days: ForecastResponse['days']): Point[] {
-  const out: Point[] = days.map((d) =>
-    d.kind === 'actual'
-      ? { date: d.date.slice(5), actual: d.cumulativeUsd }
-      : { date: d.date.slice(5), predicted: d.cumulativeUsd, band: [d.cumulativeLowUsd ?? d.cumulativeUsd, d.cumulativeHighUsd ?? d.cumulativeUsd] as [number, number] },
-  );
-  // join the lines: the forecast starts from the last actual point
-  const lastActual = [...out].reverse().find((p) => p.actual !== undefined);
-  const firstForecast = out.findIndex((p) => p.predicted !== undefined);
-  if (lastActual && firstForecast > 0) {
-    const i = out.indexOf(lastActual);
-    out[i] = { ...lastActual, predicted: lastActual.actual, band: [lastActual.actual!, lastActual.actual!] };
-  }
-  return out;
-}
+export { chartPoints } from './chart-points';
 
 export function ForecastPanel({ projectId }: { projectId: string }) {
-  const { data, error, loading } = useApi<ForecastResponse>(`/api/v1/insights/forecast?${q(projectId)}`);
-  const theme = useChartTheme();
+  const { data, error, loading, fetchedAt, isStale } = useApi<ForecastResponse>(`/api/v1/insights/forecast?${q(projectId)}`, { cacheMs: 60_000 });
 
   if (error) return <InlineAlert variant="error" title="Could not load the forecast">{error}</InlineAlert>;
   if (!data) return loading ? <CardSkeleton /> : null;
@@ -52,6 +32,7 @@ export function ForecastPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
+      <Freshness fetchedAt={fetchedAt} isStale={isStale} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className={CARD}>
           <p className="text-label font-mono uppercase tracking-wider text-fg-muted flex items-center gap-2">Spent this month <Badge tone="neutral">Actual</Badge></p>
@@ -107,17 +88,9 @@ export function ForecastPanel({ projectId }: { projectId: string }) {
         <div className={CARD}>
           <p className="text-label font-mono uppercase tracking-wider text-fg-muted mb-3">Cumulative spend this month</p>
           <div className="h-64" role="img" aria-label="Cumulative spend this month: actual to date, then the forecast with its range">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartPoints(data.days)} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke={theme.grid} vertical={false} />
-                <XAxis dataKey="date" stroke={theme.axis} fontSize={11} tickLine={false} interval="preserveStartEnd" />
-                <YAxis stroke={theme.axis} fontSize={11} tickLine={false} width={56} tickFormatter={(v) => usd(Number(v))} />
-                <Tooltip contentStyle={{ background: theme.tooltipBg, border: `1px solid ${theme.tooltipBorder}`, color: theme.tooltipFg, borderRadius: 12, fontSize: 12 }} formatter={(v) => (Array.isArray(v) ? `${usd(Number(v[0]))} – ${usd(Number(v[1]))}` : usd(Number(v)))} />
-                <Area type="monotone" dataKey="band" name="Forecast range" stroke="none" fill={theme.accent} fillOpacity={0.12} connectNulls={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="actual" name="Actual" stroke={theme.accent} strokeWidth={2.5} dot={false} connectNulls={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="predicted" name="Forecast" stroke={theme.accent} strokeWidth={2} strokeDasharray="6 4" dot={false} connectNulls={false} isAnimationActive={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <LazyBoundary name="The forecast chart">
+              <ForecastChart days={data.days} />
+            </LazyBoundary>
           </div>
           <p className="mt-3 text-caption text-fg-muted">Solid line: actual spend. Dashed line and shaded band: forecast and its range.</p>
         </div>

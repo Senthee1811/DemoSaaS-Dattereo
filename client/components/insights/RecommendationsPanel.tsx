@@ -12,6 +12,7 @@ import { ConfirmDialog, InlineAlert, useToast } from '@/components/ui/feedback';
 import { Badge } from '@/components/ui/Badge';
 import { evidenceText, impactText, Recommendation, SEVERITY_TONE } from '@/lib/insights';
 import { CARD, q } from './shared';
+import { invalidateApiCache } from '@/lib/api-cache';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
 
 type Decision = 'acknowledge' | 'dismiss' | 'approve_evaluation';
@@ -35,6 +36,7 @@ export function RecommendationsPanel({ projectId }: { projectId: string }) {
   const decide = async (r: Recommendation, action: Decision, note?: string) => {
     const res = await authFetch(`/api/v1/insights/recommendations/${encodeURIComponent(r.id)}`, { method: 'PATCH', body: JSON.stringify({ action, note }) });
     if (!res.ok) throw new Error(await readApiError(res, 'The decision could not be saved.'));
+    invalidateApiCache('/api/v1/insights'); // a decision changes what the insights say: drop every cached copy
     reload();
   };
 
@@ -45,6 +47,7 @@ export function RecommendationsPanel({ projectId }: { projectId: string }) {
       if (!res.ok) throw new Error(await readApiError(res, 'Could not re-evaluate.'));
       const out = (await res.json()) as { created: number; updated: number; resolved: number };
       toast.success('Re-evaluated', `${out.created} new, ${out.updated} updated, ${out.resolved} resolved.`);
+      invalidateApiCache('/api/v1/insights');
       reload();
     } catch (err) {
       toast.error('Could not re-evaluate', err instanceof Error ? err.message : undefined);
@@ -139,7 +142,8 @@ export function RecommendationsPanel({ projectId }: { projectId: string }) {
         })}
       </section>
 
-      <ModelComparisonPanel projectId={projectId} />
+      {/* Mounted after the recommendations settle: it sits BELOW a list whose height is unknown until then, so loading it earlier shifted it (CLS 0.26) */}
+      {(data || error) && <ModelComparisonPanel projectId={projectId} />}
 
       <ConfirmDialog
         open={confirm !== null}

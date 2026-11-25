@@ -32,8 +32,16 @@ export function ModelPicker({ selectedModel, onSelect, onLoaded }: ModelPickerPr
 
   if (catalog.status === 'loading') {
     return (
-      <div role="status" className="text-xs text-fg-secondary py-6">
-        Loading models…
+      // Reserves the height of a loaded catalog (measured ~645 px at 1440 px wide): the form below used to jump by that much
+      // when the list arrived (layout shift 0.15). The list is data-dependent, so this is an estimate, not a guarantee.
+      <div role="status" className="min-h-[40rem] space-y-3 motion-safe:animate-pulse">
+        <p className="text-xs text-fg-secondary py-1">Loading models…</p>
+        <div className="h-9 max-w-xs rounded-field bg-surface-subtle" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="h-24 rounded-field bg-surface-subtle" />
+          ))}
+        </div>
       </div>
     );
   }

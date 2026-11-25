@@ -9,6 +9,17 @@ import { RecommendationsPanel } from './RecommendationsPanel';
 
 type InsightsTab = 'spend' | 'investigate' | 'forecast' | 'actions';
 
+const TAB_KEY = 'spendguard_insights_tab';
+const isTab = (v: unknown): v is InsightsTab => v === 'spend' || v === 'investigate' || v === 'forecast' || v === 'actions';
+function readTab(): InsightsTab {
+  try {
+    const v = window.sessionStorage.getItem(TAB_KEY);
+    return isTab(v) ? v : 'spend';
+  } catch {
+    return 'spend';
+  }
+}
+
 const TABS: Array<{ id: InsightsTab; label: string; question: string }> = [
   { id: 'spend', label: 'Where it goes', question: 'Where is the money going?' },
   { id: 'investigate', label: 'Why it changed', question: 'Why is spend changing?' },
@@ -22,7 +33,16 @@ const TABS: Array<{ id: InsightsTab; label: string; question: string }> = [
  */
 export function InsightsView() {
   const projectId = useScopeId();
-  const [tab, setTab] = useState<InsightsTab>('spend');
+  // The selected tab survives leaving Cost Insights and coming back (this browser tab only)
+  const [tab, setTabState] = useState<InsightsTab>(readTab);
+  const setTab = (next: InsightsTab) => {
+    setTabState(next);
+    try {
+      window.sessionStorage.setItem(TAB_KEY, next);
+    } catch {
+      /* storage unavailable: the tab still works for this visit */
+    }
+  };
   const active = TABS.find((t) => t.id === tab)!;
 
   return (

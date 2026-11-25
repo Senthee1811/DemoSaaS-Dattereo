@@ -105,3 +105,24 @@ immediate rotation, no-secret-leakage across API/history/audit/logs).
 * Rotation grace windows mean an old secret remains valid for up to 7 days when chosen; use `immediate` for compromise.
 * Live e2e suites were not re-run after these changes (they need Postgres + Redis + mock upstream).
 * Audit rows are append-only by convention (no update path in the service); there is no database-level immutability.
+
+## 7. Notification deduplication policy (deterministic)
+
+Two kinds of "duplicate" exist and they are handled differently on purpose.
+
+1. **The same event delivered twice to the same destination: prevented, always.** A delivery's identity is `(event id, destination)`.
+   Event ids are stable (`alert:<alert id>`, `rec:<recommendation id>:<fingerprint>`), the database enforces uniqueness on
+   `(channel_id, event_id)`, and in-app (inbox) rows use `in_app_key = "<org>:<event id>"` because Postgres treats NULL `channel_id`
+   values as distinct. Re-publishing an event, a retry, a stale-delivery sweep and 20 concurrent publishes all produce exactly one
+   delivery per destination (`test/notification-dedupe.spec.ts`, and against real Postgres in `test/notification-db.spec.ts`).
+2. **Two destinations that are really the same place: warned about, never suppressed.** A destination's identity is the peppered HMAC
+   of its normalised form (the full URL, or the sorted recipient list). Only **exactly identical** destinations are recognised: two
+   different Slack incoming-webhook URLs that post to the same Slack channel cannot be told apart, so SpendGuard does not guess. When
+   an organization channel equals another channel, or equals a project's Slack alert webhook, the channel list, the create response
+   and the project webhook save each carry a warning ("budget alerts will arrive twice"); both still deliver. The per-project Slack path
+   and organization channels are independent systems: one event can legitimately reach both.
+
+Why not suppress automatically: dropping a notification because we *think* two destinations coincide can silently lose an alert; a
+duplicate costs a few seconds of attention. Existing project webhooks are not migrated automatically (that would change where alerts go):
+to consolidate, add an organization channel and then remove the project webhook.
+
